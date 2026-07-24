@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vector Lab — interactive vector fields & calculus</title>
+  </head>
+  <body>
+    <div id="app">
+      <aside id="sidebar">
+        <div class="brand">
+          Vector Lab
+          <small>Interactive fields & calculus</small>
+        </div>
+        <div class="nav-tools">
+          <label for="lesson-search">Find a lesson</label>
+          <input id="lesson-search" type="search" placeholder="Search lessons…  /" autocomplete="off" />
+          <div id="lesson-count" class="nav-count"></div>
+        </div>
+        <nav id="nav" aria-label="Lessons"></nav>
+      </aside>
+
+      <main id="stage" aria-label="Interactive 3D lesson viewport">
+        <div class="hint">Drag to orbit · scroll to zoom · right-drag to pan · / search · [ ] lessons</div>
+      </main>
+
+      <aside id="panel" aria-live="polite">
+        <div id="gui"></div>
+        <div id="lesson-meta"></div>
+        <div id="info"></div>
+      </aside>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
