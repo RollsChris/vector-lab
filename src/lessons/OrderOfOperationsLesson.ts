@@ -51,7 +51,7 @@ export class OrderOfOperationsLesson implements Lesson {
   readonly blurb = "BODMAS, one step at a time";
   readonly category = "Foundations" as const;
   readonly difficulty = "Foundation" as const;
-  readonly prerequisites = ["number-sense-fractions"] as const;
+  readonly prerequisites = ["arithmetic-operations"] as const;
 
   private setInfo!: (html: string) => void;
   private stopTick?: () => void;

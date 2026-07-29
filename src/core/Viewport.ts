@@ -46,8 +46,11 @@ export class Viewport {
     this.scene.add(this.axes);
 
     container.appendChild(this.renderer.domElement);
+    this.renderer.domElement.style.touchAction = "none";
     this.resize();
     window.addEventListener("resize", this.resize);
+    // iOS URL-bar show/hide changes layout without always firing window.resize.
+    window.visualViewport?.addEventListener("resize", this.resize);
     this.loop();
   }
 
@@ -88,6 +91,7 @@ export class Viewport {
   dispose(): void {
     cancelAnimationFrame(this.raf);
     window.removeEventListener("resize", this.resize);
+    window.visualViewport?.removeEventListener("resize", this.resize);
     this.renderer.dispose();
   }
 }

@@ -8,7 +8,8 @@ import "./formulaDerivations/circle";
 type Chapter =
   | "basics"
   | "angles"
-  | "arcs-chords"
+  | "arcs"
+  | "chords"
   | "regions"
   | "line-circle"
   | "two-circles"
@@ -16,12 +17,13 @@ type Chapter =
 
 const CHAPTERS: { id: Chapter; label: string }[] = [
   { id: "basics", label: "1 · Basics" },
-  { id: "angles", label: "2 · Angles & arcs" },
-  { id: "arcs-chords", label: "3 · Arcs & chords" },
-  { id: "regions", label: "4 · Sectors & segments" },
-  { id: "line-circle", label: "5 · Line intersections" },
-  { id: "two-circles", label: "6 · Two circles" },
-  { id: "tangents", label: "7 · Tangents & secants" },
+  { id: "angles", label: "2 · Angles" },
+  { id: "arcs", label: "3 · Arcs" },
+  { id: "chords", label: "4 · Chords" },
+  { id: "regions", label: "5 · Sectors & segments" },
+  { id: "line-circle", label: "6 · Line intersections" },
+  { id: "two-circles", label: "7 · Two circles" },
+  { id: "tangents", label: "8 · Tangents & secants" },
 ];
 
 const COL = {
@@ -31,6 +33,29 @@ const COL = {
   chord: 0x7ee787,
   line: 0xffa657,
   point: 0xff7b72,
+  triangle: 0xffa657,
+  segment: 0xd2a8ff,
+  major: 0x8b949e,
+};
+
+const HEX = (value: number): string => `#${value.toString(16).padStart(6, "0")}`;
+
+/** Draggable control points, one per quantity a chapter lets you change by hand. */
+type HandleKind = "radius" | "angle" | "chord-a" | "chord-b" | "chord-mid" | "offset" | "separation";
+
+const WORLD_SCALE = 0.75;
+const MIN_WORLD_R = 1.2;
+const MAX_WORLD_R = 5;
+
+const HANDLE_HINT: Record<Exclude<Chapter, never>, string> = {
+  basics: "Drag the yellow point on the edge to resize the circle.",
+  angles: "Drag point <b>B</b> around the edge to change θ, or the yellow edge point to resize.",
+  arcs: "Drag point <b>B</b> around the edge to sweep the arc, or the yellow edge point to resize.",
+  chords: "Drag <b>A</b> or <b>B</b> anywhere around the circle — the chord rotates as well as opens. Drag the orange midpoint <b>M</b> to carry the whole chord to any position, in or out from the centre.",
+  regions: "Drag point <b>B</b> to open and close the sector.",
+  "line-circle": "Drag the orange point on the line up and down to move it through the circle.",
+  "two-circles": "Drag the second circle's centre to change the separation d.",
+  tangents: "Drag the external point <b>P</b> to move it nearer or further from the circle.",
 };
 
 /**
@@ -55,6 +80,55 @@ export class CircleCalculationsLesson implements Lesson {
     angle: 120,
     offset: 3,
     separation: 8,
+    chordPosition: 0,
+  };
+
+  private readonly raycaster = new THREE.Raycaster();
+  private readonly pointer = new THREE.Vector2();
+  private readonly dragPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+  private handles: THREE.Object3D[] = [];
+  private dragging: HandleKind | undefined;
+  private dragFrame = 0;
+
+  private readonly onPointerDown = (event: PointerEvent): void => {
+    const kind = this.pickHandle(event);
+    if (!kind) return;
+    this.dragging = kind;
+    if (this.viewport) {
+      this.viewport.controls.enabled = false;
+      this.viewport.renderer.domElement.setPointerCapture(event.pointerId);
+      this.viewport.renderer.domElement.style.cursor = "grabbing";
+    }
+    event.preventDefault();
+    event.stopPropagation();
+  };
+
+  private readonly onPointerMove = (event: PointerEvent): void => {
+    if (!this.dragging) {
+      if (this.viewport) {
+        this.viewport.renderer.domElement.style.cursor = this.pickHandle(event) ? "grab" : "";
+      }
+      return;
+    }
+    const point = this.pointerOnPlane(event);
+    if (!point) return;
+    this.applyDrag(this.dragging, point);
+    if (this.dragFrame) return;
+    this.dragFrame = requestAnimationFrame(() => {
+      this.dragFrame = 0;
+      this.rebuild();
+    });
+  };
+
+  private readonly onPointerUp = (event: PointerEvent): void => {
+    if (!this.dragging) return;
+    this.dragging = undefined;
+    if (this.viewport) {
+      this.viewport.controls.enabled = true;
+      this.viewport.renderer.domElement.releasePointerCapture?.(event.pointerId);
+      this.viewport.renderer.domElement.style.cursor = "";
+    }
+    this.rebuild();
   };
 
   private readonly infoHandler = (event: Event): void => {
@@ -88,12 +162,30 @@ export class CircleCalculationsLesson implements Lesson {
     ctx.viewport.controls.enableRotate = false;
     document.getElementById("info")?.addEventListener("click", this.infoHandler);
     document.getElementById("info")?.addEventListener("change", this.infoHandler);
+    const canvas = ctx.viewport.renderer.domElement;
+    canvas.addEventListener("pointerdown", this.onPointerDown, true);
+    canvas.addEventListener("pointermove", this.onPointerMove);
+    canvas.addEventListener("pointerup", this.onPointerUp);
+    canvas.addEventListener("pointercancel", this.onPointerUp);
     this.rebuild();
   }
 
   exit(): void {
     document.getElementById("info")?.removeEventListener("click", this.infoHandler);
     document.getElementById("info")?.removeEventListener("change", this.infoHandler);
+    if (this.viewport) {
+      const canvas = this.viewport.renderer.domElement;
+      canvas.removeEventListener("pointerdown", this.onPointerDown, true);
+      canvas.removeEventListener("pointermove", this.onPointerMove);
+      canvas.removeEventListener("pointerup", this.onPointerUp);
+      canvas.removeEventListener("pointercancel", this.onPointerUp);
+      canvas.style.cursor = "";
+      this.viewport.controls.enabled = true;
+    }
+    if (this.dragFrame) cancelAnimationFrame(this.dragFrame);
+    this.dragFrame = 0;
+    this.dragging = undefined;
+    this.handles = [];
     this.disposeChildren(this.group);
     if (this.viewport) this.viewport.controls.enableRotate = this.previousRotate;
     this.group.parent?.remove(this.group);
@@ -101,15 +193,101 @@ export class CircleCalculationsLesson implements Lesson {
     this.viewport = undefined;
   }
 
+  /** Screen pointer to a point on the z = 0 lesson plane. */
+  private pointerOnPlane(event: PointerEvent): THREE.Vector3 | undefined {
+    if (!this.viewport) return undefined;
+    const rect = this.viewport.renderer.domElement.getBoundingClientRect();
+    this.pointer.set(
+      ((event.clientX - rect.left) / rect.width) * 2 - 1,
+      -((event.clientY - rect.top) / rect.height) * 2 + 1,
+    );
+    this.raycaster.setFromCamera(this.pointer, this.viewport.camera);
+    const target = new THREE.Vector3();
+    return this.raycaster.ray.intersectPlane(this.dragPlane, target) ? target : undefined;
+  }
+
+  private pickHandle(event: PointerEvent): HandleKind | undefined {
+    if (!this.viewport || this.handles.length === 0) return undefined;
+    const rect = this.viewport.renderer.domElement.getBoundingClientRect();
+    this.pointer.set(
+      ((event.clientX - rect.left) / rect.width) * 2 - 1,
+      -((event.clientY - rect.top) / rect.height) * 2 + 1,
+    );
+    this.raycaster.setFromCamera(this.pointer, this.viewport.camera);
+    const hit = this.raycaster.intersectObjects(this.handles, false)[0];
+    return hit ? (hit.object.userData.handle as HandleKind) : undefined;
+  }
+
+  /** Convert a dragged world position back into the lesson's own quantities. */
+  private applyDrag(kind: HandleKind, point: THREE.Vector3): void {
+    const world = this.worldRadius();
+    const perWorldUnit = this.values.radius / world;
+    switch (kind) {
+      case "radius": {
+        const distance = THREE.MathUtils.clamp(Math.hypot(point.x, point.y), MIN_WORLD_R, MAX_WORLD_R);
+        this.values.radius = distance / WORLD_SCALE;
+        break;
+      }
+      case "angle": {
+        const degrees = THREE.MathUtils.radToDeg(Math.atan2(point.y, point.x));
+        this.values.angle = degrees < 0 ? degrees + 360 : degrees;
+        break;
+      }
+      case "chord-a":
+      case "chord-b": {
+        // Move one endpoint and hold the other, so the chord both rotates and resizes.
+        const dragged = wrap360(THREE.MathUtils.radToDeg(Math.atan2(point.y, point.x)));
+        const fixed = kind === "chord-a" ? this.chordEndAngles().b : this.chordEndAngles().a;
+        const sweep = kind === "chord-a" ? wrap360(fixed - dragged) : wrap360(dragged - fixed);
+        this.values.angle = sweep;
+        this.values.chordPosition = wrap360(kind === "chord-a" ? dragged + sweep / 2 : fixed + sweep / 2);
+        break;
+      }
+      case "chord-mid": {
+        // The midpoint carries the chord bodily: its direction sets where the chord sits,
+        // its distance from the centre sets how wide the chord is.
+        const distance = THREE.MathUtils.clamp(Math.hypot(point.x, point.y) / world, 0, 1);
+        this.values.angle = THREE.MathUtils.radToDeg(2 * Math.acos(distance));
+        if (Math.hypot(point.x, point.y) > 1e-4) {
+          this.values.chordPosition = wrap360(THREE.MathUtils.radToDeg(Math.atan2(point.y, point.x)));
+        }
+        break;
+      }
+      case "offset":
+        this.values.offset = point.y * perWorldUnit;
+        break;
+      case "separation":
+        this.values.separation = Math.hypot(point.x, point.y) * perWorldUnit;
+        break;
+    }
+    this.normaliseValues();
+  }
+
+  /** Where the chord's two endpoints currently sit, in degrees around the circle. */
+  private chordEndAngles(): { a: number; b: number } {
+    const half = this.values.angle / 2;
+    return {
+      a: wrap360(this.values.chordPosition - half),
+      b: wrap360(this.values.chordPosition + half),
+    };
+  }
+
+  /** The circle's on-screen radius, so dragging the edge visibly resizes it. */
+  private worldRadius(): number {
+    return THREE.MathUtils.clamp(this.values.radius * WORLD_SCALE, MIN_WORLD_R, MAX_WORLD_R);
+  }
+
   private normaliseValues(): void {
-    this.values.radius = THREE.MathUtils.clamp(this.values.radius, 0.1, 100);
-    this.values.angle = THREE.MathUtils.clamp(this.values.angle, 1, 359);
-    this.values.offset = THREE.MathUtils.clamp(this.values.offset, -100, 100);
-    this.values.separation = THREE.MathUtils.clamp(this.values.separation, 0.1, 200);
+    this.values.radius = round3(THREE.MathUtils.clamp(this.values.radius, 0.1, 100));
+    this.values.angle = round3(THREE.MathUtils.clamp(this.values.angle, 1, 359));
+    this.values.offset = round3(THREE.MathUtils.clamp(this.values.offset, -100, 100));
+    this.values.separation = round3(THREE.MathUtils.clamp(this.values.separation, 0.1, 200));
+    this.values.chordPosition = round3(wrap360(this.values.chordPosition));
   }
 
   private rebuild(): void {
     this.disposeChildren(this.group);
+    this.handles = [];
     this.drawScene();
     this.renderPanel();
   }
@@ -127,9 +305,12 @@ export class CircleCalculationsLesson implements Lesson {
       <div class="course-chapters" style="margin-bottom:10px">${nav}</div>
       <div class="course">
         <h3>Explore the same circle</h3>
+        <p class="course-hint" data-circle-drag-hint><b>Drag the diagram:</b> ${HANDLE_HINT[this.chapter]}
+        The numbers below follow whatever you drag, and typing in them moves the diagram.</p>
         <div class="circle-inputs">
           ${this.input("radius", "Radius r", "units", 0.1)}
           ${this.input("angle", "Central angle θ", "°", 1)}
+          ${this.chapter === "chords" ? this.input("chordPosition", "Chord position φ", "°", 1) : ""}
           ${this.chapter === "line-circle" ? this.input("offset", "Line distance k from centre", "units", 0.1) : ""}
           ${this.chapter === "two-circles" || this.chapter === "tangents" ? this.input("separation", "Centre/external distance d", "units", 0.1) : ""}
         </div>
@@ -150,7 +331,7 @@ export class CircleCalculationsLesson implements Lesson {
   private input(key: keyof typeof this.values, label: string, unit: string, step: number): string {
     return `<label class="geom-field">
       <span>${label}</span>
-      <input data-circle-input="${key}" type="number" min="${key === "offset" ? -100 : 0.1}" step="${step}" value="${this.values[key]}" />
+      <input data-circle-input="${key}" type="number" min="${key === "offset" ? -100 : key === "chordPosition" ? 0 : 0.1}" step="${step}" value="${this.values[key]}" />
       <em>${unit}</em>
     </label>`;
   }
@@ -205,14 +386,15 @@ export class CircleCalculationsLesson implements Lesson {
           <em>outside</em> make an angle equal to ½(major arc − minor arc).</p>
           ${derivationButton("inscribed-angle")}
         </div>`;
-      case "arcs-chords":
+      case "arcs":
         return `<div class="course">
-          <h3>Arc length and chord length</h3>
-          <p>An <b>arc</b> follows the curve. A <b>chord</b> is the straight shortcut between
-          the same endpoints. Convert θ to radians before using s = rθ.</p>
+          <h3>Arc length</h3>
+          <p>An <b>arc</b> is part of the circle's edge: the curved distance between two points
+          on the circumference. Its length is simply the same fraction of the circumference as
+          its angle is of a full turn.</p>
           <ol class="deriv">
             <li><b class="step-title">Start with one full turn</b>A complete circle is
-            <b>2π radians</b> around, and its circumference is <b>2πr</b>.</li>
+            <b>360°</b> (or <b>2π radians</b>) around, and its circumference is <b>2πr</b>.</li>
             <li><b class="step-title">Take the same fraction of both</b>This angle is
             θ/(2π) of a full turn, so its arc is
             s = θ/(2π) × 2πr = <b>rθ</b>.</li>
@@ -222,28 +404,122 @@ export class CircleCalculationsLesson implements Lesson {
             The identical radians route is s = ${fmt(r)} × ${fmt(theta)}.</li>
           </ol>
           ${this.readout([
-            ["Arc length", `s = rθ = ${fmt(r)} × ${fmt(theta)} = <b>${fmt(arc)} units</b>`],
-            ["Chord length", `c = 2r sin(θ/2) = 2 × ${fmt(r)} × sin(${fmt(angle / 2)}°) = <b>${fmt(chord)} units</b>`],
-            ["Centre-to-chord distance", `p = r cos(θ/2) = ${fmt(r)} × cos(${fmt(angle / 2)}°) = <b>${fmt(centreToChord)} units</b>`],
+            ["Arc length (radians)", `s = rθ = ${fmt(r)} × ${fmt(theta)} = <b>${fmt(arc)} units</b>`],
+            ["Arc length (degrees)", `s = θ/360 × 2πr = ${fmt(angle)}/360 × ${fmt(circumference)} = <b>${fmt(arc)} units</b>`],
+            ["Major arc", `C − s = ${fmt(circumference)} − ${fmt(arc)} = <b>${fmt(circumference - arc)} units</b>`],
           ])}
-          <p class="course-hint"><b>Useful inverse:</b> θ = 2sin⁻¹(c/(2r)). The perpendicular
-          from the centre to a chord bisects it, producing the right triangle behind both
-          chord formulas. Equal chords have equal arcs and lie the same distance from the
-          centre; the longer chord is closer to the centre.</p>
+          <p class="course-hint"><b>Radians only for s = rθ.</b> Using degrees directly in that
+          formula is the most common mistake: ${fmt(angle)} × ${fmt(r)} would be wrong.</p>
+          <p class="course-hint"><b>Reverse it:</b> if you know the arc and radius, the angle is
+          θ = s/r radians. If you know the arc and angle, the radius is r = s/θ.</p>
           ${derivationButton("arc-length")}
+        </div>`;
+      case "chords":
+        return `<div class="course">
+          <h3>What a chord is</h3>
+          <p>A <b>chord</b> is a straight line joining any two points on the circle. It is the
+          direct shortcut between the two ends of an arc, so a chord is always
+          <em>shorter</em> than its arc. The <b>diameter</b> is the special case: the longest
+          possible chord, because it passes through the centre.</p>
+          <p>Here the chord AB spans a central angle of ${fmt(angle)}°, while its arc measures
+          ${fmt(arc)} units.</p>
+          <p class="course-hint"><b>Position does not matter.</b> Spin the chord to the top,
+          bottom or any other part of the circle (φ = ${fmt(this.values.chordPosition)}° here)
+          and its length never changes. Chord length depends only on the radius and the angle
+          it subtends — which is exactly why equal angles give equal chords.</p>
+        </div>
+        <div class="course">
+          <h3>Method 1 — chord from the central angle</h3>
+          <p>Drop a perpendicular from the centre O to the chord AB. That perpendicular
+          <b>bisects the chord</b> and <b>bisects the angle</b>, splitting the isosceles
+          triangle OAB into two identical right triangles.</p>
+          <ol class="deriv">
+            <li><b class="step-title">Split the triangle</b>Each right triangle has hypotenuse
+            r = ${fmt(r)} (a radius) and angle θ/2 = ${fmt(angle / 2)}° at the centre.</li>
+            <li><b class="step-title">Take the sine</b>The side opposite θ/2 is half the chord,
+            so sin(θ/2) = (c/2)/r.</li>
+            <li><b class="step-title">Rearrange</b>c/2 = r sin(θ/2), therefore
+            <b>c = 2r sin(θ/2)</b>.</li>
+            <li><b class="step-title">Substitute</b>c = 2 × ${fmt(r)} × sin(${fmt(angle / 2)}°)
+            = 2 × ${fmt(r)} × ${fmt(Math.sin(theta / 2))} = <b>${fmt(chord)} units</b>.</li>
+          </ol>
           ${derivationButton("chord-length")}
+        </div>
+        <div class="course">
+          <h3>Method 2 — chord from its distance to the centre</h3>
+          <p>If you know how far the chord sits from the centre (call it d) instead of the
+          angle, use Pythagoras on the same right triangle: the radius is the hypotenuse, d is
+          one leg, and half the chord is the other.</p>
+          <ol class="deriv">
+            <li><b class="step-title">Write Pythagoras</b>(c/2)² + d² = r².</li>
+            <li><b class="step-title">Isolate the half-chord</b>c/2 = √(r² − d²).</li>
+            <li><b class="step-title">Double it</b><b>c = 2√(r² − d²)</b>.</li>
+            <li><b class="step-title">Check against method 1</b>Here d = r cos(θ/2) =
+            ${fmt(centreToChord)}, so c = 2√(${fmt(r)}² − ${fmt(centreToChord)}²) =
+            <b>${fmt(2 * Math.sqrt(Math.max(0, r * r - centreToChord * centreToChord)))} units</b>
+            — the same answer.</li>
+          </ol>
+          ${this.readout([
+            ["Chord length", `c = 2r sin(θ/2) = 2 × ${fmt(r)} × sin(${fmt(angle / 2)}°) = <b>${fmt(chord)} units</b>`],
+            ["Half chord", `c/2 = <b>${fmt(chord / 2)} units</b>`],
+            ["Distance centre to chord", `d = r cos(θ/2) = ${fmt(r)} × cos(${fmt(angle / 2)}°) = <b>${fmt(centreToChord)} units</b>`],
+            ["Chord from distance", `c = 2√(r² − d²) = <b>${fmt(2 * Math.sqrt(Math.max(0, r * r - centreToChord * centreToChord)))} units</b>`],
+            ["Arc − chord", `${fmt(arc)} − ${fmt(chord)} = <b>${fmt(arc - chord)} units</b> (the curve is longer)`],
+          ])}
+        </div>
+        <div class="course">
+          <h3>Working backwards</h3>
+          <p>Each formula can be reversed when a different quantity is unknown.</p>
+          ${this.readout([
+            ["Angle from chord", `θ = 2sin⁻¹(c/(2r)) = 2sin⁻¹(${fmt(chord)}/${fmt(2 * r)}) = <b>${fmt(angle)}°</b>`],
+            ["Radius from chord and distance", `r = √((c/2)² + d²) = √(${fmt(chord / 2)}² + ${fmt(centreToChord)}²) = <b>${fmt(r)} units</b>`],
+            ["Distance from chord and radius", `d = √(r² − (c/2)²) = <b>${fmt(centreToChord)} units</b>`],
+          ])}
+        </div>
+        <div class="course">
+          <h3>Chord rules worth knowing</h3>
+          <ul>
+            <li><b>The perpendicular from the centre bisects the chord</b> — and the reverse is
+            also true: the perpendicular bisector of any chord passes through the centre. This
+            is how you find the centre of a circle from an arc: draw two chords and cross their
+            perpendicular bisectors.</li>
+            <li><b>Equal chords are equidistant from the centre</b>, and cut off equal arcs.
+            Conversely, chords the same distance from the centre are equal in length.</li>
+            <li><b>The closer a chord is to the centre, the longer it is.</b> At d = 0 it
+            becomes the diameter, ${fmt(2 * r)} units; as d approaches r the chord shrinks to
+            nothing.</li>
+            <li><b>Intersecting chords:</b> if two chords cross inside a circle at P, the
+            products of their pieces are equal: <code>PA × PB = PC × PD</code>.</li>
+            <li><b>Tangent-chord angle:</b> the angle between a tangent and a chord equals the
+            inscribed angle in the alternate segment.</li>
+          </ul>
+          <p class="course-hint"><b>Worked example:</b> a circle of radius 10 has a chord 6
+          units from the centre. Then c = 2√(10² − 6²) = 2√64 = 2 × 8 = <b>16 units</b>.</p>
         </div>`;
       case "regions":
         return `<div class="course">
           <h3>Sectors, segment area and perimeter</h3>
-          <p>A <b>sector</b> is a pizza-slice bounded by two radii and an arc. A <b>segment</b>
-          is the cap between a chord and that arc, so subtract the isosceles triangle from
-          the sector.</p>
+          <p>A <b>sector</b> is a pizza-slice bounded by two radii and an arc. Cut a straight
+          chord across it and the sector splits into exactly two pieces: the
+          <b>triangle</b> OAB and the <b>segment</b> cap. That is the whole idea behind the
+          segment formula.</p>
+          <p class="region-identity"><b>sector = triangle + segment</b>, so
+          segment = sector − triangle.</p>
+          <div class="region-legend">
+            <span><i style="background:${HEX(COL.triangle)}"></i> Triangle OAB — two radii and the chord, area ½r²sinθ = <b>${fmt(triangle)} units²</b></span>
+            <span><i style="background:${HEX(COL.segment)}"></i> Segment — between the chord and the arc, area <b>${fmt(segment)} units²</b></span>
+            <span><i style="background:${HEX(COL.major)}"></i> Major region — the rest of the circle, area <b>${fmt(area - sector)} units²</b></span>
+          </div>
+          <p class="course-hint"><b>Yes — ½r²sinθ is the triangle's area.</b> It is the standard
+          "two sides and the included angle" triangle formula, ½ab·sinC, with both sides equal
+          to the radius: ½ × r × r × sinθ. It is <em>not</em> the area of the curved slice.</p>
           ${this.readout([
-            ["Sector area", `Aₛ = θ/360 × πr² = ${fmt(angle)}/360 × ${fmt(area)} = <b>${fmt(sector)} units²</b>`],
-            ["Sector perimeter", `Pₛ = 2r + arc = 2 × ${fmt(r)} + ${fmt(arc)} = <b>${fmt(2 * r + arc)} units</b>`],
-            ["Triangle in sector", `½r²sinθ = ½ × ${fmt(r)}² × sin(${fmt(angle)}°) = <b>${fmt(triangle)} units²</b>`],
+            ["Sector area (curved slice)", `Aₛ = θ/360 × πr² = ${fmt(angle)}/360 × ${fmt(area)} = <b>${fmt(sector)} units²</b>`],
+            ["Triangle OAB", `½r²sinθ = ½ × ${fmt(r)}² × sin(${fmt(angle)}°) = <b>${fmt(triangle)} units²</b>`],
             ["Minor segment area", `Asegment = Aₛ − Atriangle = ${fmt(sector)} − ${fmt(triangle)} = <b>${fmt(segment)} units²</b>`],
+            ["Check", `triangle + segment = ${fmt(triangle)} + ${fmt(segment)} = <b>${fmt(triangle + segment)} units²</b> = the sector`],
+            ["Sector perimeter", `Pₛ = 2r + arc = 2 × ${fmt(r)} + ${fmt(arc)} = <b>${fmt(2 * r + arc)} units</b>`],
+            ["Segment perimeter", `chord + arc = ${fmt(chord)} + ${fmt(arc)} = <b>${fmt(chord + arc)} units</b>`],
           ])}
           <p class="course-hint"><b>Radians shortcut:</b> sector area = ½r²θ and triangle area
           = ½r²sinθ, where θ is in radians. The major region is the full circle minus the
@@ -338,21 +614,27 @@ export class CircleCalculationsLesson implements Lesson {
   }
 
   private drawScene(): void {
-    const r = 3;
+    const r = this.worldRadius();
     const theta = THREE.MathUtils.degToRad(this.values.angle);
     switch (this.chapter) {
       case "basics":
         this.drawCircle(new THREE.Vector3(), r, COL.circle);
         this.line(new THREE.Vector3(), new THREE.Vector3(r, 0, 0), COL.radius);
-        this.label(new THREE.Vector3(r / 2, 0.3, 0), "r", COL.radius);
+        this.label(new THREE.Vector3(r / 2, 0.3, 0), `r = ${fmt(this.values.radius)}`, COL.radius);
         this.line(new THREE.Vector3(-r, 0, 0), new THREE.Vector3(r, 0, 0), COL.chord);
-        this.label(new THREE.Vector3(0, -0.4, 0), "d = 2r", COL.chord);
+        this.label(new THREE.Vector3(0, -0.4, 0), `d = ${fmt(2 * this.values.radius)}`, COL.chord);
         this.dot(new THREE.Vector3(), COL.point);
+        this.handle(new THREE.Vector3(r, 0, 0), COL.radius, "radius");
         break;
       case "angles":
-      case "arcs-chords":
-      case "regions":
+      case "arcs":
         this.drawAngleDiagram(r, theta);
+        break;
+      case "regions":
+        this.drawRegionDiagram(r, theta);
+        break;
+      case "chords":
+        this.drawChordDiagram(r, theta);
         break;
       case "line-circle":
         this.drawLineCircle(r);
@@ -381,7 +663,9 @@ export class CircleCalculationsLesson implements Lesson {
     this.drawArc(new THREE.Vector3(), 0, theta, r, COL.arc);
     this.label(a.clone().multiplyScalar(1.16), "A", COL.point);
     this.label(b.clone().multiplyScalar(1.16), "B", COL.point);
-    this.label(new THREE.Vector3(r * 0.75 * Math.cos(theta / 2), r * 0.75 * Math.sin(theta / 2), 0), "θ", COL.arc);
+    this.label(new THREE.Vector3(r * 0.75 * Math.cos(theta / 2), r * 0.75 * Math.sin(theta / 2), 0), `θ = ${fmt(this.values.angle)}°`, COL.arc);
+    this.handle(b, COL.point, "angle");
+    this.handle(a, COL.radius, "radius");
     if (this.chapter === "angles") {
       this.line(a, p, COL.chord);
       this.line(b, p, COL.chord);
@@ -399,6 +683,89 @@ export class CircleCalculationsLesson implements Lesson {
     }
   }
 
+  /**
+   * Sectors and segments, shaded so the identity sector = triangle + segment is visible:
+   * the triangle OAB and the segment cap are filled in different colours and never overlap.
+   */
+  private drawRegionDiagram(r: number, theta: number): void {
+    const a = new THREE.Vector3(r, 0, 0);
+    const b = new THREE.Vector3(r * Math.cos(theta), r * Math.sin(theta), 0);
+    const arcPoint = (t: number): THREE.Vector2 =>
+      new THREE.Vector2(r * Math.cos(theta * t), r * Math.sin(theta * t));
+
+    // The major region: everything outside the sector, shaded faintly for contrast.
+    const majorPoints = [new THREE.Vector2(0, 0)];
+    for (let i = 0; i <= 96; i++) {
+      const angle = theta + ((Math.PI * 2 - theta) * i) / 96;
+      majorPoints.push(new THREE.Vector2(r * Math.cos(angle), r * Math.sin(angle)));
+    }
+    this.fillShape(majorPoints, COL.major, 0.1);
+
+    // The segment: the cap between the chord AB and the arc.
+    const segmentPoints: THREE.Vector2[] = [];
+    for (let i = 0; i <= 48; i++) segmentPoints.push(arcPoint(i / 48));
+    this.fillShape(segmentPoints, COL.segment, 0.42);
+
+    // The triangle OAB, whose area is the ½r²sinθ term.
+    this.fillShape([new THREE.Vector2(0, 0), new THREE.Vector2(a.x, a.y), new THREE.Vector2(b.x, b.y)], COL.triangle, 0.34);
+
+    this.drawCircle(new THREE.Vector3(), r, COL.circle);
+    this.drawArc(new THREE.Vector3(), 0, theta, r, COL.segment);
+    this.line(new THREE.Vector3(), a, COL.radius);
+    this.line(new THREE.Vector3(), b, COL.radius);
+    this.line(a, b, COL.triangle);
+    this.dot(new THREE.Vector3(), COL.point);
+    this.handle(b, COL.point, "angle");
+    this.handle(a, COL.radius, "radius");
+
+    const mid = (theta / 2);
+    this.label(a.clone().multiplyScalar(1.16), "A", COL.point);
+    this.label(b.clone().multiplyScalar(1.16), "B", COL.point);
+    this.label(new THREE.Vector3(r * 0.3 * Math.cos(mid), r * 0.3 * Math.sin(mid), 0), `θ = ${fmt(this.values.angle)}°`, COL.arc);
+    this.label(new THREE.Vector3(r * 0.62 * Math.cos(mid), r * 0.62 * Math.sin(mid), 0), "triangle", COL.triangle);
+    this.label(new THREE.Vector3(r * 0.93 * Math.cos(mid), r * 0.93 * Math.sin(mid), 0), "segment", COL.segment);
+    this.label(new THREE.Vector3(r * 0.75 * Math.cos(mid + Math.PI), r * 0.75 * Math.sin(mid + Math.PI), 0), "major region", COL.major);
+  }
+
+  private fillShape(points: THREE.Vector2[], color: number, opacity: number): void {
+    if (points.length < 3) return;
+    const mesh = new THREE.Mesh(
+      new THREE.ShapeGeometry(new THREE.Shape(points)),
+      new THREE.MeshBasicMaterial({ color, transparent: true, opacity, side: THREE.DoubleSide, depthWrite: false }),
+    );
+    this.group.add(mesh);
+  }
+
+  private drawChordDiagram(r: number, theta: number): void {
+    const phi = THREE.MathUtils.degToRad(this.values.chordPosition);
+    const angleA = phi - theta / 2;
+    const angleB = phi + theta / 2;
+    const a = new THREE.Vector3(r * Math.cos(angleA), r * Math.sin(angleA), 0);
+    const b = new THREE.Vector3(r * Math.cos(angleB), r * Math.sin(angleB), 0);
+    const mid = a.clone().add(b).multiplyScalar(0.5);
+    const centre = new THREE.Vector3();
+    const outward = new THREE.Vector3(Math.cos(phi), Math.sin(phi), 0);
+
+    this.drawCircle(centre, r, COL.circle);
+    this.drawArc(centre, angleA, theta, r, COL.arc);
+    this.line(centre, a, COL.radius);
+    this.line(centre, b, COL.radius);
+    this.line(a, b, COL.chord);
+    this.line(centre, mid, COL.line);
+    this.dot(centre, COL.point);
+    this.handle(a, COL.point, "chord-a");
+    this.handle(b, COL.point, "chord-b");
+    this.handle(mid, COL.line, "chord-mid");
+
+    this.label(a.clone().multiplyScalar(1.16), "A", COL.point);
+    this.label(b.clone().multiplyScalar(1.16), "B", COL.point);
+    this.label(mid.clone().addScaledVector(outward, 0.4), "M", COL.line);
+    this.label(centre.clone().addScaledVector(outward, -0.45), "O", COL.point);
+    this.label(mid.clone().multiplyScalar(0.5).addScaledVector(perpendicular(outward), 0.34), `d = ${fmt(this.values.radius * Math.cos(theta / 2))}`, COL.line);
+    this.label(b.clone().add(mid).multiplyScalar(0.5).addScaledVector(outward, 0.42), `c = ${fmt(2 * this.values.radius * Math.sin(theta / 2))}`, COL.chord);
+    this.label(new THREE.Vector3(r * 0.42 * Math.cos(phi - theta / 4), r * 0.42 * Math.sin(phi - theta / 4), 0), "θ/2", COL.arc);
+  }
+
   private drawLineCircle(r: number): void {
     const k = THREE.MathUtils.clamp((this.values.offset / this.values.radius) * r, -4.5, 4.5);
     this.drawCircle(new THREE.Vector3(), r, COL.circle);
@@ -409,7 +776,8 @@ export class CircleCalculationsLesson implements Lesson {
       this.dot(new THREE.Vector3(-x, k, 0), COL.point);
     }
     this.line(new THREE.Vector3(), new THREE.Vector3(0, k, 0), COL.radius);
-    this.label(new THREE.Vector3(3.6, k + 0.3, 0), "y = k", COL.line);
+    this.label(new THREE.Vector3(3.6, k + 0.3, 0), `y = k = ${fmt(this.values.offset)}`, COL.line);
+    this.handle(new THREE.Vector3(0, k, 0), COL.line, "offset");
   }
 
   private drawTwoCircles(r1: number): void {
@@ -422,7 +790,8 @@ export class CircleCalculationsLesson implements Lesson {
     this.dot(new THREE.Vector3(), COL.point);
     this.dot(centre2, COL.point);
     this.line(new THREE.Vector3(), centre2, 0x8b949e);
-    this.label(new THREE.Vector3(d / 2, -0.35, 0), "d", 0x8b949e);
+    this.label(new THREE.Vector3(d / 2, -0.35, 0), `d = ${fmt(this.values.separation)}`, 0x8b949e);
+    this.handle(centre2, COL.arc, "separation");
     if (d >= Math.abs(r1 - r2) && d <= r1 + r2) {
       const a = (d * d + r1 * r1 - r2 * r2) / (2 * d);
       const h = Math.sqrt(Math.max(0, r1 * r1 - a * a));
@@ -443,6 +812,7 @@ export class CircleCalculationsLesson implements Lesson {
     this.line(new THREE.Vector3(), t1, COL.radius);
     this.line(new THREE.Vector3(), t2, COL.radius);
     this.dot(p, COL.point);
+    this.handle(p, COL.point, "separation");
     this.label(p.clone().add(new THREE.Vector3(0.3, 0.3, 0)), "P", COL.point);
     this.label(t1.clone().add(new THREE.Vector3(0.25, 0.25, 0)), "T₁", COL.line);
     this.label(t2.clone().add(new THREE.Vector3(0.25, -0.35, 0)), "T₂", COL.line);
@@ -482,6 +852,22 @@ export class CircleCalculationsLesson implements Lesson {
     this.group.add(dot);
   }
 
+  /** A grabbable point: a larger dot inside a halo ring so it reads as draggable. */
+  private handle(position: THREE.Vector3, color: number, kind: HandleKind): void {
+    const knob = new THREE.Mesh(new THREE.SphereGeometry(0.19, 20, 20), new THREE.MeshBasicMaterial({ color }));
+    knob.position.copy(position);
+    knob.userData.handle = kind;
+    this.group.add(knob);
+    this.handles.push(knob);
+
+    const halo = new THREE.Mesh(
+      new THREE.RingGeometry(0.27, 0.34, 28),
+      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.5, side: THREE.DoubleSide }),
+    );
+    halo.position.copy(position);
+    this.group.add(halo);
+  }
+
   private label(position: THREE.Vector3, value: string, color: number): void {
     const label = textSprite(value, color, 0.34);
     label.position.copy(position);
@@ -507,4 +893,17 @@ export class CircleCalculationsLesson implements Lesson {
 
 function fmt(value: number): string {
   return Number.isFinite(value) ? value.toFixed(3).replace(/\.?0+$/, "") : "undefined";
+}
+
+function round3(value: number): number {
+  return Math.round(value * 1000) / 1000;
+}
+
+/** Fold any angle in degrees into the 0–360 range. */
+function wrap360(degrees: number): number {
+  return ((degrees % 360) + 360) % 360;
+}
+
+function perpendicular(direction: THREE.Vector3): THREE.Vector3 {
+  return new THREE.Vector3(-direction.y, direction.x, 0);
 }

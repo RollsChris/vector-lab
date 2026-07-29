@@ -48,6 +48,9 @@ export class NumberSenseFractionsLesson implements Lesson {
   private simplificationMessage = "";
   private barScale = 1;
   private viewport!: LessonContext["viewport"];
+  private readonly raycaster = new THREE.Raycaster();
+  private readonly pointer = new THREE.Vector2();
+  private pointerStart: { x: number; y: number } | undefined;
 
   private readonly onInfoClick = (event: Event): void => {
     const button = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-fraction]");
@@ -88,6 +91,31 @@ export class NumberSenseFractionsLesson implements Lesson {
     if (input.id === "fraction-denominator") this.customDenominator = input.value;
   };
 
+  private readonly onStagePointerDown = (event: PointerEvent): void => {
+    if (event.button === 0) this.pointerStart = { x: event.clientX, y: event.clientY };
+  };
+
+  private readonly onStagePointerUp = (event: PointerEvent): void => {
+    if (!this.pointerStart || event.button !== 0) return;
+    const moved = Math.hypot(event.clientX - this.pointerStart.x, event.clientY - this.pointerStart.y);
+    this.pointerStart = undefined;
+    if (moved > 5) return;
+
+    const canvas = this.viewport.renderer.domElement;
+    const bounds = canvas.getBoundingClientRect();
+    this.pointer.set(
+      ((event.clientX - bounds.left) / bounds.width) * 2 - 1,
+      -((event.clientY - bounds.top) / bounds.height) * 2 + 1,
+    );
+    this.raycaster.setFromCamera(this.pointer, this.viewport.camera);
+    const marker = this.raycaster.intersectObjects(this.group.children, true)
+      .find(({ object }) => typeof object.userData.fractionId === "string");
+    const id = marker?.object.userData.fractionId;
+    if (typeof id !== "string" || id === this.selectedId) return;
+    this.selectedId = id;
+    this.render();
+  };
+
   enter(ctx: LessonContext): void {
     this.setInfo = ctx.setInfo;
     this.viewport = ctx.viewport;
@@ -96,12 +124,16 @@ export class NumberSenseFractionsLesson implements Lesson {
     ctx.viewport.frameCamera(new THREE.Vector3(0, 0.4, 12), new THREE.Vector3(0, 0, 0));
     document.getElementById("info")?.addEventListener("click", this.onInfoClick);
     document.getElementById("info")?.addEventListener("input", this.onInfoChange);
+    ctx.viewport.renderer.domElement.addEventListener("pointerdown", this.onStagePointerDown);
+    ctx.viewport.renderer.domElement.addEventListener("pointerup", this.onStagePointerUp);
     this.render();
   }
 
   exit(): void {
     document.getElementById("info")?.removeEventListener("click", this.onInfoClick);
     document.getElementById("info")?.removeEventListener("input", this.onInfoChange);
+    this.viewport.renderer.domElement.removeEventListener("pointerdown", this.onStagePointerDown);
+    this.viewport.renderer.domElement.removeEventListener("pointerup", this.onStagePointerUp);
     this.disposeGroup();
     this.group.parent?.remove(this.group);
     this.group = new THREE.Group();
@@ -189,6 +221,8 @@ export class NumberSenseFractionsLesson implements Lesson {
              <button class="course-btn ghost" data-fraction-action="clear">Clear plot</button>`
           : ""}
         ${selectedDescription}
+        <p class="course-hint">Click any coloured dot on the number line to make it the selected
+        fraction and update both diagrams.</p>
         ${divisionExplanation}
         ${barExplanation}
       </section>
@@ -312,6 +346,7 @@ export class NumberSenseFractionsLesson implements Lesson {
         new THREE.SphereGeometry(0.19, 20, 12),
         new THREE.MeshBasicMaterial({ color: candidate.color }),
       );
+      marker.userData.fractionId = candidate.id;
       marker.position.set(xForValue(candidate.numerator / candidate.denominator), lineY, 0.1 + index * 0.01);
       this.group.add(marker);
       const markerLabel = textSprite(

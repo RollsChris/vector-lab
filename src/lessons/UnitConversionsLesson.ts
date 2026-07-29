@@ -4,9 +4,18 @@ import { registerFormulaDerivations } from "../core/FormulaDerivations";
 import {
   CATEGORIES,
   CONVERSION_RULE,
+  JOURNEY_PRESETS,
+  buildFactorTable,
   convert,
   fmt,
+  formatDuration,
+  journeyTimeSeconds,
+  searchFactors,
+  toBase,
+  unitById,
+  categoryById,
   type Category,
+  type FactorRow,
   type Unit,
 } from "./unitConversions";
 import { segment, textSprite } from "./helpers";
@@ -21,6 +30,10 @@ registerFormulaDerivations("unit-conversions", UNIT_CONVERSION_DERIVATIONS);
  * underlying rule — multiply by a unit-fraction equal to 1 so unwanted units
  * cancel (dimensional analysis) — and gives a live calculator plus a centre-stage
  * scale visual spanning SI prefixes and everyday unit categories.
+ *
+ * The journey planner applies the same rule to a compound quantity: reduce a distance and
+ * a speed to base units, divide, and the seconds fall out. It is the first place in the
+ * course where units are combined rather than merely swapped.
  */
 export class UnitConversionsLesson implements Lesson {
   readonly id = "unit-conversions";
@@ -39,6 +52,27 @@ export class UnitConversionsLesson implements Lesson {
   private group = new THREE.Group();
   private preview = new THREE.Group();
 
+  /**
+   * Which panel owns the centre stage. Both calculators want to draw there, so the one the
+   * learner last touched wins instead of the two fighting over the viewport.
+   */
+  private stage: "convert" | "journey" = "convert";
+  private journey = {
+    distance: 10,
+    distanceUnit: unitById("length", "mi"),
+    speed: 30,
+    speedUnit: unitById("speed", "mph"),
+  };
+  private traveller?: THREE.Mesh;
+  private journeyLane = { startX: -4, endX: 4 };
+  private stopTick?: () => void;
+
+  /** Built once — the factors never change while the lesson is open. */
+  private readonly factorRows: FactorRow[] = buildFactorTable();
+  private lookupQuery = "";
+  private lookupCategory = "all";
+  private lookupExactOnly = false;
+
   enter(ctx: LessonContext): void {
     this.setInfo = ctx.setInfo;
     ctx.viewport.world.add(this.group);
@@ -48,10 +82,15 @@ export class UnitConversionsLesson implements Lesson {
       new THREE.Vector3(0, 1.8, 11),
       new THREE.Vector3(0, 0, 0),
     );
+    // One shared loop animates the traveller; it idles whenever the converter owns the stage.
+    this.stopTick = ctx.viewport.onTick((_dt, elapsed) => this.animateTraveller(elapsed));
     this.renderPanel();
   }
 
   exit(): void {
+    this.stopTick?.();
+    this.stopTick = undefined;
+    this.traveller = undefined;
     this.clearPreview();
     this.group.parent?.remove(this.group);
     this.group = new THREE.Group();
@@ -97,7 +136,11 @@ export class UnitConversionsLesson implements Lesson {
           <button id="conv-swap" class="course-btn ghost" title="Swap units">⇅ Swap</button>
         </div>
         <div class="readout" id="conv-working">—</div>
-      </div>`);
+      </div>
+
+      ${this.journeyHtml()}
+
+      ${this.lookupHtml()}`);
 
     const root = document.getElementById("info");
     if (!root) return;
@@ -107,23 +150,328 @@ export class UnitConversionsLesson implements Lesson {
     root.querySelector<HTMLInputElement>("#conv-value")
       ?.addEventListener("input", (e) => {
         this.value = parseFloat((e.target as HTMLInputElement).value);
+        this.stage = "convert";
         this.compute();
       });
     root.querySelector<HTMLSelectElement>("#conv-from")
       ?.addEventListener("change", (e) => {
         this.from = this.unit((e.target as HTMLSelectElement).value);
+        this.stage = "convert";
         this.compute();
       });
     root.querySelector<HTMLSelectElement>("#conv-to")
       ?.addEventListener("change", (e) => {
         this.to = this.unit((e.target as HTMLSelectElement).value);
+        this.stage = "convert";
         this.compute();
       });
     root.querySelector<HTMLButtonElement>("#conv-swap")
       ?.addEventListener("click", () => this.swap());
 
+    this.bindJourneyControls(root);
+    this.bindLookupControls(root);
     this.fillUnitSelects();
     this.compute();
+    this.computeJourney();
+    this.renderLookupRows();
+  }
+
+  /**
+   * A searchable sheet of the conversion factors worth knowing by heart.
+   *
+   * Every number here is computed from the same `CATEGORIES` table the converter uses, so the
+   * reference can never drift from the calculator. Rows are clickable: tapping one loads that
+   * pair into the converter above, which turns a passive lookup into a live experiment.
+   */
+  private lookupHtml(): string {
+    const categories = [...new Set(this.factorRows.map((r) => r.categoryId))].map((id) => {
+      const row = this.factorRows.find((r) => r.categoryId === id)!;
+      return `<option value="${id}">${row.categoryLabel}</option>`;
+    }).join("");
+
+    return `
+      <div class="course" id="conv-lookup">
+        <h3>Lookup — conversion factors worth knowing</h3>
+        <p>Fluency is mostly recall. These are the factors that come up again and again;
+        learn them and most everyday conversions become mental arithmetic. Every value below
+        is calculated by the same engine as the converter, so it is always in step with it.</p>
+
+        <div class="lookup-controls">
+          <label class="lookup-search">
+            <span class="visually-hidden">Search conversion factors</span>
+            <input id="lookup-search" type="search" placeholder="Search — try &quot;mile&quot;, &quot;kg&quot; or &quot;pressure&quot;" autocomplete="off" />
+          </label>
+          <label class="lookup-filter">
+            <span>Category</span>
+            <select id="lookup-category">
+              <option value="all">All</option>
+              ${categories}
+            </select>
+          </label>
+          <label class="lookup-toggle">
+            <input id="lookup-exact-only" type="checkbox" />
+            <span>Exact definitions only</span>
+          </label>
+        </div>
+
+        <p class="course-hint">
+          <b class="factor-badge exact">exact</b> means the relationship is true <i>by
+          definition</i> — an inch <i>is</i> 25.4 mm, with no rounding.
+          <b class="factor-badge approx">≈</b> means the digits shown are rounded.
+          Click any row to load it into the converter.
+        </p>
+
+        <div class="lookup-table-wrap">
+          <ul class="lookup-list" id="lookup-rows"></ul>
+        </div>
+        <p class="course-hint" id="lookup-count">—</p>
+      </div>`;
+  }
+
+  private bindLookupControls(root: HTMLElement): void {
+    root.querySelector<HTMLInputElement>("#lookup-search")
+      ?.addEventListener("input", (e) => {
+        this.lookupQuery = (e.target as HTMLInputElement).value;
+        this.renderLookupRows();
+      });
+    root.querySelector<HTMLSelectElement>("#lookup-category")
+      ?.addEventListener("change", (e) => {
+        this.lookupCategory = (e.target as HTMLSelectElement).value;
+        this.renderLookupRows();
+      });
+    root.querySelector<HTMLInputElement>("#lookup-exact-only")
+      ?.addEventListener("change", (e) => {
+        this.lookupExactOnly = (e.target as HTMLInputElement).checked;
+        this.renderLookupRows();
+      });
+    // Delegated so the handler survives every re-render of the table body.
+    const rowsEl = root.querySelector<HTMLElement>("#lookup-rows");
+    rowsEl?.addEventListener("click", (e) => {
+      const row = (e.target as HTMLElement).closest<HTMLElement>("li[data-category]");
+      if (row) this.loadIntoConverter(row.dataset.category!, row.dataset.from!, row.dataset.to!);
+    });
+    // Rows are focusable, so they must also respond to the keyboard.
+    rowsEl?.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      const row = (e.target as HTMLElement).closest<HTMLElement>("li[data-category]");
+      if (!row) return;
+      e.preventDefault();
+      this.loadIntoConverter(row.dataset.category!, row.dataset.from!, row.dataset.to!);
+    });
+  }
+
+  /** Apply the search box, the category filter and the exact-only toggle, in that order. */
+  private visibleFactorRows(): FactorRow[] {
+    let rows = searchFactors(this.factorRows, this.lookupQuery);
+    if (this.lookupCategory !== "all") {
+      rows = rows.filter((r) => r.categoryId === this.lookupCategory);
+    }
+    if (this.lookupExactOnly) rows = rows.filter((r) => r.exact);
+    return rows;
+  }
+
+  private renderLookupRows(): void {
+    const body = document.getElementById("lookup-rows");
+    const count = document.getElementById("lookup-count");
+    if (!body || !count) return;
+
+    const rows = this.visibleFactorRows();
+    if (rows.length === 0) {
+      body.innerHTML = `<li class="lookup-empty">No factor matches that search. Try a unit symbol such as "km", or a category such as "energy".</li>`;
+      count.textContent = "0 of " + this.factorRows.length + " factors shown.";
+      return;
+    }
+
+    let lastCategory = "";
+    const html: string[] = [];
+    for (const row of rows) {
+      if (row.categoryId !== lastCategory) {
+        html.push(`<li class="lookup-group">${row.categoryLabel}</li>`);
+        lastCategory = row.categoryId;
+      }
+      const badge = row.exact
+        ? `<b class="factor-badge exact" title="Exact by definition">exact</b>`
+        : `<b class="factor-badge approx" title="The digits shown are rounded">≈</b>`;
+      html.push(`
+        <li class="lookup-item" data-category="${row.categoryId}" data-from="${row.fromUnitId}" data-to="${row.toUnitId}" tabindex="0" role="button" title="Load into the converter">
+          <div class="lookup-main"><code>${row.from} = ${row.to}</code>${badge}</div>
+          <div class="lookup-reverse"><code>${row.reverse}</code></div>
+          <div class="lookup-hint">${row.hint ?? ""}</div>
+        </li>`);
+    }
+    body.innerHTML = html.join("");
+    count.textContent = `${rows.length} of ${this.factorRows.length} factors shown.`;
+  }
+
+  /** Point the converter at a reference row: 1 of the "from" unit expressed in the "to" unit. */
+  private loadIntoConverter(categoryId: string, fromId: string, toId: string): void {
+    this.cat = categoryById(categoryId);
+    this.from = unitById(categoryId, fromId);
+    this.to = unitById(categoryId, toId);
+    this.value = 1;
+    this.stage = "convert";
+
+    const catSel = document.getElementById("conv-cat") as HTMLSelectElement | null;
+    if (catSel) catSel.value = categoryId;
+    const valueInput = document.getElementById("conv-value") as HTMLInputElement | null;
+    if (valueInput) valueInput.value = "1";
+
+    this.fillUnitSelects();
+    this.compute();
+    document.getElementById("conv-calc")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  /** The journey planner: distance ÷ speed = time, using the same base-unit rule. */
+  private journeyHtml(): string {
+    const lengthOptions = (selected: Unit) =>
+      categoryById("length").units
+        .map((u) => `<option value="${u.id}"${u.id === selected.id ? " selected" : ""}>${u.label}</option>`)
+        .join("");
+    const speedOptions = (selected: Unit) =>
+      categoryById("speed").units
+        .map((u) => `<option value="${u.id}"${u.id === selected.id ? " selected" : ""}>${u.label}</option>`)
+        .join("");
+    const presets = JOURNEY_PRESETS.map(
+      (preset, index) =>
+        `<button type="button" class="course-btn ghost journey-preset" data-journey-preset="${index}">${preset.label}</button>`,
+    ).join("");
+
+    return `
+      <div class="course" id="journey-calc">
+        <h3>Journey planner — how long will it take?</h3>
+        <p>Conversions get useful the moment you <b>combine</b> units. Speed is already a
+        compound unit — a distance <i>divided by</i> a time — so dividing a distance by a
+        speed cancels the distance and leaves a time:</p>
+
+        <p class="conv-rule">time&nbsp;=&nbsp;<span class="conv-frac"><span>distance</span><span>speed</span></span></p>
+
+        <p>Mix miles with kilometres per hour and the units will not cancel. The fix is the
+        rule you already know: put both quantities into <b>base units</b> — metres and metres
+        per second — then divide.</p>
+
+        <div class="journey-equation" aria-label="Journey time equation">
+          <label class="conv-term">
+            <span>Distance</span>
+            <input id="journey-distance" type="number" step="any" min="0" value="${this.journey.distance}" />
+            <select id="journey-distance-unit">${lengthOptions(this.journey.distanceUnit)}</select>
+          </label>
+          <span class="conv-op">÷</span>
+          <label class="conv-term">
+            <span>Speed</span>
+            <input id="journey-speed" type="number" step="any" min="0" value="${this.journey.speed}" />
+            <select id="journey-speed-unit">${speedOptions(this.journey.speedUnit)}</select>
+          </label>
+          <span class="conv-op">=</span>
+          <label class="conv-term">
+            <span>Time</span>
+            <output id="journey-result" class="conv-result">—</output>
+            <span class="journey-result-exact" id="journey-result-exact">—</span>
+          </label>
+        </div>
+
+        <div class="journey-presets">${presets}</div>
+        <p class="course-hint" id="journey-note">Pick a journey, or type your own distance and speed.</p>
+        <div class="readout" id="journey-working">—</div>
+      </div>`;
+  }
+
+  private bindJourneyControls(root: HTMLElement): void {
+    root.querySelector<HTMLInputElement>("#journey-distance")
+      ?.addEventListener("input", (e) => {
+        this.journey.distance = parseFloat((e.target as HTMLInputElement).value);
+        this.onJourneyEdit();
+      });
+    root.querySelector<HTMLInputElement>("#journey-speed")
+      ?.addEventListener("input", (e) => {
+        this.journey.speed = parseFloat((e.target as HTMLInputElement).value);
+        this.onJourneyEdit();
+      });
+    root.querySelector<HTMLSelectElement>("#journey-distance-unit")
+      ?.addEventListener("change", (e) => {
+        this.journey.distanceUnit = unitById("length", (e.target as HTMLSelectElement).value);
+        this.onJourneyEdit();
+      });
+    root.querySelector<HTMLSelectElement>("#journey-speed-unit")
+      ?.addEventListener("change", (e) => {
+        this.journey.speedUnit = unitById("speed", (e.target as HTMLSelectElement).value);
+        this.onJourneyEdit();
+      });
+    root.querySelectorAll<HTMLButtonElement>("[data-journey-preset]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const preset = JOURNEY_PRESETS[Number(button.dataset.journeyPreset)];
+        if (!preset) return;
+        this.journey = {
+          distance: preset.distance,
+          distanceUnit: unitById("length", preset.distanceUnitId),
+          speed: preset.speed,
+          speedUnit: unitById("speed", preset.speedUnitId),
+        };
+        this.syncJourneyInputs();
+        this.onJourneyEdit(preset.note);
+      });
+    });
+  }
+
+  private syncJourneyInputs(): void {
+    const distance = document.getElementById("journey-distance") as HTMLInputElement | null;
+    const speed = document.getElementById("journey-speed") as HTMLInputElement | null;
+    const distanceUnit = document.getElementById("journey-distance-unit") as HTMLSelectElement | null;
+    const speedUnit = document.getElementById("journey-speed-unit") as HTMLSelectElement | null;
+    if (distance) distance.value = String(this.journey.distance);
+    if (speed) speed.value = String(this.journey.speed);
+    if (distanceUnit) distanceUnit.value = this.journey.distanceUnit.id;
+    if (speedUnit) speedUnit.value = this.journey.speedUnit.id;
+  }
+
+  private onJourneyEdit(note?: string): void {
+    this.stage = "journey";
+    this.computeJourney(note);
+  }
+
+  private computeJourney(note?: string): void {
+    const resultEl = document.getElementById("journey-result");
+    const exactEl = document.getElementById("journey-result-exact");
+    const workEl = document.getElementById("journey-working");
+    const noteEl = document.getElementById("journey-note");
+    if (!resultEl || !exactEl || !workEl) return;
+    if (note && noteEl) noteEl.textContent = note;
+
+    const { distance, distanceUnit, speed, speedUnit } = this.journey;
+    const seconds = journeyTimeSeconds(distance, distanceUnit, speed, speedUnit);
+
+    if (!isFinite(seconds)) {
+      resultEl.textContent = "—";
+      exactEl.textContent = "—";
+      workEl.innerHTML = speed <= 0 && isFinite(speed)
+        ? "At zero speed you never arrive — the time would be infinite. Enter a speed above 0."
+        : "Enter a distance of 0 or more and a speed above 0.";
+      if (this.stage === "journey") this.drawJourneyPreview(NaN);
+      return;
+    }
+
+    resultEl.textContent = formatDuration(seconds);
+    exactEl.textContent = `${fmt(seconds)} s  ·  ${fmt(seconds / 3600)} hr`;
+    workEl.innerHTML = this.journeyWorkingHtml(seconds);
+    if (this.stage === "journey") this.drawJourneyPreview(seconds);
+  }
+
+  /** Show the base-unit reduction, then the division that cancels the distance unit. */
+  private journeyWorkingHtml(seconds: number): string {
+    const { distance, distanceUnit, speed, speedUnit } = this.journey;
+    const metres = toBase(distanceUnit, distance);
+    const mps = toBase(speedUnit, speed);
+
+    const sameSystem = distanceUnit.id === "m" && speedUnit.id === "mps";
+    const lines = [
+      `Distance in base units: <code>${fmt(distance)} ${distanceUnit.symbol} = ${fmt(metres)} m</code>`,
+      `Speed in base units: <code>${fmt(speed)} ${speedUnit.symbol} = ${fmt(mps)} m/s</code>`,
+      `Divide: <code>${fmt(metres)} <s>m</s> ÷ ( ${fmt(mps)} <s>m</s> / s ) = ${fmt(seconds)} s</code>`,
+      `The metres cancel and the seconds flip up from the bottom of the fraction, leaving a time: <b>${formatDuration(seconds)}</b>.`,
+    ];
+    if (sameSystem) {
+      lines.unshift("Both quantities are already in base units, so no conversion is needed first.");
+    }
+    return lines.map((line) => `<div class="deriv-work">${line}</div>`).join("");
   }
 
   private onCategory(id: string): void {
@@ -131,6 +479,7 @@ export class UnitConversionsLesson implements Lesson {
     // Default to the first two units of the new category.
     this.from = this.cat.units[Math.min(1, this.cat.units.length - 1)];
     this.to = this.cat.units[0];
+    this.stage = "convert";
     this.fillUnitSelects();
     this.compute();
   }
@@ -152,6 +501,7 @@ export class UnitConversionsLesson implements Lesson {
 
   private swap(): void {
     [this.from, this.to] = [this.to, this.from];
+    this.stage = "convert";
     this.fillUnitSelects();
     this.compute();
   }
@@ -168,7 +518,7 @@ export class UnitConversionsLesson implements Lesson {
       factorTop.textContent = "—";
       factorBottom.textContent = "—";
       workEl.innerHTML = "Enter a number to convert.";
-      this.clearPreview();
+      if (this.stage === "convert") this.clearPreview();
       return;
     }
 
@@ -176,7 +526,7 @@ export class UnitConversionsLesson implements Lesson {
     resultEl.textContent = `${fmt(out)} ${this.to.symbol}`;
     this.renderFactor(factorTop, factorBottom);
     workEl.innerHTML = this.workingHtml(out);
-    this.drawPreview(out);
+    if (this.stage === "convert") this.drawPreview(out);
   }
 
   private renderFactor(top: HTMLElement, bottom: HTMLElement): void {
@@ -221,6 +571,7 @@ export class UnitConversionsLesson implements Lesson {
 
   private drawPreview(out: number): void {
     this.clearPreview();
+    this.traveller = undefined;
 
     const title = textSprite(this.cat.label, 0xffffff, 0.45);
     title.position.set(0, 2.9, 0);
@@ -319,6 +670,75 @@ export class UnitConversionsLesson implements Lesson {
     const toLabel = textSprite(`${fmt(out)} ${this.to.symbol}`, 0x7ee787, 0.34);
     toLabel.position.set(1.8, mapY(toBase), 0);
     this.preview.add(toLabel);
+  }
+
+  /**
+   * Centre-stage journey: a lane from start to finish with a traveller that crosses it in
+   * a fixed wall-clock time, so the animation reads as "this trip" rather than implying a
+   * literal speed. Distance and time are labelled on the lane itself.
+   */
+  private drawJourneyPreview(seconds: number): void {
+    this.clearPreview();
+    this.traveller = undefined;
+
+    const { distance, distanceUnit, speed, speedUnit } = this.journey;
+    const { startX, endX } = this.journeyLane;
+
+    const title = textSprite("Journey", 0xffffff, 0.45);
+    title.position.set(0, 2.9, 0);
+    this.preview.add(title);
+
+    const headline = isFinite(seconds)
+      ? `${fmt(distance)} ${distanceUnit.symbol}  ÷  ${fmt(speed)} ${speedUnit.symbol}  =  ${formatDuration(seconds)}`
+      : `${fmt(distance)} ${distanceUnit.symbol}  ÷  ${fmt(speed)} ${speedUnit.symbol}  =  never arrives`;
+    const equation = textSprite(headline, isFinite(seconds) ? 0x7ee787 : 0xff7b72, 0.44);
+    equation.position.set(0, 2.35, 0);
+    this.preview.add(equation);
+
+    this.preview.add(segment(new THREE.Vector3(startX, 0, 0), new THREE.Vector3(endX, 0, 0), 0x58a6ff));
+    for (const [x, label, colour] of [
+      [startX, "Start", 0xffd166],
+      [endX, "Finish", 0x7ee787],
+    ] as const) {
+      this.preview.add(segment(new THREE.Vector3(x, -0.4, 0), new THREE.Vector3(x, 0.6, 0), colour));
+      const marker = textSprite(label, colour, 0.3);
+      marker.position.set(x, -0.75, 0);
+      this.preview.add(marker);
+    }
+
+    const distanceLabel = textSprite(`${fmt(distance)} ${distanceUnit.symbol}`, 0xc9d1d9, 0.34);
+    distanceLabel.position.set(0, 0.95, 0);
+    this.preview.add(distanceLabel);
+
+    const speedLabel = textSprite(`travelling at ${fmt(speed)} ${speedUnit.symbol}`, 0x8b949e, 0.3);
+    speedLabel.position.set(0, -1.35, 0);
+    this.preview.add(speedLabel);
+
+    if (isFinite(seconds)) {
+      const timeLabel = textSprite(formatDuration(seconds), 0x7ee787, 0.4);
+      timeLabel.position.set(0, -1.9, 0);
+      this.preview.add(timeLabel);
+
+      const traveller = new THREE.Mesh(
+        new THREE.SphereGeometry(0.18, 20, 20),
+        new THREE.MeshStandardMaterial({ color: 0xffd166, emissive: 0x3a2c00 }),
+      );
+      traveller.position.set(startX, 0, 0);
+      this.preview.add(traveller);
+      this.traveller = traveller;
+    }
+  }
+
+  /**
+   * Sweep the traveller across the lane on a fixed 4-second loop. The loop length is
+   * deliberately independent of the journey time: a 7-hour flight cannot be shown in real
+   * time, and scaling the animation speed would make short journeys invisible.
+   */
+  private animateTraveller(elapsed: number): void {
+    if (!this.traveller || this.stage !== "journey") return;
+    const { startX, endX } = this.journeyLane;
+    const phase = (elapsed % 4) / 4;
+    this.traveller.position.x = startX + (endX - startX) * phase;
   }
 
   private bar(x: number, y: number, width: number, color: number, label: string): THREE.Group {

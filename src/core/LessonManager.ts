@@ -3,10 +3,15 @@ import * as THREE from "three";
 import type { Lesson } from "./Lesson";
 import type { Viewport } from "./Viewport";
 import { withFoundationContext } from "../lessons/foundationContext";
+import { Progress } from "./Progress";
+import { LessonFrame } from "./LessonFrame";
+import { STAGES, inCurriculumOrder, stageOf } from "../curriculum/stages";
 import {
   derivationById,
+  type DerivationSymbol,
   type FormulaDerivation,
 } from "./FormulaDerivations";
+import { mathHtml, typesetMath } from "./MathText";
 
 /** Drives the sidebar, info panel and per-lesson lil-gui; owns enter/exit. */
 export class LessonManager {
@@ -15,12 +20,18 @@ export class LessonManager {
   private readonly buttons = new Map<string, HTMLButtonElement>();
   private readonly byId = new Map<string, Lesson>();
   private readonly order = new Map<string, number>();
+  private readonly stageHeaders = new Map<string, HTMLElement>();
+  private readonly stageCounts = new Map<string, HTMLElement>();
+  private readonly lessons: Lesson[];
+  private readonly progress: Progress;
+  private readonly frame: LessonFrame;
   private readonly derivationDialog = document.createElement("dialog");
   private readonly derivationObserver: MutationObserver;
+  private readonly selectListeners = new Set<(lesson: Lesson) => void>();
 
   constructor(
     private readonly viewport: Viewport,
-    private readonly lessons: Lesson[],
+    lessons: Lesson[],
     private readonly dom: {
       nav: HTMLElement;
       info: HTMLElement;
@@ -28,31 +39,62 @@ export class LessonManager {
       search: HTMLInputElement;
       count: HTMLElement;
       meta: HTMLElement;
+      brief: HTMLElement;
+      practice: HTMLElement;
+      pathProgress: HTMLElement;
     },
   ) {
+    // The curriculum, not the registration array, defines teaching order everywhere:
+    // sidebar grouping, [ / ] navigation and the "next lesson" button.
+    this.lessons = inCurriculumOrder(lessons);
+    this.progress = new Progress();
+    this.frame = new LessonFrame(dom.brief, dom.practice, this.progress, {
+      select: (id) => this.select(id),
+      titleOf: (id) => {
+        const lesson = this.byId.get(id);
+        return lesson ? this.cleanTitle(lesson) : undefined;
+      },
+    });
     this.derivationDialog.className = "derivation-dialog";
     this.derivationDialog.setAttribute("aria-modal", "true");
     document.body.appendChild(this.derivationDialog);
     this.derivationObserver = new MutationObserver(() => {
       if (this.active) this.labelDerivationControls(this.active.id);
+      typesetMath(this.dom.info);
     });
     this.derivationObserver.observe(this.dom.info, { childList: true, subtree: true });
-    for (const lesson of lessons) this.byId.set(lesson.id, lesson);
+    for (const lesson of this.lessons) this.byId.set(lesson.id, lesson);
     this.buildNav();
     this.bindGlobalControls();
     this.filterNav();
+    this.progress.onChange(() => this.refreshProgressUi());
+    this.refreshProgressUi();
   }
 
-  start(id = this.lessons[0]?.id): void {
+  start(id = this.resumeTarget()): void {
     const target = this.lessons.some((lesson) => lesson.id === id)
       ? id
       : this.lessons[0]?.id;
     if (target) this.select(target, true, true);
   }
 
+  /** Where a returning learner should land: their last lesson, else the first unfinished one. */
+  private resumeTarget(): string | undefined {
+    const last = this.progress.lastVisited;
+    if (last && this.byId.has(last)) return last;
+    const next = this.progress.nextUnfinished();
+    if (next && this.byId.has(next)) return next;
+    return this.lessons[0]?.id;
+  }
+
   /** The currently mounted lesson (used by automated tests to introspect state). */
   get activeLesson(): Lesson | null {
     return this.active;
+  }
+
+  /** Learner progress store (exposed for automated tests). */
+  get progressStore(): Progress {
+    return this.progress;
   }
 
   /** Programmatically switch lessons (used by tests). */
@@ -68,28 +110,68 @@ export class LessonManager {
     this.selectRelative(-1);
   }
 
+  /** Notify chrome (mobile shell, analytics, …) after a lesson mounts. */
+  onSelect(listener: (lesson: Lesson) => void): () => void {
+    this.selectListeners.add(listener);
+    if (this.active) listener(this.active);
+    return () => this.selectListeners.delete(listener);
+  }
+
   private buildNav(): void {
-    const groups = new Map<string, Lesson[]>();
+    const grouped = new Map<string, Lesson[]>();
+    const unplaced: Lesson[] = [];
     for (const lesson of this.lessons) {
-      const list = groups.get(lesson.category) ?? [];
+      const stage = stageOf(lesson.id);
+      if (!stage) {
+        unplaced.push(lesson);
+        continue;
+      }
+      const list = grouped.get(stage.id) ?? [];
       list.push(lesson);
-      groups.set(lesson.category, list);
+      grouped.set(stage.id, list);
     }
 
     let n = 0;
-    for (const [category, lessons] of groups) {
+    const sections: { id: string; title: string; goal: string; lessons: Lesson[] }[] = STAGES
+      .filter((stage) => (grouped.get(stage.id)?.length ?? 0) > 0)
+      .map((stage) => ({
+        id: stage.id,
+        title: stage.title,
+        goal: stage.goal,
+        lessons: grouped.get(stage.id)!,
+      }));
+    if (unplaced.length > 0) {
+      sections.push({ id: "stage-unplaced", title: "Other lessons", goal: "Not yet placed on the path.", lessons: unplaced });
+    }
+
+    for (const section of sections) {
       const header = document.createElement("div");
       header.className = "nav-section";
-      header.textContent = category;
-      this.dom.nav.appendChild(header);
+      header.dataset.stage = section.id;
 
-      for (const lesson of lessons) {
+      const title = document.createElement("span");
+      title.className = "nav-section-title";
+      title.textContent = section.title;
+
+      const count = document.createElement("span");
+      count.className = "nav-section-count";
+
+      const goal = document.createElement("span");
+      goal.className = "nav-section-goal";
+      goal.textContent = section.goal;
+
+      header.append(title, count, goal);
+      this.dom.nav.appendChild(header);
+      this.stageHeaders.set(section.id, header);
+      this.stageCounts.set(section.id, count);
+
+      for (const lesson of section.lessons) {
         n += 1;
         this.order.set(lesson.id, n);
         const btn = document.createElement("button");
         btn.className = "nav-item";
         btn.type = "button";
-        btn.innerHTML = `<span class="nav-title"><span class="nav-num">${n} · </span>${this.cleanTitle(lesson)}</span><span class="nav-blurb">${lesson.blurb}</span>`;
+        btn.innerHTML = `<span class="nav-title"><span class="nav-num">${n} · </span>${this.cleanTitle(lesson)}</span><span class="nav-blurb">${lesson.blurb}</span><span class="nav-check" aria-hidden="true"></span>`;
         btn.addEventListener("click", () => this.select(lesson.id));
         this.dom.nav.appendChild(btn);
         this.buttons.set(lesson.id, btn);
@@ -175,13 +257,64 @@ export class LessonManager {
   private filterNav(): void {
     const q = this.dom.search.value.trim().toLowerCase();
     let shown = 0;
+    const visibleByStage = new Map<string, number>();
     for (const lesson of this.lessons) {
       const text = `${lesson.title} ${lesson.blurb} ${lesson.id}`.toLowerCase();
       const visible = !q || text.includes(q);
       this.buttons.get(lesson.id)?.classList.toggle("hidden", !visible);
-      if (visible) shown++;
+      if (visible) {
+        shown++;
+        const stageId = stageOf(lesson.id)?.id ?? "stage-unplaced";
+        visibleByStage.set(stageId, (visibleByStage.get(stageId) ?? 0) + 1);
+      }
+    }
+    // Collapse stage headings that have no matching lessons, so a search never leaves
+    // orphaned section titles behind.
+    for (const [stageId, header] of this.stageHeaders) {
+      header.classList.toggle("hidden", (visibleByStage.get(stageId) ?? 0) === 0);
     }
     this.dom.count.textContent = q ? `${shown} / ${this.lessons.length} shown` : `${this.lessons.length} lessons`;
+  }
+
+  /** Repaint everything that depends on completion state: ticks, stage counts, path bar. */
+  private refreshProgressUi(): void {
+    for (const lesson of this.lessons) {
+      const done = this.progress.isComplete(lesson.id);
+      const btn = this.buttons.get(lesson.id);
+      if (!btn) continue;
+      btn.classList.toggle("is-complete", done);
+      const check = btn.querySelector<HTMLElement>(".nav-check");
+      if (check) check.textContent = done ? "✓" : "";
+    }
+
+    for (const [stageId, count] of this.stageCounts) {
+      if (stageId === "stage-unplaced") {
+        count.textContent = "";
+        continue;
+      }
+      const { done, total } = this.progress.stageProgress(stageId);
+      count.textContent = `${done}/${total}`;
+      count.classList.toggle("stage-done", total > 0 && done === total);
+    }
+
+    const { done, total, percent } = this.progress.overall();
+    const host = this.dom.pathProgress;
+    host.replaceChildren();
+    const label = document.createElement("div");
+    label.className = "path-progress-label";
+    label.textContent = `Path progress · ${done} of ${total} lessons (${percent}%)`;
+    const track = document.createElement("div");
+    track.className = "path-progress-track";
+    track.setAttribute("role", "progressbar");
+    track.setAttribute("aria-valuemin", "0");
+    track.setAttribute("aria-valuemax", String(total));
+    track.setAttribute("aria-valuenow", String(done));
+    track.setAttribute("aria-label", "Curriculum progress");
+    const fill = document.createElement("div");
+    fill.className = "path-progress-fill";
+    fill.style.width = `${percent}%`;
+    track.append(fill);
+    host.append(label, track);
   }
 
   private select(id: string, syncHash = true, replaceHash = false): void {
@@ -206,6 +339,8 @@ export class LessonManager {
 
     this.active = next;
     this.updateMeta(next);
+    this.frame.render(next);
+    this.progress.recordVisit(next.id);
     next.enter({
       viewport: this.viewport,
       gui: this.gui,
@@ -227,6 +362,7 @@ export class LessonManager {
       else history.pushState(null, "", url);
     }
     this.resetReadingContext(next);
+    for (const listener of this.selectListeners) listener(next);
   }
 
   private showDerivation(derivation: FormulaDerivation): void {
@@ -240,7 +376,7 @@ export class LessonManager {
 
     const equation = document.createElement("p");
     equation.className = "derivation-equation";
-    equation.textContent = derivation.equation;
+    equation.innerHTML = mathHtml(derivation.equation);
     this.derivationDialog.appendChild(equation);
 
     if (derivation.diagram) {
@@ -253,6 +389,7 @@ export class LessonManager {
       this.derivationDialog.appendChild(figure);
     }
 
+    if (derivation.symbols?.length) this.appendSymbolKey(derivation.symbols);
     this.appendDerivationSection("Start with", derivation.startingPoint);
 
     const stepsHeading = document.createElement("h3");
@@ -263,7 +400,7 @@ export class LessonManager {
     for (const step of derivation.steps) {
       const item = document.createElement("li");
       const expression = document.createElement("code");
-      expression.textContent = step.expression;
+      expression.innerHTML = mathHtml(step.expression);
       const reason = document.createElement("span");
       reason.textContent = step.reason;
       item.append(expression, reason);
@@ -306,10 +443,28 @@ export class LessonManager {
       if (button.dataset.derivationLabelled === id) return;
       const derivation = derivationById(lessonId, button.dataset.derivation ?? "");
       if (!derivation) return;
-      button.textContent = `Derive: ${derivation.equation}`;
+      button.innerHTML = `Derive: ${mathHtml(derivation.equation)}`;
       button.setAttribute("aria-label", `Show derivation: ${derivation.title}`);
       button.dataset.derivationLabelled = id;
     });
+  }
+
+  /** Spells out what each letter in the equation means, so the steps are readable. */
+  private appendSymbolKey(symbols: readonly DerivationSymbol[]): void {
+    const heading = document.createElement("h3");
+    heading.textContent = "What the symbols mean";
+    this.derivationDialog.appendChild(heading);
+
+    const list = document.createElement("dl");
+    list.className = "symbol-key derivation-symbols";
+    for (const entry of symbols) {
+      const term = document.createElement("dt");
+      term.innerHTML = mathHtml(entry.symbol);
+      const detail = document.createElement("dd");
+      detail.textContent = entry.meaning;
+      list.append(term, detail);
+    }
+    this.derivationDialog.appendChild(list);
   }
 
   private appendDerivationSection(title: string, content: string): void {

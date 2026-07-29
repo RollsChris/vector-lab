@@ -23,6 +23,13 @@ const CONTEXTS: Record<string, LearningContext> = {
     source: { label: "MacTutor: Egyptian fractions", url: "https://mathshistory.st-andrews.ac.uk/HistTopics/Egyptian_fractions/" },
     applications: "Fractions model fair sharing, recipes, discounts, measurements, probabilities, map scales, rates, and the exact quantities used throughout algebra and science.",
   },
+  "arithmetic-operations": {
+    basics: "whole-number addition and subtraction as movement, multiplication as equal groups, division as sharing, and zero and one identities",
+    advanced: "inverse-operation checks, algebraic laws, factorial counting, order of operations, written algorithms, and symbolic algebra",
+    discovery: "Arithmetic methods developed across many cultures. Babylonian tablets used place-value calculation and multiplication tables, the Rhind Papyrus recorded Egyptian multiplication and division, and Indian mathematicians established systematic arithmetic with zero and decimal place value.",
+    source: { label: "MacTutor: Indian numerals", url: "https://mathshistory.st-andrews.ac.uk/HistTopics/Indian_numerals/" },
+    applications: "Arithmetic operations calculate totals, changes, batches, rates, sharing, costs, measurements, computer instructions, and factorial arrangement counts used in probability.",
+  },
   "order-of-operations": {
     basics: "one operation at a time and why an expression needs an agreed reading order",
     advanced: "nested brackets, powers, and left-to-right decisions within equal-precedence operations",

@@ -62,6 +62,61 @@ export function fmt(n: number): string {
   return parseFloat(n.toPrecision(6)).toString();
 }
 
+/**
+ * How long a journey takes: time = distance ÷ speed.
+ *
+ * Both inputs are reduced to base units first (metres and metres per second), which is
+ * exactly the dimensional-analysis move the lesson teaches — once everything is in base
+ * units the division is unit-free, and the answer comes out in seconds.
+ *
+ * Returns `NaN` for inputs that have no meaningful journey time (non-finite values,
+ * negative distance, or a speed of zero or less — you never arrive).
+ */
+export function journeyTimeSeconds(
+  distance: number,
+  distanceUnit: Unit,
+  speed: number,
+  speedUnit: Unit,
+): number {
+  if (!isFinite(distance) || !isFinite(speed)) return NaN;
+  if (distance < 0 || speed <= 0) return NaN;
+  const metres = toBase(distanceUnit, distance);
+  const metresPerSecond = toBase(speedUnit, speed);
+  if (metresPerSecond <= 0) return NaN;
+  return metres / metresPerSecond;
+}
+
+/**
+ * A duration in seconds written the way a person would say it, e.g. "1 hr 12 min 30 s".
+ *
+ * Only the two or three largest non-zero units are shown: "2 days 4 hr" is useful,
+ * "2 days 4 hr 0 min 13 s" is not. Sub-second journeys keep their precision instead of
+ * collapsing to "0 s".
+ */
+export function formatDuration(seconds: number): string {
+  if (!isFinite(seconds) || seconds < 0) return "—";
+  if (seconds === 0) return "0 s";
+  if (seconds < 1) return `${fmt(seconds)} s`;
+
+  const parts: string[] = [];
+  let left = Math.round(seconds);
+  const units: { label: string; size: number }[] = [
+    { label: "day", size: 86400 },
+    { label: "hr", size: 3600 },
+    { label: "min", size: 60 },
+    { label: "s", size: 1 },
+  ];
+  for (const unit of units) {
+    const count = Math.floor(left / unit.size);
+    if (count > 0) {
+      parts.push(`${count} ${unit.label}${unit.label === "day" && count > 1 ? "s" : ""}`);
+      left -= count * unit.size;
+    }
+  }
+  // Beyond three terms the extra precision is noise for a journey estimate.
+  return parts.slice(0, 3).join(" ");
+}
+
 export const CATEGORIES: Category[] = [
   {
     id: "si-prefix",
@@ -316,3 +371,231 @@ export const CONVERSION_RULE = `
     <code>°F = °C × 9/5 + 32</code>. The calculator below handles this for you.</p>
     ${derivationButton("unit-affine")}
   </div>`;
+
+/** Look up a category by id. Throws on a typo rather than silently drawing the wrong units. */
+export function categoryById(id: string): Category {
+  const category = CATEGORIES.find((c) => c.id === id);
+  if (!category) throw new Error(`Unknown unit category: ${id}`);
+  return category;
+}
+
+/** Look up a unit within a category. Throws on a typo for the same reason. */
+export function unitById(categoryId: string, unitId: string): Unit {
+  const unit = categoryById(categoryId).units.find((u) => u.id === unitId);
+  if (!unit) throw new Error(`Unknown unit ${unitId} in category ${categoryId}`);
+  return unit;
+}
+
+/**
+ * One entry in the quick-reference table of common conversion factors.
+ *
+ * Only the *identity* of the pair is stored here — never the number. The factor itself is
+ * computed from `CATEGORIES` when the table is built, so the reference sheet and the
+ * calculator can never disagree: fix a factor in one place and both update.
+ */
+export interface FactorPair {
+  categoryId: string;
+  fromUnitId: string;
+  toUnitId: string;
+  /**
+   * True when the relationship is exact *by definition* (an inch is defined as 25.4 mm),
+   * false when the printed digits are a rounded measurement or a rounded definition.
+   * Knowing which is which is the difference between "0.45359237 kg is a fact" and
+   * "745.7 W is a convention with more digits available".
+   */
+  exact: boolean;
+  /** A memory hook — the everyday anchor that makes the number stick. */
+  hint?: string;
+}
+
+/** A built, display-ready row of the reference table. */
+export interface FactorRow {
+  categoryId: string;
+  categoryLabel: string;
+  fromUnitId: string;
+  toUnitId: string;
+  /** e.g. "1 mi" */
+  from: string;
+  /** e.g. "1.60934 km" */
+  to: string;
+  /** The reverse reading, e.g. "1 km = 0.621371 mi". */
+  reverse: string;
+  exact: boolean;
+  hint?: string;
+  /** Lowercase haystack for the search box: symbols, labels and category. */
+  search: string;
+}
+
+/**
+ * The conversions worth knowing by heart.
+ *
+ * Curated rather than generated: every unit pair in the calculator would be thousands of
+ * rows of noise. These are the ones that actually come up — the ones a fluent person
+ * recalls instantly and everyone else looks up every single time.
+ */
+export const COMMON_FACTORS: readonly FactorPair[] = [
+  // Length
+  { categoryId: "length", fromUnitId: "mi", toUnitId: "km", exact: true, hint: "5 miles ≈ 8 km. Multiply miles by 8/5 to get kilometres." },
+  { categoryId: "length", fromUnitId: "m", toUnitId: "ft", exact: false, hint: "A metre is a long stride — a bit over three feet." },
+  { categoryId: "length", fromUnitId: "in", toUnitId: "cm", exact: true, hint: "Exactly 2.54 — the inch is <i>defined</i> from the centimetre." },
+  { categoryId: "length", fromUnitId: "ft", toUnitId: "m", exact: true, hint: "Roughly 0.3, so 10 ft ≈ 3 m." },
+  { categoryId: "length", fromUnitId: "yd", toUnitId: "m", exact: true, hint: "A yard is a metre minus a hand's width." },
+  { categoryId: "length", fromUnitId: "nmi", toUnitId: "km", exact: true, hint: "The sea and air mile: one minute of latitude." },
+  { categoryId: "length", fromUnitId: "km", toUnitId: "m", exact: true, hint: "The whole SI system in one row: kilo means 1000." },
+
+  // Mass
+  { categoryId: "mass", fromUnitId: "kg", toUnitId: "lb", exact: false, hint: "A kilo is 2.2 lb. Double it and add 10%." },
+  { categoryId: "mass", fromUnitId: "lb", toUnitId: "kg", exact: true, hint: "Just under half a kilo." },
+  { categoryId: "mass", fromUnitId: "st", toUnitId: "kg", exact: true, hint: "14 lb to the stone, so ≈ 6.35 kg." },
+  { categoryId: "mass", fromUnitId: "oz", toUnitId: "g", exact: false, hint: "16 oz to the pound, so ≈ 28 g each." },
+  { categoryId: "mass", fromUnitId: "t", toUnitId: "kg", exact: true, hint: "A tonne is a cubic metre of water." },
+
+  // Volume
+  { categoryId: "volume", fromUnitId: "galUK", toUnitId: "L", exact: true, hint: "The UK gallon is ~20% bigger than the US one." },
+  { categoryId: "volume", fromUnitId: "galUS", toUnitId: "L", exact: true, hint: "Check which gallon you mean before you quote a price." },
+  { categoryId: "volume", fromUnitId: "ptUK", toUnitId: "mL", exact: true, hint: "A pint is a bit over half a litre." },
+  { categoryId: "volume", fromUnitId: "m3", toUnitId: "L", exact: true, hint: "1 m³ = 1000 L, and 1 L = 1000 cm³." },
+
+  // Speed
+  { categoryId: "speed", fromUnitId: "mps", toUnitId: "kmh", exact: true, hint: "×3.6 to go up, ÷3.6 to come back. The single most useful speed fact." },
+  { categoryId: "speed", fromUnitId: "mph", toUnitId: "kmh", exact: true, hint: "Same 8/5 as miles to kilometres — speed is just distance per time." },
+  { categoryId: "speed", fromUnitId: "kn", toUnitId: "kmh", exact: true, hint: "A knot is one nautical mile per hour." },
+  { categoryId: "speed", fromUnitId: "mph", toUnitId: "mps", exact: true, hint: "Handy for physics: 60 mph ≈ 27 m/s." },
+
+  // Time
+  { categoryId: "time", fromUnitId: "hr", toUnitId: "s", exact: true, hint: "60 × 60. This is the factor hiding inside every km/h ↔ m/s conversion." },
+  { categoryId: "time", fromUnitId: "day", toUnitId: "s", exact: true, hint: "86 400 — worth memorising for rates and throughput." },
+  { categoryId: "time", fromUnitId: "yr", toUnitId: "day", exact: true, hint: "365.25 days averages in the leap year." },
+
+  // Area
+  { categoryId: "area", fromUnitId: "ha", toUnitId: "m2", exact: true, hint: "A hectare is 100 m × 100 m." },
+  { categoryId: "area", fromUnitId: "acre", toUnitId: "m2", exact: true, hint: "About 0.4 ha — roughly a football pitch." },
+  { categoryId: "area", fromUnitId: "km2", toUnitId: "ha", exact: true, hint: "Areas scale by the *square*: ×1000 length is ×1 000 000 area." },
+  { categoryId: "area", fromUnitId: "m2", toUnitId: "cm2", exact: true, hint: "×100 length ⇒ ×10 000 area. Not ×100." },
+
+  // Pressure
+  { categoryId: "pressure", fromUnitId: "atm", toUnitId: "kPa", exact: true, hint: "Sea-level air pressure, ≈ 101 kPa." },
+  { categoryId: "pressure", fromUnitId: "bar", toUnitId: "kPa", exact: true, hint: "1 bar = 100 kPa, near enough 1 atmosphere." },
+  { categoryId: "pressure", fromUnitId: "psi", toUnitId: "kPa", exact: false, hint: "Car tyres: 32 psi ≈ 2.2 bar." },
+
+  // Energy & power
+  { categoryId: "energy", fromUnitId: "kcal", toUnitId: "J", exact: true, hint: "A food 'Calorie' is a kilocalorie: 4184 J." },
+  { categoryId: "energy", fromUnitId: "kWh", toUnitId: "J", exact: true, hint: "A unit of electricity = 3.6 million joules." },
+  { categoryId: "power", fromUnitId: "hp", toUnitId: "W", exact: false, hint: "Mechanical horsepower ≈ ¾ kW." },
+  { categoryId: "power", fromUnitId: "kW", toUnitId: "hp", exact: false, hint: "A 100 kW car is about 134 hp." },
+
+  // Force
+  { categoryId: "force", fromUnitId: "lbf", toUnitId: "N", exact: true, hint: "≈ 4.45 N. A newton is about the weight of an apple." },
+
+  // Angle
+  { categoryId: "angle", fromUnitId: "turn", toUnitId: "rad", exact: false, hint: "A full turn is 2π radians." },
+  { categoryId: "angle", fromUnitId: "rad", toUnitId: "deg", exact: false, hint: "1 rad ≈ 57.3°. Radians are the calculus-friendly unit." },
+  { categoryId: "angle", fromUnitId: "deg", toUnitId: "rad", exact: false, hint: "× π/180. Always check your calculator's mode." },
+
+  // Digital storage
+  { categoryId: "data", fromUnitId: "B", toUnitId: "bit", exact: true, hint: "8 bits to the byte." },
+  { categoryId: "data", fromUnitId: "KiB", toUnitId: "B", exact: true, hint: "1024, not 1000 — the binary kilo." },
+  { categoryId: "data", fromUnitId: "GiB", toUnitId: "GB", exact: false, hint: "Why a '1 TB' drive shows up smaller than you expected." },
+];
+
+/**
+ * Build the reference rows, computing every factor from `CATEGORIES`.
+ *
+ * Throws if a curated pair names a unit that doesn't exist, so a typo fails loudly at
+ * startup instead of quietly dropping a row from the reference sheet.
+ */
+export function buildFactorTable(pairs: readonly FactorPair[] = COMMON_FACTORS): FactorRow[] {
+  return pairs.map((pair) => {
+    const category = categoryById(pair.categoryId);
+    const from = unitById(pair.categoryId, pair.fromUnitId);
+    const to = unitById(pair.categoryId, pair.toUnitId);
+    const forward = convert(from, to, 1);
+    const backward = convert(to, from, 1);
+    return {
+      categoryId: category.id,
+      categoryLabel: category.label,
+      fromUnitId: from.id,
+      toUnitId: to.id,
+      from: `1 ${from.symbol}`,
+      to: `${fmt(forward)} ${to.symbol}`,
+      reverse: `1 ${to.symbol} = ${fmt(backward)} ${from.symbol}`,
+      exact: pair.exact,
+      hint: pair.hint,
+      search: [
+        from.symbol,
+        to.symbol,
+        from.label,
+        to.label,
+        category.label,
+        pair.hint ?? "",
+      ]
+        .join(" ")
+        .toLowerCase(),
+    };
+  });
+}
+
+/** Filter the reference table by a free-text query. An empty query keeps every row. */
+export function searchFactors(rows: readonly FactorRow[], query: string): FactorRow[] {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return [...rows];
+  const terms = needle.split(/\s+/);
+  return rows.filter((row) => terms.every((term) => row.search.includes(term)));
+}
+
+export interface JourneyPreset {
+  label: string;
+  distance: number;
+  distanceUnitId: string;
+  speed: number;
+  speedUnitId: string;
+  /** Why this journey is worth trying — shown when the preset is loaded. */
+  note: string;
+}
+
+/**
+ * Everyday journeys spanning several orders of magnitude, so the learner sees that one
+ * formula covers a walk to the shops and a flight across the Atlantic.
+ */
+export const JOURNEY_PRESETS: readonly JourneyPreset[] = [
+  {
+    label: "10 mi at 30 mph",
+    distance: 10,
+    distanceUnitId: "mi",
+    speed: 30,
+    speedUnitId: "mph",
+    note: "A typical town drive. The units already match (miles and miles per hour), so the answer is simply 10 ÷ 30 hours.",
+  },
+  {
+    label: "5 km run at 12 km/h",
+    distance: 5,
+    distanceUnitId: "km",
+    speed: 12,
+    speedUnitId: "kmh",
+    note: "A steady 5k. Matching units again: 5 ÷ 12 of an hour.",
+  },
+  {
+    label: "400 m sprint at 8 m/s",
+    distance: 400,
+    distanceUnitId: "m",
+    speed: 8,
+    speedUnitId: "mps",
+    note: "Base units throughout, so the division needs no conversion at all: 400 ÷ 8 = 50 s.",
+  },
+  {
+    label: "26.2 mi marathon at 10 km/h",
+    distance: 26.2,
+    distanceUnitId: "mi",
+    speed: 10,
+    speedUnitId: "kmh",
+    note: "Mixed units — miles against kilometres per hour. This is where converting to base units first saves you.",
+  },
+  {
+    label: "3500 nmi flight at 480 kn",
+    distance: 3500,
+    distanceUnitId: "nmi",
+    speed: 480,
+    speedUnitId: "kn",
+    note: "Nautical miles and knots are built for each other: a knot is one nautical mile per hour.",
+  },
+];

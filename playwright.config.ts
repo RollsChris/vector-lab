@@ -11,7 +11,7 @@ export default defineConfig({
   workers: 1,
   reporter: [["list"]],
   use: {
-    baseURL: "http://localhost:5173",
+    baseURL: "http://localhost:5174",
     screenshot: "only-on-failure",
     launchOptions: {
       args: [
@@ -23,11 +23,23 @@ export default defineConfig({
       ],
     },
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    {
+      name: "chromium",
+      testIgnore: /mobile\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      name: "mobile-chrome",
+      testMatch: /mobile\.spec\.ts/,
+      use: { ...devices["Pixel 7"] },
+    },
+  ],
   webServer: {
-    command: "npm run dev -- --port 5173 --strictPort",
-    url: "http://localhost:5173",
-    reuseExistingServer: true,
+    // Dedicated port so a main-checkout dev server on :5173 cannot shadow this worktree.
+    command: "npm run dev -- --port 5174 --strictPort",
+    url: "http://localhost:5174",
+    reuseExistingServer: !process.env.CI,
     timeout: 30_000,
   },
 });

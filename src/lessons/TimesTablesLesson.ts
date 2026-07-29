@@ -39,7 +39,7 @@ export class TimesTablesLesson implements Lesson {
   readonly blurb = "Patterns, shortcuts, and guided practice";
   readonly category = "Foundations" as const;
   readonly difficulty = "Foundation" as const;
-  readonly prerequisites = ["number-sense-fractions"] as const;
+  readonly prerequisites = ["arithmetic-operations"] as const;
 
   private group = new THREE.Group();
   private setInfo!: (html: string) => void;

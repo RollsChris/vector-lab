@@ -3,6 +3,13 @@ export interface DerivationStep {
   reason: string;
 }
 
+export interface DerivationSymbol {
+  /** The symbol exactly as it appears in the equation, e.g. "s₁, s₂". */
+  symbol: string;
+  /** What it stands for, in plain words. */
+  meaning: string;
+}
+
 export interface DerivationDiagram {
   description: string;
   svg: string;
@@ -15,6 +22,8 @@ export interface FormulaDerivation {
   startingPoint: string;
   steps: readonly DerivationStep[];
   result: string;
+  /** What each letter in the equation stands for; rendered as a legend above the steps. */
+  symbols?: readonly DerivationSymbol[];
   assumptions?: string;
   diagram?: DerivationDiagram;
 }

@@ -1,15 +1,51 @@
 # Vector Lab
 
-An interactive, browser-based playground for **learning vector fields, differentiation,
-integration, and waveforms** — built with Three.js. Think of it as an interactive cousin
-of 3Blue1Brown/manim: instead of pre-rendered video, you orbit, zoom, drag sliders, and
-type your own functions to *explore* the maths live.
+An interactive, browser-based playground that takes you **from no maths at all to elite
+level** — built with Three.js. Think of it as an interactive cousin of 3Blue1Brown/manim:
+instead of pre-rendered video, you orbit, zoom, drag sliders, and type your own functions to
+*explore* the maths live.
+
+## How the learning path works
+
+The 51 lessons are a single ordered path, split into ten stages. Nothing assumes prior
+knowledge: Stage 1 starts at counting and fractions, and Stage 10 ends at maths expressed as
+GPU code.
+
+| Stage | You will be able to |
+|-------|---------------------|
+| 1 · Numbers & arithmetic | Work confidently with whole numbers, fractions and the rules that govern them |
+| 2 · Algebra | Use letters for unknown numbers, and rearrange and solve equations |
+| 3 · Shape & space | Measure and reason about lines, angles, triangles, circles and curves |
+| 4 · Trigonometry & waves | Connect angles to lengths, and describe anything that repeats |
+| 5 · Vectors & complex numbers | Handle quantities that carry a direction, and numbers that rotate |
+| 6 · Calculus | Measure how things change, and add up infinitely many small pieces |
+| 7 · Probability & randomness | Reason about uncertainty, and model systems that evolve by chance |
+| 8 · Number theory | Study whole numbers for their own sake |
+| 9 · Applied maths & physics | Turn the whole toolkit loose on the physical world |
+| 10 · Maths as code | Express mathematics as programs the GPU can run |
+
+Every lesson is wrapped in the same structure, so you always know what you are meant to walk
+away with:
+
+- **Plain English** — one jargon-free sentence saying what the topic actually is.
+- **By the end you can…** — 3–5 specific, checkable outcomes.
+- **Key idea** — the single mental picture that makes it click.
+- **Try this** — what to drag, toggle or type in the 3D viewport.
+- **Worked example** — a full solution with the reasoning on every line.
+- **Common mistakes** — the errors people actually make, with the correction.
+- **Check yourself** — recall questions whose answers stay hidden until you reveal them.
+
+Mark a lesson complete when you can answer its checks without looking. The sidebar ticks it,
+the stage counter and path progress bar update, and the **Next lesson** button takes you to
+the right place. Progress is saved in your browser, and reopening the app resumes where you
+left off.
 
 ## Lessons
 
-Ordered as a learning path — each part builds on the ones before it. The sidebar groups
-lessons by category and auto-numbers them, and each lesson shows a **difficulty badge** and a
-**"Builds on"** row of clickable prerequisite links so you can always see what a topic rests on.
+Ordered as a single learning path — each part builds on the ones before it. The sidebar groups
+lessons into the ten stages above and auto-numbers them, and each lesson shows a **difficulty
+badge** and a **"Builds on"** row of clickable prerequisite links so you can always see what a
+topic rests on.
 
 ### Foundations · arithmetic & algebra
 
@@ -260,6 +296,32 @@ npm run build    # type-check + production bundle into dist/
 npm run preview  # serve the production build
 ```
 
+## Deploy (Vercel)
+
+Static Vite SPA — no server, no env vars. Progress stays in `localStorage`.
+
+```bash
+npm run build          # must pass (tsc + vite)
+npx vercel             # preview
+npx vercel --prod      # production
+```
+
+Or connect the GitHub repo in the Vercel dashboard (framework preset **Vite**, output
+`dist/`). Hash routes (`/#lesson-id`) need no SPA rewrite. `vercel.json` sets long-cache
+headers for hashed `/assets/*` files.
+
+## Mobile
+
+On viewports ≤900px the app is **stage-first**:
+
+- **Lessons** opens a left drawer (search + curriculum list).
+- **Learn** opens a bottom sheet (controls + teaching frame).
+- **‹ / ›** step through the path; choosing a lesson closes the drawer.
+- Touch orbit/pinch via OrbitControls; scene drags already use Pointer Events.
+
+Desktop keeps the three-column layout. Playwright’s `mobile-chrome` project smoke-tests
+the shell.
+
 ## Validation
 
 Because the visuals are hard to eyeball, the project validates itself automatically:
@@ -274,17 +336,20 @@ npm run validate   # type-check + unit tests + browser tests
   clicks through every lesson, **fails on any console/page error**, saves a screenshot of
   each lesson to `tests/screenshots/`, and checks behavioural invariants — e.g. that
   vector-field particle speed scales with field magnitude, and that the differentiation
-  tangent's slope equals the analytic derivative.
+  tangent's slope equals the analytic derivative. Includes a Pixel-sized mobile shell
+  smoke test.
 
 `main.ts` exposes a `window.__lab` debug handle (dev/test builds only) so the browser
 tests can drive lessons and read runtime state.
 
 ## Controls
 
-- **Drag** to orbit, **scroll** to zoom, **right-drag** to pan.
-- Press **/** to search lessons, then **Esc** to clear. Press **[** / **]** to move
-  to the previous / next lesson. Each lesson has a URL hash, e.g. `/#geometry`.
-- Use the **right-hand panel** (lil-gui) for per-lesson sliders and function inputs.
+- **Desktop:** drag to orbit, scroll to zoom, right-drag to pan. **/** search, **Esc**
+  clear, **[** / **]** previous/next lesson.
+- **Phone/tablet:** drag to orbit, pinch to zoom, two-finger pan. Use the top-bar
+  **Lessons** / **Learn** / **‹ ›** chrome.
+- Each lesson has a URL hash, e.g. `/#geometry`.
+- Use the controls panel (lil-gui) for per-lesson sliders and function inputs.
 - Function inputs accept `x`, `y`, and `Math` functions unprefixed:
   `sin`, `cos`, `exp`, `sqrt`, `pi`, `tau`, `e`, etc. e.g. `sin(x) * cos(y)`.
 
@@ -295,6 +360,11 @@ tests can drive lessons and read runtime state.
 | `src/core/Viewport.ts` | renderer, camera, OrbitControls, axes/grid, render loop |
 | `src/core/Lesson.ts` | `Lesson` interface + `LessonContext` |
 | `src/core/LessonManager.ts` | sidebar nav, enter/exit lifecycle, per-lesson GUI |
+| `src/core/LessonFrame.ts` | renders the static teaching frame (brief + practice) around each lesson |
+| `src/core/Progress.ts` | learner progress, persisted to `localStorage` |
+| `src/curriculum/stages.ts` | the zero-to-elite path: stages, teaching order, next/previous |
+| `src/curriculum/types.ts` | `LessonGuide` contract — objectives, worked example, pitfalls, checks |
+| `src/curriculum/guides/*` | authored guide content, one file per stage group |
 | `src/math/expr.ts` | compiles function strings into fast JS functions |
 | `src/math/calculus.ts` | numeric derivative, Riemann sums, Simpson reference |
 | `src/math/complex.ts` | complex-number operations (add, mul, polar, powers, formatting) |
@@ -302,10 +372,36 @@ tests can drive lessons and read runtime state.
 | `src/math/pendulum.ts` | pendulum periods (elliptic-integral exact form), RK4 integrator, energy |
 | `src/lessons/*` | one self-contained lesson each |
 
+### The curriculum layer
+
+Lesson modules own the interactive scene. Everything a learner needs *around* the scene is
+authored centrally so all 51 lessons read consistently:
+
+- **`src/curriculum/stages.ts`** is the single source of truth for teaching order. The
+  sidebar grouping, the `[` / `]` shortcuts, the "Next lesson" button and the progress
+  tracker all derive from it — reorder it there and the whole app follows.
+- **`src/curriculum/guides/*.ts`** hold one `LessonGuide` per lesson: a jargon-free plain
+  English summary, 3–5 observable objectives, the key idea, why it matters, a fully worked
+  example, common mistakes, self-check questions, and a "try this" instruction pointing at
+  the lesson's real controls.
+- The frame renders **outside `#info`**, because lessons rewrite `#info` on every slider
+  tick. Anything with user state (an opened self-check answer) would otherwise be wiped.
+
+`tests/curriculum.test.ts` enforces the contract: every registered lesson is on exactly one
+stage, every prerequisite is taught earlier in the path, every lesson has a guide, and each
+guide meets the quality bar (objective counts, no unmeasurable verbs like "understand",
+worked examples that show their working, answers that explain their reasoning).
+
 ### Adding a lesson
 
-Implement the `Lesson` interface (`enter`/`exit`), add 3D objects to
-`ctx.viewport.world`, register controls on `ctx.gui`, then list it in `src/main.ts`.
+1. Implement the `Lesson` interface (`enter`/`exit`), add 3D objects to
+   `ctx.viewport.world`, and register controls on `ctx.gui`.
+2. List it in `src/main.ts`.
+3. Place its id on a stage in `src/curriculum/stages.ts`.
+4. Author its `LessonGuide` in the matching `src/curriculum/guides/*.ts` file.
+
+Steps 3 and 4 are not optional — `npm test` fails if a registered lesson has no place on
+the path or no guide.
 
 > Note: `src/math/expr.ts` compiles user input via `new Function`. That's fine for a local
 > learning tool you run yourself; do **not** expose it to untrusted input without sandboxing.

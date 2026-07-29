@@ -7,6 +7,7 @@ fs.mkdirSync(SHOTS, { recursive: true });
 const LESSONS = [
   { id: "foundations", heading: "Foundation topics" },
   { id: "number-sense-fractions", heading: "Number Sense & Fractions" },
+  { id: "arithmetic-operations", heading: "Arithmetic Operations Lab" },
   { id: "order-of-operations", heading: "Order of Operations" },
   { id: "times-tables", heading: "Times Tables & Multiplication Strategies" },
   { id: "multiplication-division", heading: "Multiplication & Division" },
@@ -29,6 +30,7 @@ const LESSONS = [
   { id: "quadrilaterals", heading: "Quadrilaterals" },
   { id: "circle-theorems", heading: "Circle Theorems" },
   { id: "circle-calculations", heading: "Circle Geometry & Calculations" },
+  { id: "volume", heading: "Volume of Solids" },
   { id: "conic-sections", heading: "Conic Sections" },
   { id: "radians", heading: "Radians" },
   { id: "trig-functions", heading: "Trigonometric Functions" },
@@ -60,6 +62,7 @@ const LESSONS = [
 const FOUNDATION_LESSON_IDS = [
   "foundations",
   "number-sense-fractions",
+  "arithmetic-operations",
   "order-of-operations",
   "times-tables",
   "multiplication-division",
@@ -124,17 +127,17 @@ test("app shell supports deep links, lesson search, and keyboard lesson navigati
   const errors = trackErrors(page);
   await page.goto("/#geometry");
   await expect(page.locator("#info h2")).toHaveText("Geometry");
-  await expect(page.locator(".nav-item.active .nav-title")).toHaveText("20 · Geometry");
+  await expect(page.locator(".nav-item.active .nav-title")).toHaveText("14 · Geometry");
   await expect(page).toHaveTitle("Geometry — Vector Lab");
 
   await page.keyboard.press("/");
   await expect(page.locator("#lesson-search")).toBeFocused();
   await page.fill("#lesson-search", "shader");
-  await expect(page.locator("#lesson-count")).toHaveText("1 / 50 shown");
-  await expect(page.locator(".nav-item:visible .nav-title")).toHaveText("50 · Shader Playground");
+  await expect(page.locator("#lesson-count")).toHaveText("1 / 52 shown");
+  await expect(page.locator(".nav-item:visible .nav-title")).toHaveText("52 · Shader Playground");
 
   await page.keyboard.press("Escape");
-  await expect(page.locator("#lesson-count")).toHaveText("50 lessons");
+  await expect(page.locator("#lesson-count")).toHaveText("52 lessons");
 
   await page.keyboard.press("]");
   await expect(page.locator("#info h2")).toHaveText("Triangle Theorems");
@@ -168,25 +171,299 @@ test("circle calculations derives arcs, chords, and line intersection cases", as
   await page.getByRole("button", { name: "Close" }).click();
   await expect(page.locator("dialog[open]")).toHaveCount(0);
 
-  await page.getByRole("button", { name: "3 · Arcs & chords" }).click();
+  await page.getByRole("button", { name: "3 · Arcs" }).click();
   await page.locator('[data-circle-input="angle"]').fill("90");
   await page.locator('[data-circle-input="angle"]').press("Tab");
   await expect(page.locator("#info")).toContainText("2π radians");
   await expect(page.locator("#info")).toContainText("θ/(2π)");
   await expect(page.locator("#info")).toContainText("15.708 units");
-  await expect(page.locator("#info")).toContainText("14.142 units");
   await expect(page.locator('button[data-derivation="arc-length"]')).toHaveText("Derive: s = rθ, with θ in radians");
+
+  await page.getByRole("button", { name: "4 · Chords" }).click();
+  await expect(page.locator("#info")).toContainText("Method 1 — chord from the central angle");
+  await expect(page.locator("#info")).toContainText("Method 2 — chord from its distance to the centre");
+  await expect(page.locator("#info")).toContainText("c = 2√(r² − d²)");
+  await expect(page.locator("#info")).toContainText("14.142 units");
+  await expect(page.locator("#info")).toContainText("θ = 2sin⁻¹(c/(2r))");
+  await expect(page.locator("#info")).toContainText("perpendicular bisector");
   await expect(page.locator('button[data-derivation="chord-length"]')).toHaveText("Derive: c = 2r sin(θ/2)");
 
-  await page.getByRole("button", { name: "2 · Angles & arcs" }).click();
+  await page.getByRole("button", { name: "2 · Angles" }).click();
   await expect(page.locator("#info")).toContainText("Inscribed angle");
   await expect(page.locator("#info")).toContainText("45°");
 
-  await page.getByRole("button", { name: "5 · Line intersections" }).click();
+  await page.getByRole("button", { name: "5 · Sectors & segments" }).click();
+  await expect(page.locator("#info")).toContainText("sector = triangle + segment");
+  await expect(page.locator(".region-legend span")).toHaveCount(3);
+  await expect(page.locator("#info")).toContainText("Triangle OAB");
+  await expect(page.locator("#info")).toContainText("½ab·sinC");
+  const sectorArea = await page.locator(".readout div", { hasText: "Sector area" }).innerText();
+  const check = await page.locator(".readout div", { hasText: "Check" }).innerText();
+  const areaValue = Number(sectorArea.match(/([\d.]+) units²\s*$/)?.[1]);
+  const checkValue = Number(check.match(/([\d.]+) units²/g)?.pop()?.match(/([\d.]+)/)?.[1]);
+  expect(areaValue).toBeGreaterThan(0);
+  expect(Math.abs(areaValue - checkValue)).toBeLessThan(0.01);
+
+  await page.getByRole("button", { name: "6 · Line intersections" }).click();
   await page.locator('[data-circle-input="offset"]').fill("10");
   await page.locator('[data-circle-input="offset"]').press("Tab");
   await expect(page.locator("#info")).toContainText("one intersection");
 
+  expect(errors, errors.join("\n")).toEqual([]);
+});
+
+test("circle theorems shows the common tangents between two circles", async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto("/#circle-theorems");
+
+  await expect(page.locator("#info h2")).toHaveText("Circle Theorems");
+  await page.locator('[data-circle="bitangents"]').click();
+  await expect(page.locator("#info")).toContainText("Common tangents to two circles");
+  await expect(page.locator("#info .theorem-check, #info .readout")).toBeVisible();
+
+  // Start state: r₁ = 3.1, r₂ = 1.55, centres 6.4 apart in x and 1.2 in y.
+  await expect(page.locator("#info")).toContainText("6.512"); // d
+  await expect(page.locator("#info")).toContainText("6.324"); // √(d² − (r₁−r₂)²)
+  await expect(page.locator("#info")).toContainText("4.558"); // √(d² − (r₁+r₂)²)
+  await expect(page.locator("#info")).toContainText("4 common tangents");
+
+  // Method details stay collapsed until opened.
+  await page.locator("#info .circle-method > summary").click();
+  await expect(page.locator("#info .eq .math").first()).toBeVisible();
+  await expect(page.locator("#info .symbol-key dd").first()).toContainText("circle centres");
+
+  await page.locator('[data-derivation="common-tangents"]').click();
+  await expect(page.locator("dialog[open]")).toContainText("Why two circles have four common tangents");
+  await expect(page.locator("dialog[open] svg")).toBeVisible();
+  // The dialog explains its notation, and typesets it rather than printing raw ^ and _.
+  await expect(page.locator("dialog[open]")).toContainText("What the symbols mean");
+  await expect(page.locator("dialog[open] .symbol-key dt").first()).toHaveText("O₁, O₂");
+  await expect(page.locator("dialog[open] .derivation-steps .msqrt").first()).toBeVisible();
+  await expect(page.locator("dialog[open] .derivation-steps sub").first()).toBeVisible();
+  await page.getByRole("button", { name: "Close" }).click();
+  await expect(page.locator("dialog[open]")).toHaveCount(0);
+
+  // Drag the second circle's centre inside the first: no common tangent survives.
+  const target = await page.evaluate(() => {
+    const { viewport } = (window as unknown as { __lab: { viewport: any } }).__lab;
+    let handle: any;
+    viewport.world.traverse((object: any) => {
+      if (!handle && object.userData?.handle === "circle-theorem-0") handle = object;
+    });
+    if (!handle) return undefined;
+    const rect = viewport.renderer.domElement.getBoundingClientRect();
+    const toScreen = (v: any) => {
+      const p = v.clone().project(viewport.camera);
+      return {
+        x: rect.left + ((p.x + 1) / 2) * rect.width,
+        y: rect.top + ((1 - p.y) / 2) * rect.height,
+      };
+    };
+    const origin = handle.position.clone().set(0, 0, 0);
+    return { from: toScreen(handle.position), to: toScreen(origin) };
+  });
+  expect(target).toBeTruthy();
+
+  await page.mouse.move(target!.from.x, target!.from.y);
+  await page.mouse.down();
+  await page.mouse.move(target!.to.x, target!.to.y, { steps: 12 });
+  await page.mouse.up();
+
+  await expect(page.locator("#info")).toContainText("0 common tangents");
+  await expect(page.locator("#info")).toContainText("swallowed by the other");
+
+  expect(errors, errors.join("\n")).toEqual([]);
+});
+
+test("circle theorems groups modes and verifies the centre-angle check", async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto("/#circle-theorems");
+
+  await expect(page.locator(".circle-mode-label").first()).toHaveText("Angles");
+  await expect(page.locator("#info .theorem-check.ok")).toContainText("centre = 2 × edge");
+
+  await page.locator('[data-circle="sameseg"]').click();
+  await expect(page.locator("#info")).toContainText("same segment");
+  await expect(page.locator("#info .theorem-check.ok")).toBeVisible();
+
+  await page.locator('[data-circle="altseg"]').click();
+  await expect(page.locator("#info")).toContainText("Alternate segment theorem");
+  await expect(page.locator('[data-derivation="alternate-segment"]')).toBeVisible();
+
+  await page.locator('[data-circle="chords"]').click();
+  await expect(page.locator("#info")).toContainText("Intersecting chords");
+  await expect(page.locator("#info .theorem-check.ok")).toContainText("AX·XB = CX·XD");
+
+  await page.locator('[data-circle="reset"]').click();
+  await expect(page.locator("#info .theorem-check.ok")).toContainText("AX·XB = CX·XD");
+
+  expect(errors, errors.join("\n")).toEqual([]);
+});
+
+test("circle calculations lets you drag control points to change the diagram", async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto("/#circle-calculations");
+
+  await page.getByRole("button", { name: "4 · Chords" }).click();
+  await page.locator('[data-circle-input="radius"]').fill("5");
+  await page.locator('[data-circle-input="radius"]').press("Tab");
+  await page.locator('[data-circle-input="angle"]').fill("90");
+  await page.locator('[data-circle-input="angle"]').press("Tab");
+  await expect(page.locator("#info")).toContainText("Drag the diagram");
+
+  // Locate a real draggable handle in the 3D scene and project it to screen space.
+  const target = await page.evaluate(() => {
+    const lab = (window as unknown as { __lab: { viewport: any } }).__lab;
+    const { viewport } = lab;
+    let handle: any;
+    viewport.world.traverse((object: any) => {
+      if (!handle && object.userData?.handle === "chord-b") handle = object;
+    });
+    if (!handle) return undefined;
+    const rect = viewport.renderer.domElement.getBoundingClientRect();
+    const projected = handle.position.clone().project(viewport.camera);
+    return {
+      x: rect.left + ((projected.x + 1) / 2) * rect.width,
+      y: rect.top + ((1 - projected.y) / 2) * rect.height,
+      rect: { left: rect.left, top: rect.top, width: rect.width, height: rect.height },
+    };
+  });
+  expect(target).toBeTruthy();
+
+  const before = await page.locator('[data-circle-input="angle"]').inputValue();
+  await page.mouse.move(target!.x, target!.y);
+  await page.mouse.down();
+  // Drag the endpoint further round the circle, which opens up the central angle.
+  await page.mouse.move(target!.rect.left + target!.rect.width / 2 - 60, target!.y - 60, { steps: 12 });
+  await page.mouse.up();
+
+  const after = await page.locator('[data-circle-input="angle"]').inputValue();
+  expect(Number(after)).not.toBe(Number(before));
+  expect(Number(after)).toBeGreaterThan(Number(before));
+  await expect(page.locator("#info")).toContainText("Chord length");
+
+  // The chord must also be free to rotate anywhere, including the top of the circle.
+  await page.locator('[data-circle-input="chordPosition"]').fill("90");
+  await page.locator('[data-circle-input="chordPosition"]').press("Tab");
+  const midpoint = await page.evaluate(() => {
+    const { viewport } = (window as unknown as { __lab: { viewport: any } }).__lab;
+    let handle: any;
+    viewport.world.traverse((object: any) => {
+      if (!handle && object.userData?.handle === "chord-mid") handle = object;
+    });
+    return handle ? { x: handle.position.x, y: handle.position.y } : undefined;
+  });
+  expect(midpoint).toBeTruthy();
+  expect(midpoint!.y).toBeGreaterThan(0.1);
+  expect(Math.abs(midpoint!.x)).toBeLessThan(0.05);
+
+  // Drag the midpoint itself back down to the bottom of the circle.
+  await page.locator('[data-circle-input="chordPosition"]').fill("0");
+  await page.locator('[data-circle-input="chordPosition"]').press("Tab");
+  const midScreen = await page.evaluate(() => {
+    const { viewport } = (window as unknown as { __lab: { viewport: any } }).__lab;
+    let handle: any;
+    viewport.world.traverse((object: any) => {
+      if (!handle && object.userData?.handle === "chord-mid") handle = object;
+    });
+    const rect = viewport.renderer.domElement.getBoundingClientRect();
+    const projected = handle.position.clone().project(viewport.camera);
+    return {
+      x: rect.left + ((projected.x + 1) / 2) * rect.width,
+      y: rect.top + ((1 - projected.y) / 2) * rect.height,
+      centreX: rect.left + rect.width / 2,
+      centreY: rect.top + rect.height / 2,
+    };
+  });
+  await page.mouse.move(midScreen.x, midScreen.y);
+  await page.mouse.down();
+  await page.mouse.move(midScreen.centreX, midScreen.centreY + 70, { steps: 12 });
+  await page.mouse.up();
+  const position = Number(await page.locator('[data-circle-input="chordPosition"]').inputValue());
+  expect(position).toBeGreaterThan(240);
+  expect(position).toBeLessThan(300);
+
+  expect(errors, errors.join("\n")).toEqual([]);
+});
+
+test("volume lesson calculates many solids and opens authored derivations", async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto("/#volume");
+
+  await expect(page.locator("#info h2")).toHaveText("Volume of Solids");
+  await expect(page.locator("#info")).toContainText("Cubic units and the scaling law");
+  await page.locator('[data-volume-input="side"]').fill("5");
+  await page.locator('[data-volume-input="side"]').press("Tab");
+  await expect(page.locator("#info")).toContainText("125 units³");
+
+  await page.getByRole("button", { name: "2 · Prisms" }).click();
+  await page.getByRole("button", { name: "Cylinder", exact: true }).click();
+  await page.locator('[data-volume-input="radius"]').fill("2");
+  await page.locator('[data-volume-input="radius"]').press("Tab");
+  await page.locator('[data-volume-input="height"]').fill("5");
+  await page.locator('[data-volume-input="height"]').press("Tab");
+  await expect(page.locator("#info")).toContainText("62.832 units³");
+  await page.locator('button[data-derivation="cylinder-volume"]').click();
+  await expect(page.locator("dialog[open]")).toContainText("Why a cylinder is a circular prism");
+  await page.getByRole("button", { name: "Close" }).click();
+
+  await page.getByRole("button", { name: "4 · Spheres & round solids" }).click();
+  await page.getByRole("button", { name: "Torus", exact: true }).click();
+  await expect(page.locator("#info")).toContainText("V = 2π²Rr²");
+  await page.getByRole("button", { name: "Spherical cap", exact: true }).click();
+  await expect(page.locator("#info")).toContainText("V = ⅓πh²(3r−h)");
+
+  await page.getByRole("button", { name: "5 · Frustums" }).click();
+  await page.locator('[data-volume-input="radius"]').fill("5");
+  await page.locator('[data-volume-input="radius"]').press("Tab");
+  await page.locator('[data-volume-input="innerRadius"]').fill("3");
+  await page.locator('[data-volume-input="innerRadius"]').press("Tab");
+  await page.locator('[data-volume-input="height"]').fill("6");
+  await page.locator('[data-volume-input="height"]').press("Tab");
+  await expect(page.locator("#info")).toContainText("307.876 units³");
+
+  await page.getByRole("button", { name: "6 · Composite & hollow" }).click();
+  await page.getByRole("button", { name: "Pipe / tube", exact: true }).click();
+  await expect(page.locator("#info")).toContainText("outer cylinder");
+  await expect(page.locator('button[data-derivation="pipe-volume"]')).toBeVisible();
+
+  await page.getByRole("button", { name: "7 · Comparisons & scaling" }).click();
+  await expect(page.locator("#info")).toContainText("1 : 2 : 3");
+  await expect(page.locator("#info")).toContainText("Surface-area-to-volume ratio");
+  expect(errors, errors.join("\n")).toEqual([]);
+});
+
+test("volume lesson lets a real 3D radius handle update the calculation", async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto("/#volume");
+  await page.getByRole("button", { name: "2 · Prisms" }).click();
+  await page.getByRole("button", { name: "Cylinder", exact: true }).click();
+
+  const target = await page.evaluate(() => {
+    const { viewport } = (window as unknown as { __lab: { viewport: any } }).__lab;
+    let handle: any;
+    viewport.world.traverse((object: any) => {
+      if (!handle && object.userData?.handle === "radius") handle = object;
+    });
+    if (!handle) return undefined;
+    const rect = viewport.renderer.domElement.getBoundingClientRect();
+    const projected = handle.position.clone().project(viewport.camera);
+    return {
+      x: rect.left + ((projected.x + 1) / 2) * rect.width,
+      y: rect.top + ((1 - projected.y) / 2) * rect.height,
+    };
+  });
+  expect(target).toBeTruthy();
+
+  const before = Number(await page.locator('[data-volume-input="radius"]').inputValue());
+  await page.mouse.move(target!.x, target!.y);
+  await page.mouse.down();
+  await page.mouse.move(target!.x + 70, target!.y, { steps: 12 });
+  await page.mouse.up();
+
+  const after = Number(await page.locator('[data-volume-input="radius"]').inputValue());
+  expect(after).not.toBe(before);
+  await expect(page.locator("#info")).toContainText("Volume");
   expect(errors, errors.join("\n")).toEqual([]);
 });
 
@@ -265,38 +542,67 @@ test("every Foundations lesson states its learning journey, discovery, and appli
   expect(errors, errors.join("\n")).toEqual([]);
 });
 
-test("Foundations navigation orders prerequisites from basics to advanced topics", async ({ page }) => {
+test("the sidebar presents the whole curriculum in teaching order", async ({ page }) => {
   const errors = trackErrors(page);
   await page.goto("/");
 
-  await expect(page.locator(".nav-item .nav-title").evaluateAll((titles) =>
-    titles.slice(0, 19).map((title) => title.textContent?.replace(/^\d+\s*·\s*/, "").trim()),
+  await expect(page.locator(".nav-section-title").evaluateAll((titles) =>
+    titles.map((title) => title.textContent?.trim()),
   )).resolves.toEqual([
+    "Stage 1 · Numbers & arithmetic",
+    "Stage 2 · Algebra",
+    "Stage 3 · Shape & space",
+    "Stage 4 · Trigonometry & waves",
+    "Stage 5 · Vectors & complex numbers",
+    "Stage 6 · Calculus",
+    "Stage 7 · Probability & randomness",
+    "Stage 8 · Number theory",
+    "Stage 9 · Applied maths & physics",
+    "Stage 10 · Maths as code",
+  ]);
+
+  await expect(page.locator(".nav-item .nav-title").evaluateAll((titles) =>
+    titles.slice(0, 26).map((title) => title.textContent?.replace(/^\d+\s*·\s*/, "").trim()),
+  )).resolves.toEqual([
+    // Stage 1 — numbers and arithmetic.
     "Foundation topics",
     "Number Sense & Fractions",
+    "Arithmetic Operations Lab",
     "Order of Operations",
     "Times Tables & Multiplication Strategies",
     "Multiplication & Division",
-    "Algebraic Laws & Index Rules",
     "Unit Conversions",
+    // Stage 2 — algebra.
+    "Algebraic Laws & Index Rules",
     "Rearranging Equations",
     "Powers & Exponential Growth",
     "Logarithms",
     "Binomials",
     "Pascal's Triangle",
-    "Probability & Distributions",
-    "Markov Chains",
-    "Stochastic Processes",
+    // Stage 3 — shape and space.
+    "Geometry",
+    "Triangle Theorems",
+    "Quadrilaterals",
+    "Circle Theorems",
+    "Circle Geometry & Calculations",
+    "Volume of Solids",
+    "Conic Sections",
+    // Stage 4 — trigonometry and waves.
+    "Radians",
+    "Trigonometric Functions",
+    "Waveforms",
+    // Stage 5 — vectors and complex numbers.
     "Vectors",
     "Complex Numbers",
-    "Prime Numbers — Complete Guide",
-    "Mersenne Primes",
+    // Stage 6 — calculus.
+    "Differentiation",
   ]);
 
   for (const [id, prerequisite] of [
     ["number-sense-fractions", "Foundation topics"],
-    ["order-of-operations", "Number Sense & Fractions"],
-    ["times-tables", "Number Sense & Fractions"],
+    ["arithmetic-operations", "Number Sense & Fractions"],
+    ["order-of-operations", "Arithmetic Operations Lab"],
+    ["times-tables", "Arithmetic Operations Lab"],
     ["multiplication-division", "Times Tables & Multiplication Strategies"],
     ["algebraic-laws", "Multiplication & Division"],
     ["unit-conversions", "Multiplication & Division"],
@@ -310,6 +616,8 @@ test("Foundations navigation orders prerequisites from basics to advanced topics
     ["complex-numbers", "Vectors"],
     ["mersenne-primes", "Powers & Exponential Growth"],
     ["mersenne-primes", "Prime Numbers — Complete Guide"],
+    ["volume", "Geometry"],
+    ["volume", "Circle Geometry & Calculations"],
   ]) {
     await page.evaluate((lessonId) => (window as any).__lab.manager.selectById(lessonId), id);
     await expect(page.locator("#lesson-meta")).toContainText(prerequisite);
@@ -339,6 +647,22 @@ test("number sense locates fractions and relates them to decimals", async ({ pag
   await expect(page.locator("#info")).toContainText("Counting-parts view");
   await expect(page.locator("#info")).toContainText("2.3333 units");
   await expect(page.locator("#info")).toContainText("every whole interval into 3 equal parts");
+  const fiveQuartersMarker = await page.evaluate(() => {
+    const lab = (window as any).__lab;
+    let marker: any;
+    lab.viewport.world.traverse((object: any) => {
+      if (object.userData.fractionId === "five-quarters") marker = object;
+    });
+    if (!marker) throw new Error("5/4 marker was not found");
+    const position = marker.getWorldPosition(marker.position.clone()).project(lab.viewport.camera);
+    const bounds = lab.viewport.renderer.domElement.getBoundingClientRect();
+    return {
+      x: bounds.left + ((position.x + 1) / 2) * bounds.width,
+      y: bounds.top + ((1 - position.y) / 2) * bounds.height,
+    };
+  });
+  await page.mouse.click(fiveQuartersMarker.x, fiveQuartersMarker.y);
+  await expect(page.locator("#info")).toContainText("5 ÷ 4 = 1.25");
   await page.getByRole("button", { name: "4×" }).click();
   await expect(page.locator(".fraction-bar-scale")).toHaveAttribute("data-bar-scale", "4");
   await page.locator("#fraction-numerator").fill("12");
@@ -352,6 +676,50 @@ test("number sense locates fractions and relates them to decimals", async ({ pag
   await expect(page.locator("#info")).toContainText("split 29 total units");
   await expect(page.locator("#info")).toContainText("14.5 units");
   await expect(page.locator("#info")).toContainText("29 ÷ 2 = 14.5");
+
+  expect(errors, errors.join("\n")).toEqual([]);
+});
+
+test("arithmetic operations lab visualizes operations, inverses, rules, and factorials", async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto("/#arithmetic-operations");
+
+  await expect(page.locator("#info h2")).toHaveText("Arithmetic Operations Lab");
+  await expect(page.locator("[data-arithmetic-operation]")).toHaveCount(5);
+  await expect(page.locator(".operation-lab-readout")).toContainText("4 + 3 = 7");
+  await expect(page.locator("#stage canvas")).toHaveAttribute("role", "img");
+  await expect(page.locator("#stage canvas")).toHaveAttribute("aria-label", /4 \+ 3 = 7/);
+
+  await page.locator('[data-arithmetic-operation="subtraction"]').click();
+  await expect(page.locator(".operation-lab-readout")).toContainText("7 − 4 = 3");
+
+  await page.locator('[data-arithmetic-operation="multiplication"]').click();
+  await page.locator('[data-arithmetic-input="a"]').fill("6");
+  await page.locator('[data-arithmetic-input="a"]').press("Tab");
+  await page.locator('[data-arithmetic-input="b"]').fill("4");
+  await page.locator('[data-arithmetic-input="b"]').press("Tab");
+  await expect(page.locator(".operation-lab-readout")).toContainText("6 × 4 = 24");
+
+  await page.locator('[data-arithmetic-operation="division"]').click();
+  await page.locator('[data-arithmetic-input="a"]').fill("17");
+  await page.locator('[data-arithmetic-input="a"]').press("Tab");
+  await page.locator('[data-arithmetic-input="b"]').fill("5");
+  await page.locator('[data-arithmetic-input="b"]').press("Tab");
+  await page.getByRole("button", { name: "Check with the inverse" }).click();
+  await expect(page.locator("[data-inverse-feedback]")).toContainText("3 × 5 + 2 = 17");
+
+  await page.locator('[data-arithmetic-operation="factorial"]').focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".operation-lab-readout")).toContainText("5! = 5 × 4 × 3 × 2 × 1 = 120");
+  await expect(page.locator("#info")).toContainText("Factorial is not an inverse-operation rule");
+  await expect(page.locator("#info")).toContainText("0! = 1");
+
+  await page.getByRole("button", { name: "Associative" }).click();
+  await expect(page.locator('[data-active-rule="associative"]')).toContainText(
+    "It fails for subtraction and division",
+  );
+  await expect(page.locator("#info")).toContainText("Division by zero is undefined");
+  await expect(page.locator("#info")).toContainText("a × (b + c) = a × b + a × c");
 
   expect(errors, errors.join("\n")).toEqual([]);
 });
@@ -2594,6 +2962,343 @@ test("unit converter: SI prefixes and centre-stage visual update", async ({ page
   await page.selectOption("#conv-to", "N");
   await page.fill("#conv-value", "2.5");
   await expect(page.locator("#conv-result")).toHaveText("2500 N");
+
+  expect(errors, errors.join("\n")).toEqual([]);
+});
+
+test("every lesson is framed by a brief, a worked example, mistakes and self-checks", async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto("/");
+
+  const brief = page.locator("#lesson-brief");
+  const practice = page.locator("#lesson-practice");
+
+  for (const lesson of LESSONS) {
+    await page.evaluate((id) => (window as any).__lab.manager.selectById(id), lesson.id);
+
+    await expect(brief, `${lesson.id} is missing its stage position`).toContainText("Lesson ");
+    await expect(brief, `${lesson.id} is missing its objectives`).toContainText("By the end you can");
+    await expect(brief, `${lesson.id} is missing its key idea`).toContainText("Key idea:");
+    await expect(brief, `${lesson.id} is missing its motivation`).toContainText("Why it matters:");
+    await expect(brief, `${lesson.id} is missing a viewport instruction`).toContainText("Try this:");
+    await expect(brief).not.toContainText("still being written");
+
+    await expect(practice, `${lesson.id} is missing a worked example`).toContainText("Worked example");
+    await expect(practice, `${lesson.id} is missing common mistakes`).toContainText("Common mistakes");
+    await expect(practice, `${lesson.id} is missing self-checks`).toContainText("Check yourself");
+    await expect(practice.locator(".check-item")).not.toHaveCount(0);
+  }
+
+  expect(errors, errors.join("\n")).toEqual([]);
+});
+
+test("self-check answers stay hidden until revealed", async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto("/#foundations");
+
+  const first = page.locator(".check-item").first();
+  await expect(first.locator(".check-answer")).toBeHidden();
+  await first.locator("summary").click();
+  await expect(first.locator(".check-answer")).toBeVisible();
+
+  expect(errors, errors.join("\n")).toEqual([]);
+});
+
+test("completing a lesson records progress, ticks the sidebar, and advances the path", async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto("/#foundations");
+
+  await expect(page.locator("#path-progress")).toContainText("0 of 52 lessons (0%)");
+
+  await page.getByTestId("mark-complete").click();
+  await expect(page.getByTestId("mark-complete")).toContainText("Completed");
+  await expect(page.locator("#path-progress")).toContainText("1 of 52 lessons (2%)");
+  await expect(page.locator(".nav-item.is-complete .nav-title")).toHaveText("1 · Foundation topics");
+  await expect(page.locator('.nav-section[data-stage="stage-numbers"] .nav-section-count')).toHaveText("1/7");
+
+  await page.getByTestId("next-lesson").click();
+  await expect(page).toHaveURL(/#number-sense-fractions$/);
+  await expect(page.locator("#info h2")).toHaveText("Number Sense & Fractions");
+  await expect(page.getByTestId("next-lesson")).toContainText("Arithmetic Operations Lab");
+
+  // Progress survives a reload and the learner resumes where they left off.
+  await page.goto("/");
+  await expect(page.locator("#path-progress")).toContainText("1 of 52 lessons (2%)");
+  await expect(page.locator("#info h2")).toHaveText("Number Sense & Fractions");
+
+  expect(errors, errors.join("\n")).toEqual([]);
+});
+
+test("searching hides stages that have no matching lessons", async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto("/");
+
+  await expect(page.locator(".nav-section:visible")).toHaveCount(10);
+  await page.fill("#lesson-search", "shader");
+  await expect(page.locator(".nav-section:visible")).toHaveCount(1);
+  await expect(page.locator(".nav-section:visible .nav-section-title")).toHaveText("Stage 10 · Maths as code");
+
+  await page.fill("#lesson-search", "");
+  await expect(page.locator(".nav-section:visible")).toHaveCount(10);
+
+  expect(errors, errors.join("\n")).toEqual([]);
+});
+
+test("journey planner turns a distance and a speed into a travel time", async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto("/#unit-conversions");
+
+  // Opens on the everyday example: 10 miles at 30 mph.
+  await expect(page.locator("#journey-distance")).toHaveValue("10");
+  await expect(page.locator("#journey-speed")).toHaveValue("30");
+  await expect(page.locator("#journey-result")).toHaveText("20 min");
+  await expect(page.locator("#journey-result-exact")).toContainText("1200 s");
+
+  // Matching units need no conversion, and the working says so.
+  await expect(page.locator("#journey-working")).toContainText("16093.4 m");
+  await expect(page.locator("#journey-working")).toContainText("13.4112 m/s");
+
+  // Mixed units force the base-unit reduction the lesson teaches.
+  await page.selectOption("#journey-speed-unit", "kmh");
+  await expect(page.locator("#journey-result")).toHaveText("32 min 11 s");
+  await expect(page.locator("#journey-working")).toContainText("8.33333 m/s");
+
+  // Doubling the distance doubles the time.
+  await page.fill("#journey-distance", "20");
+  await expect(page.locator("#journey-result")).toHaveText("1 hr 4 min 22 s");
+
+  // A preset restores a known journey and explains it.
+  await page.getByRole("button", { name: "400 m sprint at 8 m/s" }).click();
+  await expect(page.locator("#journey-result")).toHaveText("50 s");
+  await expect(page.locator("#journey-note")).toContainText("no conversion at all");
+  await expect(page.locator("#journey-working")).toContainText("already in base units");
+
+  // Standing still never arrives, and the lesson says why instead of showing Infinity.
+  await page.fill("#journey-speed", "0");
+  await expect(page.locator("#journey-result")).toHaveText("—");
+  await expect(page.locator("#journey-working")).toContainText("never arrive");
+
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: `${SHOTS}/journey-planner.png` });
+  expect(errors, errors.join("\n")).toEqual([]);
+});
+
+test("conversion factor lookup searches, filters and loads rows into the converter", async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto("/#unit-conversions");
+
+  const rows = page.locator("#lookup-rows li[data-category]");
+  const total = await rows.count();
+  expect(total).toBeGreaterThan(30);
+  await expect(page.locator("#lookup-count")).toContainText(`${total} of ${total} factors shown`);
+
+  // Values are computed from the converter's own table, so the classics are exact.
+  const mileRow = page.locator('#lookup-rows li[data-from="mi"][data-to="km"]');
+  await expect(mileRow).toContainText("1 mi = 1.60934 km");
+  await expect(mileRow).toContainText("1 km = 0.621371 mi");
+  await expect(mileRow.locator(".factor-badge")).toHaveText("exact");
+
+  // Searching narrows the sheet.
+  await page.fill("#lookup-search", "pressure");
+  const shown = await rows.count();
+  expect(shown).toBeGreaterThan(0);
+  expect(shown).toBeLessThan(total);
+  await expect(page.locator("#lookup-rows")).toContainText("atm");
+  await expect(page.locator("#lookup-rows")).not.toContainText("Digital storage");
+
+  // A search with no matches explains itself rather than showing an empty box.
+  await page.fill("#lookup-search", "zzzz");
+  await expect(page.locator(".lookup-empty")).toContainText("No factor matches");
+  await expect(page.locator("#lookup-count")).toContainText("0 of");
+
+  // The category filter and the exact-only toggle compose with the search box.
+  await page.fill("#lookup-search", "");
+  await page.selectOption("#lookup-category", "speed");
+  await expect(page.locator("#lookup-rows")).toContainText("Speed");
+  await expect(page.locator("#lookup-rows")).not.toContainText("Mass");
+
+  await page.selectOption("#lookup-category", "all");
+  await page.check("#lookup-exact-only");
+  const exactCount = await rows.count();
+  expect(exactCount).toBeLessThan(total);
+  await expect(page.locator("#lookup-rows .factor-badge.approx")).toHaveCount(0);
+  await page.uncheck("#lookup-exact-only");
+
+  // Clicking a row drives the converter above it.
+  await page.locator('#lookup-rows li[data-from="mps"][data-to="kmh"]').click();
+  await expect(page.locator("#conv-cat")).toHaveValue("speed");
+  await expect(page.locator("#conv-value")).toHaveValue("1");
+  await expect(page.locator("#conv-from")).toHaveValue("mps");
+  await expect(page.locator("#conv-to")).toHaveValue("kmh");
+  await expect(page.locator("#conv-result")).toHaveText("3.6 km/h");
+
+  expect(errors).toEqual([]);
+});
+
+test("triangle theorems animates each centre construction step by step", async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto("/#triangle-theorems");
+  await expect(page.locator("#info h2")).toHaveText("Triangle Theorems");
+
+  // The nine-point circle readout is live and self-checking.
+  await expect(page.locator("#info")).toContainText("Nine-point circle");
+  await expect(page.locator("#info")).toContainText("max error");
+
+  const state = () =>
+    page.evaluate(() => {
+      const lesson = (window as any).__lab.manager.activeLesson;
+      const a = lesson.anim;
+      return {
+        index: a?.index ?? null,
+        total: a?.steps.length ?? null,
+        playing: a?.playing ?? null,
+        done: a?.done ?? null,
+        overlays: lesson.params as Record<string, boolean>,
+        animObjects: lesson.animLayer.children.length as number,
+      };
+    });
+
+  // Clicking a centre starts its construction animation, playing from step 1.
+  await page.getByRole("button", { name: "▶ Circumcentre O" }).click();
+  await expect(page.locator("#info")).toContainText("Building: Circumcentre O");
+  await expect(page.locator("#tri-step")).toHaveText("Step 1 of 7");
+  await expect(page.locator("#tri-caption")).toContainText("midpoint");
+  // Every construction explains what it is actually good for.
+  await expect(page.locator("#info")).toContainText("Used for:");
+  await expect(page.locator("#info")).toContainText("equidistant from three others");
+  expect((await state()).playing).toBe(true);
+  // Back is unavailable on the first step; the overlay is not pre-drawn.
+  await expect(page.locator("#tri-back")).toBeDisabled();
+  expect((await state()).overlays.circumcircle).toBe(false);
+
+  // Pause holds the step, and does not advance.
+  await page.locator("#tri-play").click();
+  await expect(page.locator("#tri-play")).toHaveText("▶ Play");
+  const paused = await state();
+  expect(paused.playing).toBe(false);
+  await page.waitForTimeout(700);
+  expect((await state()).index).toBe(paused.index);
+
+  // Next advances exactly one step, Back returns to it.
+  await page.getByRole("button", { name: "⏭ Next" }).click();
+  const after = await state();
+  expect(after.index).toBe(paused.index + 1);
+  await expect(page.locator("#tri-step")).toHaveText(`Step ${after.index + 1} of 7`);
+  await expect(page.locator("#tri-back")).toBeEnabled();
+  await page.getByRole("button", { name: "⏮ Back" }).click();
+  expect((await state()).index).toBe(paused.index);
+
+  // Back cannot wrap around past the first step.
+  expect((await state()).index).toBe(0);
+  await expect(page.locator("#tri-back")).toBeDisabled();
+
+  // Next through to the end marks it done: Next disables, Play becomes Replay.
+  // Six clicks reach the last step, and a seventh marks the construction finished.
+  for (let i = 0; i < 7; i++) await page.getByRole("button", { name: "⏭ Next" }).click();
+  const finished = await state();
+  expect(finished).toMatchObject({ index: 6, total: 7, playing: false, done: true });
+  await expect(page.locator("#tri-step")).toHaveText("Step 7 of 7");
+  await expect(page.locator("#tri-next")).toBeDisabled();
+  await expect(page.locator("#tri-play")).toHaveText("↺ Replay");
+  // Finishing must not silently tick the static overlay on.
+  expect(finished.overlays.circumcircle).toBe(false);
+
+  // Back out of the finished state really steps back and re-enables Next.
+  await page.getByRole("button", { name: "⏮ Back" }).click();
+  const stepped = await state();
+  expect(stepped).toMatchObject({ index: 5, done: false });
+  await expect(page.locator("#tri-next")).toBeEnabled();
+  await expect(page.locator("#tri-play")).toHaveText("▶ Play");
+  // Fewer objects are drawn at step 6 than at step 7 — Back genuinely undraws.
+  expect(stepped.animObjects).toBeLessThan(finished.animObjects);
+
+  // Play from a fully-drawn last step just finishes; Replay then restarts from step 1.
+  await page.getByRole("button", { name: "⏭ Next" }).click();
+  expect(await state()).toMatchObject({ index: 6, done: false });
+  await page.locator("#tri-play").click();
+  await expect(page.locator("#tri-play")).toHaveText("↺ Replay");
+  expect(await state()).toMatchObject({ index: 6, playing: false, done: true });
+  await page.locator("#tri-play").click();
+  expect(await state()).toMatchObject({ index: 0, playing: true, done: false });
+
+  // Switching to another construction resets the transport.
+  await page.getByRole("button", { name: "▶ Nine-point circle" }).click();
+  await expect(page.locator("#info")).toContainText("Building: Nine-point circle");
+  await expect(page.locator("#tri-step")).toHaveText("Step 1 of 6");
+  expect(await state()).toMatchObject({ index: 0, total: 6, done: false });
+
+  // Clear this removes the transport bar and every object it drew.
+  await page.getByRole("button", { name: "✕ Clear this" }).click();
+  await expect(page.locator("#tri-caption")).toHaveCount(0);
+  const cleared = await state();
+  expect(cleared.index).toBeNull();
+  expect(cleared.animObjects).toBe(0);
+
+  // Clear all overlays resets every construction toggle at once.
+  await page.evaluate(() => {
+    const p = (window as any).__lab.manager.activeLesson.params;
+    p.medians = true;
+    p.ninePoint = true;
+  });
+  await page.getByRole("button", { name: "▶ Centroid G" }).click();
+  await page.getByRole("button", { name: "✕ Clear all overlays" }).click();
+  await expect(page.locator("#tri-caption")).toHaveCount(0);
+  const bare = await state();
+  expect(bare.animObjects).toBe(0);
+  expect([
+    bare.overlays.medians,
+    bare.overlays.circumcircle,
+    bare.overlays.incircle,
+    bare.overlays.altitudes,
+    bare.overlays.ninePoint,
+    bare.overlays.eulerLine,
+    bare.overlays.medial,
+  ]).toEqual([false, false, false, false, false, false, false]);
+
+  expect(errors, errors.join("\n")).toEqual([]);
+});
+
+test("triangle theorems construction plays through by itself and follows a dragged vertex", async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto("/#triangle-theorems");
+
+  const state = () =>
+    page.evaluate(() => {
+      const lesson = (window as any).__lab.manager.activeLesson;
+      const a = lesson.anim;
+      return { index: a?.index ?? null, done: a?.done ?? null, playing: a?.playing ?? null };
+    });
+
+  // Speed the playback up so the whole construction runs inside the test.
+  await page.evaluate(() => {
+    (window as any).__lab.manager.activeLesson.playback.speed = 3;
+  });
+  await page.getByRole("button", { name: "▶ Centroid G" }).click();
+  expect(await state()).toMatchObject({ index: 0, playing: true, done: false });
+
+  // It advances on its own, without any clicking.
+  await expect.poll(async () => (await state()).index, { timeout: 5000 }).toBeGreaterThan(0);
+  await expect.poll(async () => (await state()).done, { timeout: 10000 }).toBe(true);
+  await expect(page.locator("#tri-step")).toHaveText("Step 6 of 6");
+  await expect(page.locator("#tri-play")).toHaveText("↺ Replay");
+
+  // A finished construction still tracks the triangle: move a vertex and the
+  // centroid the animation drew moves with it.
+  const centroidY = () =>
+    page.evaluate(() => {
+      const lesson = (window as any).__lab.manager.activeLesson;
+      return lesson.compute().G.y as number;
+    });
+  const before = await centroidY();
+  await page.evaluate(() => {
+    const lesson = (window as any).__lab.manager.activeLesson;
+    lesson.verts[2].set(-1, 4.2, 0);
+    lesson.animDirty = true;
+    lesson.rebuild();
+  });
+  await page.waitForTimeout(200);
+  expect(await centroidY()).toBeGreaterThan(before);
+  expect(await state()).toMatchObject({ done: true });
 
   expect(errors, errors.join("\n")).toEqual([]);
 });

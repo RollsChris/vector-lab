@@ -1,6 +1,7 @@
 import "./style.css";
 import { Viewport } from "./core/Viewport";
 import { LessonManager } from "./core/LessonManager";
+import { MobileShell } from "./core/MobileShell";
 import { VectorFieldLesson } from "./lessons/VectorFieldLesson";
 import { DifferentiationLesson } from "./lessons/DifferentiationLesson";
 import { IntegrationLesson } from "./lessons/IntegrationLesson";
@@ -46,11 +47,13 @@ import { VectorsLesson } from "./lessons/VectorsLesson";
 import { TriangleTheoremsLesson } from "./lessons/TriangleTheoremsLesson";
 import { CircleTheoremsLesson } from "./lessons/CircleTheoremsLesson";
 import { CircleCalculationsLesson } from "./lessons/CircleCalculationsLesson";
+import { VolumeLesson } from "./lessons/VolumeLesson";
 import { ConicSectionsLesson } from "./lessons/ConicSectionsLesson";
 import { QuadrilateralsLesson } from "./lessons/QuadrilateralsLesson";
 import { RadiansLesson } from "./lessons/RadiansLesson";
 import { BinomialsLesson } from "./lessons/BinomialsLesson";
 import { NumberSenseFractionsLesson } from "./lessons/NumberSenseFractionsLesson";
+import { ArithmeticOperationsLesson } from "./lessons/ArithmeticOperationsLesson";
 
 const stage = document.getElementById("stage")!;
 const nav = document.getElementById("nav")!;
@@ -59,6 +62,11 @@ const guiHost = document.getElementById("gui")!;
 const search = document.getElementById("lesson-search") as HTMLInputElement;
 const count = document.getElementById("lesson-count")!;
 const meta = document.getElementById("lesson-meta")!;
+const brief = document.getElementById("lesson-brief")!;
+const practice = document.getElementById("lesson-practice")!;
+const pathProgress = document.getElementById("path-progress")!;
+const sidebar = document.getElementById("sidebar")!;
+const panel = document.getElementById("panel")!;
 
 const viewport = new Viewport(stage);
 
@@ -67,6 +75,7 @@ const manager = new LessonManager(
   [
     new FoundationsLesson(),
     new NumberSenseFractionsLesson(),
+    new ArithmeticOperationsLesson(),
     new OrderOfOperationsLesson(),
     new TimesTablesLesson(),
     new MultiplicationDivisionLesson(),
@@ -89,6 +98,7 @@ const manager = new LessonManager(
     new QuadrilateralsLesson(),
     new CircleTheoremsLesson(),
     new CircleCalculationsLesson(),
+    new VolumeLesson(),
     new ConicSectionsLesson(),
     new RadiansLesson(),
     new TrigonometricFunctionsLesson(),
@@ -116,13 +126,35 @@ const manager = new LessonManager(
     new ShadowsEarthSizeLesson(),
     new ShaderPlaygroundLesson(),
   ],
-  { nav, info, guiHost, search, count, meta },
+  { nav, info, guiHost, search, count, meta, brief, practice, pathProgress },
 );
+
+const shell = new MobileShell(
+  {
+    navToggle: document.getElementById("nav-toggle") as HTMLButtonElement,
+    panelToggle: document.getElementById("panel-toggle") as HTMLButtonElement,
+    prevLesson: document.getElementById("prev-lesson") as HTMLButtonElement,
+    nextLesson: document.getElementById("next-lesson") as HTMLButtonElement,
+    backdrop: document.getElementById("sheet-backdrop")!,
+    topbarLesson: document.getElementById("topbar-lesson")!,
+    hint: stage.querySelector(".hint") as HTMLElement,
+    sidebar,
+    panel,
+  },
+  {
+    previous: () => manager.previous(),
+    next: () => manager.next(),
+  },
+);
+
+manager.onSelect((lesson) => {
+  shell.onLessonSelected(lesson.title.replace(/^\d+\s*·\s*/, ""));
+});
 
 manager.start(location.hash.slice(1) || undefined);
 
 // Test/debug hook: expose internals so the automated browser tests can introspect
 // runtime state (active lesson, viewport). Only attached during dev/test builds.
 if (import.meta.env.DEV) {
-  (window as unknown as { __lab: unknown }).__lab = { viewport, manager };
+  (window as unknown as { __lab: unknown }).__lab = { viewport, manager, shell };
 }

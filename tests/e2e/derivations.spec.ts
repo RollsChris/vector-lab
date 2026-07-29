@@ -24,6 +24,7 @@ const LESSONS = [
   { id: "quadrilaterals", heading: "Quadrilaterals" },
   { id: "circle-theorems", heading: "Circle Theorems" },
   { id: "circle-calculations", heading: "Circle Geometry & Calculations" },
+  { id: "volume", heading: "Volume of Solids" },
   { id: "conic-sections", heading: "Conic Sections" },
   { id: "radians", heading: "Radians" },
   { id: "trig-functions", heading: "Trigonometric Functions" },
@@ -52,7 +53,12 @@ const LESSONS = [
   { id: "shaders", heading: "Shader Playground" },
 ] as const;
 
-const DYNAMIC_STATES = [
+const DYNAMIC_STATES: readonly {
+  lessonId: string;
+  heading: string;
+  control: string;
+  nestedControl?: string;
+}[] = [
   {
     lessonId: "algebraic-laws",
     heading: "Algebraic Laws & Index Rules",
@@ -64,11 +70,17 @@ const DYNAMIC_STATES = [
     control: "[data-circle-chapter]",
   },
   {
+    lessonId: "volume",
+    heading: "Volume of Solids",
+    control: "[data-volume-chapter]",
+    nestedControl: "[data-volume-shape]",
+  },
+  {
     lessonId: "fourier-series",
     heading: "Fourier Series",
     control: "[data-fourier-chapter]",
   },
-] as const;
+];
 
 async function selectLesson(page: Page, id: string, heading: string): Promise<void> {
   await page.evaluate((lessonId) => {
@@ -274,6 +286,15 @@ test("derivation controls resolve across initial and current dynamic lesson stat
       const context = `${state.lessonId}:${index + 1}`;
       for (const problem of await formulaCardProblems(page, context)) problems.add(problem);
       for (const problem of await derivationControlProblems(page, context)) problems.add(problem);
+      if (state.nestedControl) {
+        const nestedCount = await page.locator(`#info ${state.nestedControl}`).count();
+        for (let nestedIndex = 0; nestedIndex < nestedCount; nestedIndex++) {
+          await page.locator(`#info ${state.nestedControl}`).nth(nestedIndex).click();
+          const nestedContext = `${context}:${nestedIndex + 1}`;
+          for (const problem of await formulaCardProblems(page, nestedContext)) problems.add(problem);
+          for (const problem of await derivationControlProblems(page, nestedContext)) problems.add(problem);
+        }
+      }
     }
   }
 

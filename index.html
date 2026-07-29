@@ -2,32 +2,77 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vector Lab — interactive vector fields & calculus</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0d1117" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>Vector Lab — learn maths from zero to elite</title>
   </head>
   <body>
     <div id="app">
+      <header id="topbar" class="topbar">
+        <button
+          type="button"
+          id="nav-toggle"
+          class="chrome-btn"
+          aria-controls="sidebar"
+          aria-expanded="false"
+        >
+          Lessons
+        </button>
+        <div class="topbar-title">
+          <span class="topbar-brand">Vector Lab</span>
+          <span id="topbar-lesson" class="topbar-lesson"></span>
+        </div>
+        <div class="topbar-actions">
+          <button type="button" id="prev-lesson" class="chrome-btn icon" aria-label="Previous lesson">‹</button>
+          <button type="button" id="next-lesson" class="chrome-btn icon" aria-label="Next lesson">›</button>
+          <button
+            type="button"
+            id="panel-toggle"
+            class="chrome-btn"
+            aria-controls="panel"
+            aria-expanded="false"
+          >
+            Learn
+          </button>
+        </div>
+      </header>
+
+      <div id="sheet-backdrop" class="sheet-backdrop" hidden></div>
+
       <aside id="sidebar">
         <div class="brand">
           Vector Lab
-          <small>Interactive fields & calculus</small>
+          <small>Zero to elite — a guided maths path</small>
         </div>
+        <div id="path-progress" class="path-progress"></div>
         <div class="nav-tools">
           <label for="lesson-search">Find a lesson</label>
-          <input id="lesson-search" type="search" placeholder="Search lessons…  /" autocomplete="off" />
+          <input id="lesson-search" type="search" placeholder="Search lessons…  /" autocomplete="off" enterkeyhint="search" />
           <div id="lesson-count" class="nav-count"></div>
         </div>
         <nav id="nav" aria-label="Lessons"></nav>
       </aside>
 
       <main id="stage" aria-label="Interactive 3D lesson viewport">
-        <div class="hint">Drag to orbit · scroll to zoom · right-drag to pan · / search · [ ] lessons</div>
+        <div
+          class="hint"
+          data-hint-desktop="Drag to orbit · scroll to zoom · right-drag to pan · / search · [ ] lessons"
+          data-hint-touch="Drag to orbit · pinch to zoom · two-finger pan · use Lessons / Learn"
+        >
+          Drag to orbit · scroll to zoom · right-drag to pan · / search · [ ] lessons
+        </div>
       </main>
 
       <aside id="panel" aria-live="polite">
+        <div class="panel-handle" aria-hidden="true"></div>
         <div id="gui"></div>
         <div id="lesson-meta"></div>
+        <div id="lesson-brief"></div>
         <div id="info"></div>
+        <div id="lesson-practice"></div>
       </aside>
     </div>
     <script type="module" src="/src/main.ts"></script>

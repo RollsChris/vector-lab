@@ -1,8 +1,9 @@
 import { registerFormulaDerivations } from "../../core/FormulaDerivations";
 
-const circleTheoremSvg = `
+const centreSvg = `
   <svg viewBox="0 0 320 180" role="img" aria-label="Circle with centre O, chord AB, and point P on the circumference">
     <circle cx="160" cy="90" r="68" fill="none" stroke="#58a6ff" stroke-width="3"/>
+    <path d="M105 130 A68 68 0 0 1 217 126" fill="none" stroke="#388bfd" stroke-width="6" opacity="0.55"/>
     <line x1="105" y1="130" x2="217" y2="126" stroke="#d2a8ff" stroke-width="3"/>
     <line x1="105" y1="130" x2="160" y2="90" stroke="#8b949e" stroke-width="2"/>
     <line x1="217" y1="126" x2="160" y2="90" stroke="#8b949e" stroke-width="2"/>
@@ -10,6 +11,61 @@ const circleTheoremSvg = `
     <line x1="217" y1="126" x2="164" y2="22" stroke="#7ee787" stroke-width="2"/>
     <text x="91" y="145" fill="#fff" font-size="16">A</text><text x="220" y="142" fill="#fff" font-size="16">B</text>
     <text x="168" y="19" fill="#fff" font-size="16">P</text><text x="145" y="86" fill="#ffd166" font-size="16">O</text>
+  </svg>`;
+
+const sameSegSvg = `
+  <svg viewBox="0 0 320 180" role="img" aria-label="Chord AB with points P and Q in the same segment">
+    <circle cx="160" cy="90" r="68" fill="none" stroke="#58a6ff" stroke-width="3"/>
+    <path d="M100 130 A68 68 0 0 1 220 130" fill="none" stroke="#388bfd" stroke-width="6" opacity="0.45"/>
+    <line x1="100" y1="130" x2="220" y2="130" stroke="#d2a8ff" stroke-width="3"/>
+    <line x1="100" y1="130" x2="130" y2="30" stroke="#58a6ff" stroke-width="2"/>
+    <line x1="220" y1="130" x2="130" y2="30" stroke="#58a6ff" stroke-width="2"/>
+    <line x1="100" y1="130" x2="200" y2="28" stroke="#7ee787" stroke-width="2"/>
+    <line x1="220" y1="130" x2="200" y2="28" stroke="#7ee787" stroke-width="2"/>
+    <text x="86" y="145" fill="#fff" font-size="15">A</text><text x="224" y="145" fill="#fff" font-size="15">B</text>
+    <text x="122" y="22" fill="#58a6ff" font-size="15">P</text><text x="204" y="20" fill="#7ee787" font-size="15">Q</text>
+  </svg>`;
+
+const thalesSvg = `
+  <svg viewBox="0 0 320 180" role="img" aria-label="Diameter AB with right angle at P on the circumference">
+    <circle cx="160" cy="90" r="68" fill="none" stroke="#58a6ff" stroke-width="3"/>
+    <path d="M92 90 A68 68 0 0 1 228 90" fill="none" stroke="#388bfd" stroke-width="6" opacity="0.45"/>
+    <line x1="92" y1="90" x2="228" y2="90" stroke="#d2a8ff" stroke-width="3"/>
+    <line x1="92" y1="90" x2="176" y2="28" stroke="#58a6ff" stroke-width="2"/>
+    <line x1="228" y1="90" x2="176" y2="28" stroke="#58a6ff" stroke-width="2"/>
+    <polyline points="168,36 168,44 176,44" fill="none" stroke="#ff7b72" stroke-width="2"/>
+    <text x="78" y="95" fill="#fff" font-size="15">A</text><text x="232" y="95" fill="#fff" font-size="15">B</text>
+    <text x="178" y="22" fill="#fff" font-size="15">P</text><text x="150" y="86" fill="#ffd166" font-size="14">O</text>
+  </svg>`;
+
+const cyclicSvg = `
+  <svg viewBox="0 0 320 180" role="img" aria-label="Cyclic quadrilateral ABCD">
+    <circle cx="160" cy="90" r="68" fill="none" stroke="#58a6ff" stroke-width="3"/>
+    <polygon points="110,40 230,55 225,140 95,130" fill="none" stroke="#58a6ff" stroke-width="2.5"/>
+    <text x="100" y="34" fill="#fff" font-size="15">A</text><text x="234" y="52" fill="#fff" font-size="15">B</text>
+    <text x="228" y="156" fill="#fff" font-size="15">C</text><text x="82" y="140" fill="#fff" font-size="15">D</text>
+  </svg>`;
+
+const cyclicExtSvg = `
+  <svg viewBox="0 0 320 180" role="img" aria-label="Cyclic quadrilateral with exterior angle at B">
+    <circle cx="150" cy="90" r="64" fill="none" stroke="#58a6ff" stroke-width="3"/>
+    <polygon points="105,40 210,50 205,135 90,125" fill="none" stroke="#58a6ff" stroke-width="2.5"/>
+    <line x1="210" y1="50" x2="280" y2="56" stroke="#ffa657" stroke-width="2.5"/>
+    <text x="94" y="34" fill="#fff" font-size="14">A</text><text x="214" y="46" fill="#fff" font-size="14">B</text>
+    <text x="208" y="150" fill="#fff" font-size="14">C</text><text x="78" y="136" fill="#fff" font-size="14">D</text>
+    <text x="284" y="60" fill="#ffa657" font-size="14">E</text>
+  </svg>`;
+
+const altSegSvg = `
+  <svg viewBox="0 0 320 180" role="img" aria-label="Tangent at A, chord AB, point C in the alternate segment">
+    <circle cx="160" cy="100" r="60" fill="none" stroke="#58a6ff" stroke-width="3"/>
+    <path d="M115 145 A60 60 0 0 1 220 80" fill="none" stroke="#388bfd" stroke-width="6" opacity="0.45"/>
+    <line x1="40" y1="55" x2="200" y2="175" stroke="#ffa657" stroke-width="3"/>
+    <line x1="115" y1="145" x2="220" y2="80" stroke="#58a6ff" stroke-width="2.5"/>
+    <line x1="115" y1="145" x2="175" y2="45" stroke="#7ee787" stroke-width="2"/>
+    <line x1="220" y1="80" x2="175" y2="45" stroke="#7ee787" stroke-width="2"/>
+    <text x="100" y="160" fill="#fff" font-size="15">A</text><text x="226" y="78" fill="#fff" font-size="15">B</text>
+    <text x="172" y="38" fill="#7ee787" font-size="15">C</text>
   </svg>`;
 
 const tangentSvg = `
@@ -21,6 +77,64 @@ const tangentSvg = `
     <line x1="120" y1="90" x2="142" y2="144" stroke="#d2a8ff" stroke-width="2"/>
     <line x1="120" y1="90" x2="270" y2="90" stroke="#8b949e" stroke-width="2"/>
     <text x="276" y="95" fill="#fff" font-size="16">P</text><text x="102" y="87" fill="#fff" font-size="16">O</text>
+  </svg>`;
+
+const tanSecSvg = `
+  <svg viewBox="0 0 320 180" role="img" aria-label="Tangent PT, secant PAB, and chords TA and TB for the similar-triangle proof">
+    <circle cx="150" cy="95" r="58" fill="none" stroke="#58a6ff" stroke-width="3"/>
+    <!-- secant PAB -->
+    <line x1="275.0" y1="42.0" x2="103.1" y2="153.3" stroke="#58a6ff" stroke-width="2.5"/>
+    <!-- chords TA and TB (needed for △PTA ~ △PBT) -->
+    <line x1="152.3" y1="37.0" x2="207.3" y2="85.9" stroke="#7ee787" stroke-width="2"/>
+    <line x1="152.3" y1="37.0" x2="118.2" y2="143.5" stroke="#7ee787" stroke-width="2"/>
+    <!-- tangent PT -->
+    <line x1="275.0" y1="42.0" x2="152.3" y2="37.0" stroke="#ffa657" stroke-width="3"/>
+    <circle cx="152.3" cy="37.0" r="3" fill="#ffa657"/>
+    <circle cx="207.3" cy="85.9" r="3" fill="#58a6ff"/>
+    <circle cx="118.2" cy="143.5" r="3" fill="#58a6ff"/>
+    <text x="280" y="40" fill="#fff" font-size="15">P</text>
+    <text x="156" y="30" fill="#ffa657" font-size="14">T</text>
+    <text x="214" y="82" fill="#fff" font-size="14">A</text>
+    <text x="100" y="158" fill="#fff" font-size="14">B</text>
+  </svg>`;
+
+const bitangentSvg = `
+  <svg viewBox="0 0 320 180" role="img" aria-label="Two circles with their two external and two internal common tangents">
+    <circle cx="95" cy="90" r="52" fill="none" stroke="#58a6ff" stroke-width="3"/>
+    <circle cx="240" cy="95" r="26" fill="none" stroke="#58a6ff" stroke-width="3"/>
+    <line x1="95" y1="90" x2="240" y2="95" stroke="#8b949e" stroke-width="2"/>
+    <line x1="85" y1="35" x2="267" y2="74" stroke="#ffa657" stroke-width="3"/>
+    <line x1="81" y1="145" x2="266" y2="118" stroke="#ffa657" stroke-width="3"/>
+    <line x1="106" y1="35" x2="243" y2="129" stroke="#7ee787" stroke-width="2"/>
+    <line x1="102" y1="146" x2="246" y2="61" stroke="#7ee787" stroke-width="2"/>
+    <line x1="95" y1="90" x2="106" y2="39" stroke="#d2a8ff" stroke-width="2"/>
+    <line x1="240" y1="95" x2="246" y2="70" stroke="#d2a8ff" stroke-width="2"/>
+    <text x="78" y="96" fill="#ffd166" font-size="15">O₁</text>
+    <text x="232" y="101" fill="#ffd166" font-size="15">O₂</text>
+    <text x="100" y="30" fill="#ffa657" font-size="13">T₁</text>
+    <text x="248" y="64" fill="#ffa657" font-size="13">T₂</text>
+  </svg>`;
+
+const chordSvg = `
+  <svg viewBox="0 0 320 180" role="img" aria-label="Perpendicular from centre O bisecting chord AB at M">
+    <circle cx="160" cy="90" r="68" fill="none" stroke="#58a6ff" stroke-width="3"/>
+    <line x1="100" y1="140" x2="230" y2="125" stroke="#58a6ff" stroke-width="3"/>
+    <line x1="160" y1="90" x2="165" y2="132" stroke="#d2a8ff" stroke-width="2.5"/>
+    <polyline points="158,124 166,123 167,131" fill="none" stroke="#ff7b72" stroke-width="2"/>
+    <circle cx="165" cy="132" r="3.5" fill="#7ee787"/>
+    <text x="88" y="152" fill="#fff" font-size="15">A</text><text x="234" y="138" fill="#fff" font-size="15">B</text>
+    <text x="170" y="148" fill="#7ee787" font-size="14">M</text><text x="145" y="86" fill="#ffd166" font-size="14">O</text>
+  </svg>`;
+
+const chordsSvg = `
+  <svg viewBox="0 0 320 180" role="img" aria-label="Chords AB and CD intersecting at X inside the circle">
+    <circle cx="160" cy="90" r="68" fill="none" stroke="#58a6ff" stroke-width="3"/>
+    <line x1="95" y1="50" x2="230" y2="140" stroke="#58a6ff" stroke-width="2.5"/>
+    <line x1="100" y1="140" x2="235" y2="45" stroke="#7ee787" stroke-width="2.5"/>
+    <circle cx="162" cy="92" r="3.5" fill="#ffd166"/>
+    <text x="82" y="48" fill="#fff" font-size="14">A</text><text x="236" y="152" fill="#fff" font-size="14">B</text>
+    <text x="86" y="152" fill="#fff" font-size="14">C</text><text x="240" y="42" fill="#fff" font-size="14">D</text>
+    <text x="168" y="86" fill="#ffd166" font-size="14">X</text>
   </svg>`;
 
 registerFormulaDerivations("circle-theorems", [
@@ -36,7 +150,7 @@ registerFormulaDerivations("circle-theorems", [
     ],
     result: "A fixed chord subtends twice as much angle at the centre as at the circumference.",
     assumptions: "A, B and P are distinct points on the same circle; use the central angle standing on the arc opposite P.",
-    diagram: { description: "The radii split the picture into isosceles triangles, creating paired equal base angles.", svg: circleTheoremSvg },
+    diagram: { description: "The radii split the picture into isosceles triangles, creating paired equal base angles.", svg: centreSvg },
   },
   {
     id: "same-segment",
@@ -50,7 +164,7 @@ registerFormulaDerivations("circle-theorems", [
     ],
     result: "Moving the observation point along one segment does not change the angle subtended by chord AB.",
     assumptions: "P and Q lie on the same side of chord AB on the same circle.",
-    diagram: { description: "Every circumference angle standing on the same chord is half the same centre angle.", svg: circleTheoremSvg },
+    diagram: { description: "Every circumference angle standing on the same chord is half the same centre angle.", svg: sameSegSvg },
   },
   {
     id: "thales",
@@ -64,7 +178,7 @@ registerFormulaDerivations("circle-theorems", [
     ],
     result: "Any triangle whose hypotenuse is a circle diameter is right-angled at the third point.",
     assumptions: "P is on the circle and distinct from diameter endpoints A and B.",
-    diagram: { description: "The diameter creates a 180° centre angle, so the matching circumference angle is half of it.", svg: circleTheoremSvg },
+    diagram: { description: "The diameter creates a 180° centre angle, so the matching circumference angle is half of it.", svg: thalesSvg },
   },
   {
     id: "cyclic-opposites",
@@ -79,7 +193,37 @@ registerFormulaDerivations("circle-theorems", [
     ],
     result: "Each pair of opposite interior angles in a cyclic quadrilateral is supplementary.",
     assumptions: "All four vertices lie on one circle in cyclic order.",
-    diagram: { description: "Opposite angles intercept arcs that together make one full turn.", svg: circleTheoremSvg },
+    diagram: { description: "Opposite angles intercept arcs that together make one full turn.", svg: cyclicSvg },
+  },
+  {
+    id: "cyclic-exterior",
+    title: "Why an exterior angle of a cyclic quad equals the opposite interior",
+    equation: "exterior at B = interior at D",
+    startingPoint: "Extend one side of cyclic ABCD and use the opposite-angles theorem.",
+    steps: [
+      { expression: "interior ∠ABC + interior ∠ADC = 180°", reason: "Opposite angles of a cyclic quadrilateral are supplementary." },
+      { expression: "interior ∠ABC + exterior ∠CBE = 180°", reason: "Adjacent interior and exterior angles on a straight line." },
+      { expression: "exterior ∠CBE = interior ∠ADC", reason: "Both equal 180° − ∠ABC." },
+    ],
+    result: "The exterior angle equals the interior angle at the opposite vertex.",
+    assumptions: "ABCD is cyclic and the side is extended beyond B.",
+    diagram: { description: "Straight-line pair and opposite cyclic pair force the exterior to match the far interior.", svg: cyclicExtSvg },
+  },
+  {
+    id: "alternate-segment",
+    title: "Why the tangent–chord angle equals the angle in the alternate segment",
+    equation: "∠(tangent, AB) = ∠ACB",
+    startingPoint: "Draw the radius to the touch point and use isosceles triangles / centre-angle.",
+    steps: [
+      { expression: "radius OA ⟂ tangent at A", reason: "A tangent meets the radius at 90°." },
+      { expression: "∠OAB = 90° − ∠(tangent, AB)", reason: "Complementary angles in the right angle at A." },
+      { expression: "△OAB is isosceles with OA = OB", reason: "Both are radii, so base angles are equal." },
+      { expression: "centre ∠AOB = 2∠ACB", reason: "Angle at the centre is twice the angle at the circumference in the alternate segment." },
+      { expression: "∠(tangent, AB) = ∠ACB", reason: "Chase the complementary and half-centre relations around to equality." },
+    ],
+    result: "The angle between a tangent and a chord equals any angle in the alternate segment standing on that chord.",
+    assumptions: "C lies on the circle in the segment on the other side of chord AB from the tangent angle.",
+    diagram: { description: "Tangent at A, chord AB, and point C on the far arc.", svg: altSegSvg },
   },
   {
     id: "tangent-radius",
@@ -111,6 +255,22 @@ registerFormulaDerivations("circle-theorems", [
     diagram: { description: "The two right triangles share OP and have equal radius legs.", svg: tangentSvg },
   },
   {
+    id: "tangent-secant",
+    title: "Why a tangent and a secant from one point obey PT² = PA·PB",
+    equation: "PT² = PA · PB",
+    startingPoint: "Draw chords TA and TB so you can compare △PTA and △PBT.",
+    steps: [
+      { expression: "∠PTA = ∠PBT", reason: "Alternate segment: the angle between tangent PT and chord TA equals the angle subtended by TA in the alternate segment (at B)." },
+      { expression: "∠TPA = ∠BPT", reason: "Common angle at P." },
+      { expression: "△PTA ∼ △PBT", reason: "Two angles equal ⇒ similar triangles (AA)." },
+      { expression: "PT/PB = PA/PT", reason: "Corresponding sides of similar triangles are proportional." },
+      { expression: "PT² = PA · PB", reason: "Cross-multiply the proportion." },
+    ],
+    result: "The square of the tangent equals the product of the whole secant and its external part.",
+    assumptions: "P is outside the circle; the secant meets the circle at A (near) and B (far).",
+    diagram: { description: "Tangent PT, secant PAB, and chords TA and TB — the sides of △PTA and △PBT.", svg: tanSecSvg },
+  },
+  {
     id: "chord-bisector",
     title: "Why a perpendicular from the centre bisects a chord",
     equation: "OM ⟂ AB ⇒ AM = MB",
@@ -123,7 +283,23 @@ registerFormulaDerivations("circle-theorems", [
     ],
     result: "The perpendicular radius lands at the chord's midpoint.",
     assumptions: "AB is a chord and M is the foot of the perpendicular from O.",
-    diagram: { description: "Equal radii and the shared perpendicular create congruent right triangles.", svg: circleTheoremSvg },
+    diagram: { description: "Equal radii and the shared perpendicular create congruent right triangles.", svg: chordSvg },
+  },
+  {
+    id: "intersecting-chords",
+    title: "Why intersecting chords give equal products of segments",
+    equation: "AX · XB = CX · XD",
+    startingPoint: "Chords AB and CD meet at X inside the circle; draw AC and BD (or AD and BC).",
+    steps: [
+      { expression: "∠XAC = ∠XBD", reason: "Angles in the same segment standing on arc AC… (or vertically opposite / same-segment on the shared arc)." },
+      { expression: "∠AXC = ∠BXD", reason: "Vertically opposite angles at X." },
+      { expression: "△AXC ∼ △BXD", reason: "AA similarity." },
+      { expression: "AX/CX = XD/XB  (or AX/DX = CX/BX depending on the pair drawn)", reason: "Corresponding sides of similar triangles." },
+      { expression: "AX · XB = CX · XD", reason: "Cross-multiply; the same identity follows from the other diagonal pair." },
+    ],
+    result: "Each chord is cut into two segments whose products match.",
+    assumptions: "The intersection X lies inside the circle on both chords.",
+    diagram: { description: "Two chords cross at X; similar triangles give the product rule.", svg: chordsSvg },
   },
   {
     id: "circle-basics",
@@ -136,8 +312,38 @@ registerFormulaDerivations("circle-theorems", [
       { expression: "A = ½Cr", reason: "Rearranged thin sectors approach a triangle/rectangle with base C and effective height r, with the factor one half." },
       { expression: "A = ½(2πr)r = πr²", reason: "Substitute the circumference and simplify." },
     ],
-    result: "The lesson's fixed radius determines both displayed circle measurements.",
+    result: "Radius alone determines both distance around and area within the circle.",
     assumptions: "Euclidean circle with r ≥ 0; the area argument is a limiting sector rearrangement.",
-    diagram: { description: "The same radius controls both distance around and area within the circle.", svg: circleTheoremSvg },
+    diagram: { description: "The same radius controls both distance around and area within the circle.", svg: centreSvg },
+  },
+  {
+    id: "common-tangents",
+    title: "Why two circles have four common tangents (and how to find them)",
+    equation: "n = h·û ± √(1 − h²)·û⊥",
+    startingPoint: "Write a tangent line in normal form n·X = c with |n| = 1, so the distance from any centre to it is |n·O − c|.",
+    steps: [
+      { expression: "n·O₁ − c = s₁r₁ and n·O₂ − c = s₂r₂", reason: "Tangency means each centre is exactly its own radius from the line; s = ±1 records which side the centre lies on." },
+      { expression: "n·(O₂ − O₁) = s₂r₂ − s₁r₁", reason: "Subtract the two equations to eliminate the unknown offset c." },
+      { expression: "h = n·û = (s₂r₂ − s₁r₁)/d", reason: "Divide by d = |O₁O₂|, fixing the component of the unit normal along the centre line." },
+      { expression: "n = h·û ± √(1 − h²)·û⊥", reason: "The normal is a unit vector, so the remaining component is perpendicular; the ± gives the mirrored pair of tangents." },
+      { expression: "c = n·O₁ − s₁r₁,  T = O − s·r·n", reason: "Back-substitute for the offset, then step one radius along the normal to reach each touch point." },
+      { expression: "s₂ = s₁ ⇒ external, s₂ = −s₁ ⇒ internal", reason: "Same-side signs give the direct tangents; opposite signs give the transverse ones that cross between the circles." },
+      { expression: "L_ext = √(d² − (r₁ − r₂)²),  L_int = √(d² − (r₁ + r₂)²)", reason: "Shrink both circles by r₂ (or grow the big one by r₂): the tangent segment, the centre line and the radius difference (or sum) form a right-angled triangle." },
+    ],
+    symbols: [
+      { symbol: "O₁, O₂", meaning: "The two circle centres." },
+      { symbol: "r₁, r₂", meaning: "The radii of those circles." },
+      { symbol: "d", meaning: "Distance between the centres, |O₁O₂|." },
+      { symbol: "û, û⊥", meaning: "Unit vector from O₁ to O₂, and the same vector turned through 90°." },
+      { symbol: "n", meaning: "Unit normal of the tangent line — the direction the line faces." },
+      { symbol: "c", meaning: "Offset of the line from the origin along n, so the line is every X with n·X = c." },
+      { symbol: "s₁, s₂", meaning: "Each is +1 or −1, recording which side of the line that centre lies on." },
+      { symbol: "h", meaning: "n·û, the component of the normal along the centre line." },
+      { symbol: "T", meaning: "A touch point, where a tangent meets a circle." },
+      { symbol: "L_ext, L_int", meaning: "Length of an external or internal tangent segment, touch point to touch point." },
+    ],
+    result: "Two separate circles share four common tangents; the count drops to 3, 2, 1 then 0 as they touch, overlap, sit inside touching, and become nested.",
+    assumptions: "Distinct centres (d > 0). Real solutions need |h| ≤ 1: d ≥ |r₁ − r₂| for the external pair and d ≥ r₁ + r₂ for the internal pair.",
+    diagram: { description: "Each tangent touches both circles, and every radius drawn to a touch point meets the line at a right angle.", svg: bitangentSvg },
   },
 ]);
