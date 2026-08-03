@@ -101,6 +101,7 @@ export const STAGES: readonly CurriculumStage[] = [
       "moments",
       "universal-gravitation",
       "load-paths",
+      "miter-saw-cuts",
       "pulleys",
       "atwood-machine",
       "stress-strain",

@@ -439,6 +439,59 @@ export const APPLIED_GUIDES: readonly LessonGuide[] = [
       "Set Weight W to 200 N, Weight position to 0, Cable sag to 2.2, and turn on Show H/V components. Slide Weight position towards one column, then reduce Cable sag and watch cable tension rise while the two vertical ground reactions still sum to W.",
   },
   {
+    id: "miter-saw-cuts",
+    plainEnglish:
+      "A saw blade can turn across a board and tilt through it. Those two movements decide both the outline of the cut on the wood and the shape of the new end.",
+    objectives: [
+      "distinguish a saw miter setting from the angle drawn across the board",
+      "calculate a top-face cut length and end offset from stock width and miter setting",
+      "predict when a cut face stays rectangular or becomes a parallelogram",
+      "set a saw for square, four-sided, and six-sided flat-frame joints",
+    ],
+    whyItMatters:
+      "Picture frames, trim, boxes, furniture, and compound moulding cuts all depend on turning a desired joint shape into the correct saw setting before material is removed.",
+    keyIdea:
+      "Think of the blade as a flat plane through a rectangular board: rotating it changes the plan view, while tilting it changes the face left by the cut.",
+    workedExample: {
+      prompt:
+        "A 140 mm wide, 18 mm thick board needs a square frame corner. Find the saw setting, the cut-line angle on the board, and the length of the cut across the top face.",
+      steps: [
+        "A square frame has a 90 degree inside corner, so its two matching cuts share the turn equally.",
+        "Set the saw miter to 45 degrees from square, because two matching 45 degree cuts form 180 minus 2 times 45 degrees.",
+        "The cut line makes 90 minus 45 = 45 degrees with the board's long edge.",
+        "Top-face cut length = 140 mm divided by cos 45 degrees = 197.99 mm.",
+        "With bevel at zero, the cut face remains rectangular and its thickness edge stays 18 mm.",
+      ],
+      answer:
+        "Use a 45 degree miter and zero bevel; the line is 45 degrees to the long edge and the top-face cut is about 198.0 mm long.",
+    },
+    pitfalls: [
+      "Reading the saw scale as the angle between the cut and the board edge → the scale starts at square, so that board angle is 90 degrees minus the miter setting",
+      "Using a bevelled pair as though it were a flat picture-frame joint → bevel changes the cut into a three-dimensional joint and the flat corner rule no longer applies",
+      "Cutting two final-length pieces without allowing for kerf → the blade removes material, so plan the reference edge and cut order first",
+      "Standing stock on edge without reconsidering the setup → the physical roles of miter and bevel can swap when the board orientation changes",
+    ],
+    checks: [
+      {
+        question: "What saw miter setting makes two pieces meet at a 120 degree flat-frame corner?",
+        answer:
+          "Each matching cut removes half the turn from a straight 180 degree line, so the setting is 90 minus half of 120, which is 30 degrees.",
+      },
+      {
+        question: "A saw is set to zero miter. What angle does its cut line make with the board's long edge?",
+        answer:
+          "It is a square crosscut, so the cut line makes 90 degrees with the long edge even though the saw scale reads zero.",
+      },
+      {
+        question: "What changes when bevel moves from zero while miter stays fixed?",
+        answer:
+          "The top plan remains the same because miter has not changed, but the blade tilts through the thickness and turns the cut face into a parallelogram.",
+      },
+    ],
+    tryThis:
+      "Start with Frame 45 degrees and inspect the equal cut line and frame corner. Then choose Compound 45 degrees / 30 degrees and compare the unchanged top plan with the skewed cut face below it.",
+  },
+  {
     id: "pulleys",
     plainEnglish:
       "Several pieces of rope can share a heavy weight, so your hand does not have to pull as hard. The trade is that you must pull much more rope.",

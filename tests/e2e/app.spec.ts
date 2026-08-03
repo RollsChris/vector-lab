@@ -52,6 +52,7 @@ const LESSONS = [
   { id: "momentum-impulse", heading: "Momentum & Impulse" },
   { id: "universal-gravitation", heading: "Newton's Universal Gravitation" },
   { id: "load-paths", heading: "Forces, Angles & Load Paths" },
+  { id: "miter-saw-cuts", heading: "Mitre Saw Cut Planner" },
   { id: "pulleys", heading: "Ropes, Pulleys & Weights" },
   { id: "atwood-machine", heading: "Atwood Machine" },
   { id: "stress-strain", heading: "Forces · Stress · Strain" },
@@ -181,6 +182,25 @@ test("circle glossary labels core terms with distinct diagrams", async ({ page }
   await expect(page.locator("#info")).toContainText("AX · XB = CX · XD");
   await expect(page.locator("#info")).toContainText("PT² = PA · PB");
 
+  expect(errors, errors.join("\n")).toEqual([]);
+});
+
+test("miter saw planner recalculates flat and compound cuts", async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto("/#miter-saw-cuts");
+
+  await expect(page.locator("#info h2")).toHaveText("Mitre Saw Cut Planner");
+  await page.locator('[data-miter-input="width"]').fill("100");
+  await page.locator('[data-miter-input="width"]').press("Tab");
+  await page.locator('[data-miter-input="miter"]').fill("45");
+  await page.locator('[data-miter-input="miter"]').press("Tab");
+  await expect(page.locator("#info")).toContainText("141.4 mm");
+  await expect(page.locator("#info")).toContainText("90.0° corner");
+
+  await page.locator('[data-miter-input="bevel"]').fill("30");
+  await page.locator('[data-miter-input="bevel"]').press("Tab");
+  await expect(page.locator("#info")).toContainText("Compound cut");
+  await expect(page.locator("#info")).toContainText("63.4°");
   expect(errors, errors.join("\n")).toEqual([]);
 });
 

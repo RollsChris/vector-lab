@@ -1312,6 +1312,20 @@ details.course[open] > summary { margin-bottom: 10px; }
 }
 #geom-calc input:focus, #geom-calc select:focus, .circle-inputs input:focus { outline: none; border-color: #3b82f6; }
 #geom-calc input:focus-visible, #geom-calc select:focus-visible, .circle-inputs input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.miter-inputs input {
+  background: #0d1117; color: #e6edf3; border: 1px solid #30363d;
+  border-radius: 6px; padding: 7px 8px; font-size: 13px; font-family: inherit; width: 100%;
+}
+.miter-inputs input:focus { outline: none; border-color: #3b82f6; }
+.miter-inputs input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.miter-presets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.miter-presets button {
+  background: #21262d; color: #c9d1d9; border: 1px solid #30363d; border-radius: 6px;
+  padding: 6px 8px; font: inherit; font-size: 12px; cursor: pointer;
+}
+.miter-presets button:hover { background: #30363d; border-color: #58a6ff; }
+.miter-working { display: flex; flex-wrap: wrap; gap: 6px; margin: -2px 0 12px; }
+.miter-working code { color: #5db4ff; font-size: 12px; }
 .geom-results { margin-top: 10px; }
 .geom-working {
   margin: -2px 0 9px; color: var(--muted); font-size: 12px; line-height: 1.4;

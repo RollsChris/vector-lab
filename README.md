@@ -233,7 +233,10 @@ topic rests on.
     (`ΣFx = 0`, `ΣFy = 0`), and traces the load all the way to the ground: vertical reactions
     sum back to `W`, with the leftover horizontal thrust the foundation must resist. Shows why
     shallow cables (`T = W / 2·sinθ`) create enormous tension.
-29. **Ropes & Pulleys** — lift a weight through a block-and-tackle. A strand-count slider sets
+29. **Mitre Saw Cut Planner** — enter board width and thickness with miter and bevel settings,
+    then see the top cut plan, the resulting compound-cut face, the exact cut length, and the
+    flat-frame corner formed by matching bevel-zero cuts.
+30. **Ropes & Pulleys** — lift a weight through a block-and-tackle. A strand-count slider sets
     the mechanical advantage; the load rises while the effort end travels `n×` further. Live
     readout of tension `T = W/n`, effort `F = W/n`, velocity ratio, and a work/energy account
     (with an efficiency slider to model friction). Builds up: one tension → supporting strands
