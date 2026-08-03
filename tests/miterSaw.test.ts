@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { miterSawCut } from "../src/math/miterSaw";
+import { miterSawCut, regularPolygonFrame } from "../src/math/miterSaw";
 
 describe("miterSawCut", () => {
   it("keeps a square crosscut square", () => {
@@ -17,6 +17,27 @@ describe("miterSawCut", () => {
     expect(cut.cutFaceSideLength).toBe(18);
     expect(cut.cutFaceIncludedAngleDegrees).toBe(90);
     expect(cut.cutFaceArea).toBe(1800);
+  });
+
+  describe("regularPolygonFrame", () => {
+    it("turns six 30 degree mitres into a hexagon frame", () => {
+      const frame = regularPolygonFrame(6, 100, 20);
+
+      expect(frame.miterDegrees).toBe(30);
+      expect(frame.interiorAngleDegrees).toBe(120);
+      expect(frame.cuts).toBe(12);
+      expect(frame.innerLength).toBeCloseTo(100 - 40 * Math.tan(Math.PI / 6), 10);
+      expect(frame.endCutLength).toBeCloseTo(miterSawCut({
+        width: 20,
+        thickness: 1,
+        miterDegrees: 30,
+        bevelDegrees: 0,
+      }).topFaceCutLength, 10);
+    });
+
+    it("rejects a polygon whose inner edge would collapse", () => {
+      expect(() => regularPolygonFrame(3, 10, 3)).toThrow(/radialWidth/);
+    });
   });
 
   it("calculates a 45 degree flat mitre", () => {

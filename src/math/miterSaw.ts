@@ -17,6 +17,16 @@ export interface MiterSawCut {
   cutFaceArea: number;
 }
 
+export interface RegularPolygonFrame {
+  sides: number;
+  miterDegrees: number;
+  interiorAngleDegrees: number;
+  cuts: number;
+  outerLength: number;
+  innerLength: number;
+  endCutLength: number;
+}
+
 const DEG2RAD = Math.PI / 180;
 const RAD2DEG = 180 / Math.PI;
 
@@ -59,6 +69,41 @@ export function miterSawCut(input: MiterSawInput): MiterSawCut {
     cutFaceSideLength: input.thickness * faceSideFactor,
     cutFaceIncludedAngleDegrees: Math.acos(clamp(faceAngleCosine, -1, 1)) * RAD2DEG,
     cutFaceArea: (input.width * input.thickness) / (cosMiter * cosBevel),
+  };
+}
+
+/** Geometry for a flat regular-polygon frame built from matching mitred segments. */
+export function regularPolygonFrame(
+  sides: number,
+  outerLength: number,
+  radialWidth: number,
+): RegularPolygonFrame {
+  if (!Number.isInteger(sides) || sides < 3) {
+    throw new RangeError("sides must be an integer of at least 3");
+  }
+  assertPositiveFinite("outerLength", outerLength);
+  assertPositiveFinite("radialWidth", radialWidth);
+
+  const halfExterior = Math.PI / sides;
+  const innerLength = outerLength - 2 * radialWidth * Math.tan(halfExterior);
+  if (innerLength <= 0) {
+    throw new RangeError("radialWidth is too large for this polygon");
+  }
+
+  const miterDegrees = 180 / sides;
+  return {
+    sides,
+    miterDegrees,
+    interiorAngleDegrees: 180 - 360 / sides,
+    cuts: sides * 2,
+    outerLength,
+    innerLength,
+    endCutLength: miterSawCut({
+      width: radialWidth,
+      thickness: 1,
+      miterDegrees,
+      bevelDegrees: 0,
+    }).topFaceCutLength,
   };
 }
 

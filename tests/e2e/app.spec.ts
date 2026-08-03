@@ -201,6 +201,43 @@ test("miter saw planner recalculates flat and compound cuts", async ({ page }) =
   await page.locator('[data-miter-input="bevel"]').press("Tab");
   await expect(page.locator("#info")).toContainText("Compound cut");
   await expect(page.locator("#info")).toContainText("63.4°");
+
+  await page.locator('[data-cut-list-input="stockLength"]').fill("2400");
+  await page.locator('[data-cut-list-input="stockLength"]').press("Tab");
+  await page.locator('[data-cut-list-input="endTrim"]').fill("0");
+  await page.locator('[data-cut-list-input="endTrim"]').press("Tab");
+  await page.locator('[data-cut-list-input="kerf"]').fill("3");
+  await page.locator('[data-cut-list-input="kerf"]').press("Tab");
+  await page.locator('[data-cut-list-input="parts"]').fill("Long rail, 800, 2\nShort rail, 794");
+  await page.locator('[data-cut-list-input="parts"]').press("Tab");
+  await expect(page.locator("#cut-list-results")).toContainText("1 board");
+  await expect(page.locator("#cut-list-results")).toContainText("offcut 0.0 mm");
+
+  await page.locator('[data-miter-input="width"]').fill("120");
+  await page.locator('[data-miter-input="width"]').press("Tab");
+  await expect(page.locator('[data-cut-list-input="parts"]')).toHaveValue("Long rail, 800, 2\nShort rail, 794");
+
+  await page.locator('[data-cut-list-input="parts"]').fill("Too long, 2500");
+  await page.locator('[data-cut-list-input="parts"]').press("Tab");
+  await expect(page.locator("#cut-list-results")).toContainText("exceeds usable board length");
+
+  await page.locator('[data-miter-action="cut"]').click();
+  await expect(page.locator("[data-miter-state]")).toHaveText(
+    "Cut complete — inspect the separated faces",
+    { timeout: 10_000 },
+  );
+  await expect(page.getByRole("button", { name: "Reset cut" })).toBeVisible();
+
+  await page.locator('[data-miter-example="6"]').click();
+  await expect(page.locator("#info")).toContainText("6 pieces · 12 mirrored cuts");
+  await page.getByRole("button", { name: "Animate hexagon frame" }).click();
+  await expect(page.locator("[data-miter-assembly-state]")).toHaveAttribute("data-miter-assembly", "complete", {
+    timeout: 10_000,
+  });
+  await expect(page.locator("[data-miter-assembly-state]")).toHaveText("6-sided frame complete");
+  await page.getByRole("button", { name: "Replay frame assembly" }).click();
+  await expect(page.locator("[data-miter-assembly-state]")).toHaveAttribute("data-miter-assembly", "ready");
+  await expect(page.locator("[data-miter-state]")).toHaveText("Blade raised — ready to cut");
   expect(errors, errors.join("\n")).toEqual([]);
 });
 
