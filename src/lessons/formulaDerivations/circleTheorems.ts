@@ -135,6 +135,33 @@ const chordsSvg = `
     <text x="82" y="48" fill="#fff" font-size="14">A</text><text x="236" y="152" fill="#fff" font-size="14">B</text>
     <text x="86" y="152" fill="#fff" font-size="14">C</text><text x="240" y="42" fill="#fff" font-size="14">D</text>
     <text x="168" y="86" fill="#ffd166" font-size="14">X</text>
+    <text x="120" y="70" fill="#58a6ff" font-size="12">a</text>
+    <text x="190" y="120" fill="#58a6ff" font-size="12">b</text>
+    <text x="125" y="125" fill="#7ee787" font-size="12">c</text>
+    <text x="200" y="70" fill="#7ee787" font-size="12">d</text>
+  </svg>`;
+
+const twoSecSvg = `
+  <svg viewBox="0 0 320 180" role="img" aria-label="Two secants from external point P meeting the circle at A,B and C,D">
+    <circle cx="140" cy="95" r="58" fill="none" stroke="#58a6ff" stroke-width="3"/>
+    <line x1="275" y1="90" x2="85" y2="55" stroke="#58a6ff" stroke-width="2.5"/>
+    <line x1="275" y1="90" x2="95" y2="140" stroke="#7ee787" stroke-width="2.5"/>
+    <line x1="190" y1="70" x2="120" y2="140" stroke="#d2a8ff" stroke-width="1.8"/>
+    <line x1="100" y1="70" x2="175" y2="130" stroke="#d2a8ff" stroke-width="1.8"/>
+    <circle cx="190" cy="70" r="3" fill="#58a6ff"/>
+    <circle cx="100" cy="70" r="3" fill="#58a6ff"/>
+    <circle cx="175" cy="130" r="3" fill="#7ee787"/>
+    <circle cx="120" cy="140" r="3" fill="#7ee787"/>
+    <circle cx="275" cy="90" r="3.5" fill="#ffd166"/>
+    <text x="282" y="88" fill="#ffd166" font-size="15">P</text>
+    <text x="196" y="66" fill="#fff" font-size="14">A</text>
+    <text x="86" y="66" fill="#fff" font-size="14">B</text>
+    <text x="180" y="148" fill="#fff" font-size="14">C</text>
+    <text x="104" y="156" fill="#fff" font-size="14">D</text>
+    <text x="230" y="72" fill="#58a6ff" font-size="12">a</text>
+    <text x="145" y="58" fill="#58a6ff" font-size="12">b</text>
+    <text x="230" y="118" fill="#7ee787" font-size="12">c</text>
+    <text x="150" y="145" fill="#7ee787" font-size="12">d</text>
   </svg>`;
 
 registerFormulaDerivations("circle-theorems", [
@@ -257,16 +284,16 @@ registerFormulaDerivations("circle-theorems", [
   {
     id: "tangent-secant",
     title: "Why a tangent and a secant from one point obey PT² = PA·PB",
-    equation: "PT² = PA · PB",
-    startingPoint: "Draw chords TA and TB so you can compare △PTA and △PBT.",
+    equation: "t² = a · b   (PT² = PA · PB)",
+    startingPoint: "From external P, tangent touches at T (t = PT) and a secant cuts at near A then far B (a = PA, b = PB). Draw green chords TA and TB so △PTA and △PBT appear.",
     steps: [
-      { expression: "∠PTA = ∠PBT", reason: "Alternate segment: the angle between tangent PT and chord TA equals the angle subtended by TA in the alternate segment (at B)." },
-      { expression: "∠TPA = ∠BPT", reason: "Common angle at P." },
-      { expression: "△PTA ∼ △PBT", reason: "Two angles equal ⇒ similar triangles (AA)." },
-      { expression: "PT/PB = PA/PT", reason: "Corresponding sides of similar triangles are proportional." },
-      { expression: "PT² = PA · PB", reason: "Cross-multiply the proportion." },
+      { expression: "∠PTA = ∠PBT", reason: "Alternate segment: the angle between tangent PT and chord TA equals the angle standing on TA in the other segment (at B)." },
+      { expression: "∠TPA = ∠BPT", reason: "Both triangles share the angle at P between the tangent and the secant." },
+      { expression: "△PTA ∼ △PBT", reason: "AA similarity. Matched corners: P↔P, T↔B, A↔T." },
+      { expression: "t/b = a/t   (PT/PB = PA/PT)", reason: "Corresponding sides of similar triangles are proportional." },
+      { expression: "t² = a · b   (PT² = PA · PB)", reason: "Cross-multiply. The repeated t is a square because the tangent meets the circle only once." },
     ],
-    result: "The square of the tangent equals the product of the whole secant and its external part.",
+    result: "The square of the tangent equals the product of the whole secant and its external part — power of P, with t used twice because there is only one touch point.",
     assumptions: "P is outside the circle; the secant meets the circle at A (near) and B (far).",
     diagram: { description: "Tangent PT, secant PAB, and chords TA and TB — the sides of △PTA and △PBT.", svg: tanSecSvg },
   },
@@ -288,18 +315,34 @@ registerFormulaDerivations("circle-theorems", [
   {
     id: "intersecting-chords",
     title: "Why intersecting chords give equal products of segments",
-    equation: "AX · XB = CX · XD",
-    startingPoint: "Chords AB and CD meet at X inside the circle; draw AC and BD (or AD and BC).",
+    equation: "a · b = c · d  (AX · XB = CX · XD)",
+    startingPoint: "Chords AB and CD meet at X inside the circle. Write a = AX, b = XB, c = CX, d = XD, then draw the purple chords AC and BD so △AXC and △DXB appear.",
     steps: [
-      { expression: "∠XAC = ∠XBD", reason: "Angles in the same segment standing on arc AC… (or vertically opposite / same-segment on the shared arc)." },
-      { expression: "∠AXC = ∠BXD", reason: "Vertically opposite angles at X." },
-      { expression: "△AXC ∼ △BXD", reason: "AA similarity." },
-      { expression: "AX/CX = XD/XB  (or AX/DX = CX/BX depending on the pair drawn)", reason: "Corresponding sides of similar triangles." },
-      { expression: "AX · XB = CX · XD", reason: "Cross-multiply; the same identity follows from the other diagonal pair." },
+      { expression: "∠AXC = ∠DXB", reason: "Vertically opposite angles at the X-shaped crossing." },
+      { expression: "∠ACX = ∠DBX", reason: "Both are angles in the same segment standing on arc AD." },
+      { expression: "△AXC ∼ △DXB", reason: "AA similarity (two pairs of equal angles). Matching corners: A↔D, X↔X, C↔B." },
+      { expression: "a/d = c/b   (AX/DX = CX/BX)", reason: "Corresponding sides of similar triangles are proportional." },
+      { expression: "a · b = c · d   (AX · XB = CX · XD)", reason: "Cross-multiply a/d = c/b." },
     ],
-    result: "Each chord is cut into two segments whose products match.",
+    result: "Each chord is cut into two segments whose products match: a·b = c·d.",
     assumptions: "The intersection X lies inside the circle on both chords.",
-    diagram: { description: "Two chords cross at X; similar triangles give the product rule.", svg: chordsSvg },
+    diagram: { description: "Two chords cross at X; similar triangles △AXC ∼ △DXB give the product rule a·b = c·d.", svg: chordsSvg },
+  },
+  {
+    id: "two-secants",
+    title: "Why two secants from one external point obey PA·PB = PC·PD",
+    equation: "a · b = c · d  (PA · PB = PC · PD)",
+    startingPoint: "From external P, one secant meets the circle at near A then far B and another at near C then far D. Write a = PA, b = PB, c = PC, d = PD and draw chords AD and CB.",
+    steps: [
+      { expression: "∠PAD = ∠PCB", reason: "Angles in the same segment standing on arc AD." },
+      { expression: "∠APD = ∠CPB", reason: "Common angle at P (the angle between the two secants)." },
+      { expression: "△PAD ∼ △PCB", reason: "AA similarity." },
+      { expression: "a/c = d/b   (PA/PC = PD/PB)", reason: "Corresponding sides of similar triangles are proportional." },
+      { expression: "a · b = c · d   (PA · PB = PC · PD)", reason: "Cross-multiply the proportion." },
+    ],
+    result: "The product of whole secant × external part is the same for both secants — the power of P.",
+    assumptions: "P lies outside the circle; each line through P meets the circle twice.",
+    diagram: { description: "Two secants from P cut the circle at A,B and C,D; △PAD ∼ △PCB gives a·b = c·d.", svg: twoSecSvg },
   },
   {
     id: "circle-basics",

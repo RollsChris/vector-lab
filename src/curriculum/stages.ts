@@ -44,6 +44,7 @@ export const STAGES: readonly CurriculumStage[] = [
       "geometry",
       "triangle-theorems",
       "quadrilaterals",
+      "circle-glossary",
       "circle-theorems",
       "circle-calculations",
       "volume",

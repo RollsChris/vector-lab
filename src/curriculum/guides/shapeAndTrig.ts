@@ -170,6 +170,64 @@ export const SHAPE_AND_TRIG_GUIDES: readonly LessonGuide[] = [
       "Click Square, Rectangle, Rhombus and Kite in turn with Diagonals switched on. Compare Equal length, Bisect each other and Cross at 90°, then drag one corner and watch the Classification change.",
   },
   {
+    id: "circle-glossary",
+    plainEnglish:
+      "This lesson is a picture dictionary for circle words. Tap a term and the diagram shows only that idea, so names stop getting mixed up.",
+    objectives: [
+      "name the centre, radius, diameter, circumference, chord and arc on a diagram",
+      "distinguish a sector from an area segment and state segment = sector − triangle",
+      "distinguish an area segment from angles in the same segment",
+      "identify a central angle, an inscribed angle, a tangent and a secant",
+      "state the three power-of-a-point product rules in words",
+    ],
+    whyItMatters:
+      "Every circle theorem and calculation reuses these names. Mixing segment (area) with same segment (angles), or chord with arc, is the usual reason a proof or formula feels wrong.",
+    keyIdea:
+      "One diagram per word. If two English phrases sound alike, they get separate entries with different pictures.",
+    workedExample: {
+      prompt:
+        "A circle has centre O. Chord AB cuts off a curved cap. Point C sits on the major arc. Name the sector, the area segment, and which angles would be equal by the same-segment rule for chord AB.",
+      steps: [
+        "Sector OAB is the pizza slice bounded by radii OA, OB and arc AB.",
+        "The area segment is the cap between chord AB and arc AB — sector OAB minus triangle OAB.",
+        "Angles in the same segment standing on arc AB (for example ∠ACB with another point on the same major arc) are equal; that rule is about angles, not the area of the cap.",
+        "So the curved cap is the area segment; equal rim angles on the same side of AB are the same-segment theorem.",
+      ],
+      answer:
+        "Sector OAB is the slice; the area segment is the cap beyond chord AB; same-segment angles are equal inscribed angles standing on arc AB.",
+    },
+    pitfalls: [
+      "Calling the area cap a sector → the sector includes the triangular part to the centre; the segment is only the cap.",
+      "Treating “same segment” as the area formula → same segment is an angle theorem on a shared arc.",
+      "Using chord length when the question asks for arc length → the chord is straight; the arc follows the rim and is longer.",
+      "Calling every line through the circle a tangent → a tangent touches once; a secant cuts twice.",
+    ],
+    checks: [
+      {
+        question: "What is the difference between a chord and an arc joining the same two points?",
+        answer:
+          "The chord is the straight segment between the points. The arc is the curved path along the circle between them. The arc is longer except in the limit of a zero angle.",
+      },
+      {
+        question: "How do you get the area of a minor segment from a sector?",
+        answer:
+          "segment = sector − triangle. The triangle uses the two radii and the chord; its area is ½r²sinθ.",
+      },
+      {
+        question: "What does “angles in the same segment” claim?",
+        answer:
+          "Inscribed angles that stand on the same arc (vertices on the same side of the chord) are equal.",
+      },
+      {
+        question: "State the intersecting-chords product rule.",
+        answer:
+          "If chords AB and CD meet at X inside the circle, then AX · XB = CX · XD.",
+      },
+    ],
+    tryThis:
+      "Open Segment (area), then Angles in the same segment, and say aloud what is shaded in each diagram. Drag B on Central angle and Sector to watch the same θ control both pictures.",
+  },
+  {
     id: "circle-theorems",
     plainEnglish:
       "Points and straight lines placed around a circle create angle patterns that never change. Move the points to see the same promises hold.",
@@ -177,13 +235,13 @@ export const SHAPE_AND_TRIG_GUIDES: readonly LessonGuide[] = [
       "calculate edge angles from the related centre angle or same-segment rule",
       "prove semicircle and cyclic-quad angle facts, including the exterior case",
       "apply the alternate-segment theorem with a tangent and chord",
-      "explain tangent ⟂ radius, equal tangents and the tangent–secant power rule",
-      "use chord-bisector and intersecting-chords product properties",
+      "explain tangent ⟂ radius, equal tangents, and the power-of-a-point rules a·b = c·d and t² = a·b",
+      "use the chord-bisector property",
     ],
     whyItMatters:
       "These rules are used to set out circular roads, check wheel and bearing geometry, and solve angle constraints in mechanical and architectural drawings.",
     keyIdea:
-      "The same arc controls every angle that looks at it, so one measured angle unlocks several others.",
+      "The same arc controls every angle that looks at it, and every line through a fixed point cuts a circle into segments whose products match (power of a point).",
     workedExample: {
       prompt:
         "Points A and B lie on a circle with centre O. The angle ∠AOB is 124°, and point P lies on the remaining arc. Find ∠APB.",
@@ -218,9 +276,15 @@ export const SHAPE_AND_TRIG_GUIDES: readonly LessonGuide[] = [
         answer:
           "The other tangent is also 7.4 units because tangents drawn from the same external point have equal lengths.",
       },
+      {
+        question:
+          "Two chords cross inside a circle at X with AX = 3, XB = 8 and CX = 4. Find XD. Separately, a tangent from external P has PA = 4 and PB = 9 on a secant; find PT.",
+        answer:
+          "Intersecting chords: AX · XB = CX · XD ⇒ 3 × 8 = 4 × XD ⇒ XD = 6. Tangent–secant: PT² = PA · PB = 4 × 9 = 36 ⇒ PT = 6.",
+      },
     ],
     tryThis:
-      "Choose Angle at centre = 2× and watch the green check stay on while centre ÷ edge is 2. Then open Alternate segment and drag C across chord AB to see the check flip when you leave the alternate segment. Finish on Intersecting chords and confirm AX·XB = CX·XD.",
+      "Open Secants & power → Intersecting chords and confirm a·b = c·d while you drag A–D. Then open Two secants: PA·PB = PC·PD and drag P so both products stay equal. Finish on Tangent–secant and watch PT² track PA · PB.",
   },
   {
     id: "circle-calculations",

@@ -22,15 +22,17 @@ type Mode =
   | "tangent"
   | "twotangents"
   | "tansec"
+  | "twosec"
   | "bitangents"
   | "chord"
   | "chords";
 
 type HandleKind = "circle" | "external" | "centre2" | "radius2" | "none";
+type ModeGroup = "Angles" | "Tangents" | "Secants & power" | "Chords";
 
 interface ModeCfg {
   label: string;
-  group: "Angles" | "Tangents" | "Chords";
+  group: ModeGroup;
   handles: HandleKind[];
   init: number[]; // degrees for circle handles (index-aligned)
   ext?: [number, number];
@@ -102,12 +104,20 @@ const MODES: Record<Mode, ModeCfg> = {
     hint: "Drag external point P. The two tangent lengths from P stay equal.",
   },
   tansec: {
-    label: "Tangent–secant (power)",
-    group: "Tangents",
+    label: "Tangent–secant: PT² = PA·PB",
+    group: "Secants & power",
     handles: ["external", "circle", "none", "none"],
-    init: [40],
+    init: [0, 40],
     ext: [6.0, 1.8],
-    hint: "Drag P and A. Green chords TA/TB form the similar triangles behind PT² = PA · PB.",
+    hint: "Drag external P or point A on the circle. The product rule is PT² = PA · PB.",
+  },
+  twosec: {
+    label: "Two secants: PA·PB = PC·PD",
+    group: "Secants & power",
+    handles: ["external", "circle", "circle", "none"],
+    init: [0, 35, 140],
+    ext: [6.4, 0.2],
+    hint: "Drag P, A or C. Two secants from P give the product rule PA·PB = PC·PD.",
   },
   bitangents: {
     label: "Common tangents (two circles)",
@@ -127,11 +137,11 @@ const MODES: Record<Mode, ModeCfg> = {
     hint: "Drag A and B. The perpendicular from O always hits the midpoint of AB.",
   },
   chords: {
-    label: "Intersecting chords",
-    group: "Chords",
+    label: "Intersecting chords: a·b = c·d",
+    group: "Secants & power",
     handles: ["circle", "circle", "circle", "circle"],
     init: [200, 20, 110, 290],
-    hint: "Chords AB and CD cross inside the circle at X. AX·XB = CX·XD.",
+    hint: "Chords AB and CD cross inside at X. If a=AX, b=XB, c=CX, d=XD then a·b = c·d.",
   },
 };
 
@@ -144,8 +154,9 @@ const MODE_ORDER: Mode[] = [
   "altseg",
   "tangent",
   "twotangents",
-  "tansec",
   "bitangents",
+  "tansec",
+  "twosec",
   "chord",
   "chords",
 ];
@@ -164,7 +175,8 @@ const CARC = 0x388bfd;
  * Pick a theorem and drag the points around the circle to see it hold on every
  * configuration. Covers centre/edge angles, same segment, Thales, cyclic quads
  * (interior and exterior), alternate segment, tangent ⟂ radius, equal tangents,
- * tangent–secant power, common tangents, chord bisector, and intersecting chords.
+ * common tangents, the full power-of-a-point family (intersecting chords,
+ * tangent–secant, two secants), and the chord bisector.
  */
 export class CircleTheoremsLesson implements Lesson {
   readonly id = "circle-theorems";
@@ -172,7 +184,7 @@ export class CircleTheoremsLesson implements Lesson {
   readonly blurb = "Drag points, verify the theorems";
   readonly category = "Shape" as const;
   readonly difficulty = "Foundation" as const;
-  readonly prerequisites = ["triangle-theorems"] as const;
+  readonly prerequisites = ["triangle-theorems", "circle-glossary"] as const;
 
   private setInfo!: (html: string) => void;
   private viewport?: Viewport;
@@ -318,8 +330,9 @@ export class CircleTheoremsLesson implements Lesson {
       case "altseg": html = this.drawAltSeg(); break;
       case "tangent": html = this.drawTangent(); break;
       case "twotangents": html = this.drawTwoTangents(); break;
-      case "tansec": html = this.drawTanSec(); break;
       case "bitangents": html = this.drawBitangents(); break;
+      case "tansec": html = this.drawTanSec(); break;
+      case "twosec": html = this.drawTwoSecants(); break;
       case "chord": html = this.drawChord(); break;
       case "chords": html = this.drawIntersectChords(); break;
     }
@@ -588,23 +601,11 @@ export class CircleTheoremsLesson implements Lesson {
   }
 
   private drawTanSec(): string {
+    // Handle 0 = external P, handle 1 = circle steer point for the secant.
     const P = this.ext.clone();
-    const Ahandle = this.onCircle(0);
+    const Ahandle = this.onCircle(1);
     const secDir = Ahandle.clone().sub(P);
     const hits = lineCircleHits(P, secDir, CENTRE, R);
-
-    let A: THREE.Vector3;
-    let B: THREE.Vector3;
-    if (hits && hits.length === 2) {
-      hits.sort((u, v) => u.distanceTo(P) - v.distanceTo(P));
-      A = hits[0];
-      B = hits[1];
-      this.angles[0] = Math.atan2(A.y - CENTRE.y, A.x - CENTRE.x);
-      this.handles[0].position.copy(A);
-    } else {
-      A = Ahandle;
-      B = Ahandle.clone();
-    }
 
     const d = P.distanceTo(CENTRE);
     const base = Math.atan2(P.y - CENTRE.y, P.x - CENTRE.x);
@@ -612,57 +613,220 @@ export class CircleTheoremsLesson implements Lesson {
     const T = new THREE.Vector3(CENTRE.x + R * Math.cos(base + off), CENTRE.y + R * Math.sin(base + off), 0);
 
     this.line([P, T], CORG);
-    if (hits) {
-      this.line([P, B.clone().addScaledVector(B.clone().sub(P).normalize(), 0.5)], CBLUE);
-      // Chords TA and TB — sides of △PTA and △PBT in the similar-triangle proof.
-      this.line([T, A], CGRN);
-      this.line([T, B], CGRN);
-      this.dynamic.add(this.angleArc(T, P, A, 0.55, CORG));
-      this.dynamic.add(this.angleArc(B, P, T, 0.55, CGRN));
-      this.dynamic.add(this.dot(A, CBLUE));
-      this.dynamic.add(this.dot(B, CBLUE));
-      this.tag(A, "A"); this.tag(B, "B");
-      const aA = Math.atan2(A.y, A.x), aB = Math.atan2(B.y, B.x);
-      this.highlightArc(aA, signedSweep(aA, aB), CARC);
-    }
     this.line([CENTRE, T], CPUR);
     this.dynamic.add(this.rightAngleMark(T, CENTRE, P, CRED));
     this.tag(P, "P"); this.tag(T, "T"); this.tag(CENTRE, "O", 0x8b949e);
+    this.segmentLabel(P, T, "t = PT", CORG);
+
+    if (!hits || hits.length !== 2) {
+      this.line([P, Ahandle], CBLUE);
+      return `<h3>Tangent–secant theorem ${derivationButton("tangent-secant")}</h3>
+        ${this.powerFamilyNote("tansec")}
+        <p>From external <b>P</b> the orange line is a <b>tangent</b> (touches once, at <b>T</b>).
+        The blue line needs to be a <b>secant</b> — drag <b>P</b> or <b>A</b> until it cuts the
+        circle twice.</p>
+        <div class="readout"><div><span>secant</span> <b>not ready</b></div></div>
+        ${checkChip(false, "secant needs two intersections — move P or A")}`;
+    }
+
+    hits.sort((u, v) => u.distanceTo(P) - v.distanceTo(P));
+    const A = hits[0];
+    const B = hits[1];
+    this.angles[1] = Math.atan2(A.y - CENTRE.y, A.x - CENTRE.x);
+    this.handles[1].position.copy(A);
+
+    this.line([P, B.clone().addScaledVector(B.clone().sub(P).normalize(), 0.5)], CBLUE);
+    // Green chords TA and TB — the extra sides that make △PTA and △PBT.
+    this.line([T, A], CGRN);
+    this.line([T, B], CGRN);
+    // Alt-segment pair: ∠PTA (tangent–chord) and ∠PBT (in the alternate segment).
+    this.dynamic.add(this.angleArc(T, P, A, 0.55, CORG));
+    this.dynamic.add(this.angleArc(B, P, T, 0.55, CGRN));
+    // Common angle at P between the tangent and the secant.
+    this.dynamic.add(this.angleArc(P, T, A, 0.7, CYEL));
+    this.dynamic.add(this.dot(A, CBLUE));
+    this.dynamic.add(this.dot(B, CBLUE));
+    this.tag(A, "A"); this.tag(B, "B");
+    this.segmentLabel(P, A, "a = PA", CBLUE);
+    this.segmentLabel(P, B, "b = PB", CBLUE, 0.65);
+    const aA = Math.atan2(A.y - CENTRE.y, A.x - CENTRE.x);
+    const aB = Math.atan2(B.y - CENTRE.y, B.x - CENTRE.x);
+    // Arc AB is the one "standing on" chord TA from the alternate-segment side.
+    this.highlightArc(aA, signedSweep(aA, aB), CARC);
 
     const pt = P.distanceTo(T);
     const pa = P.distanceTo(A);
     const pb = P.distanceTo(B);
     const lhs = pt * pt;
     const rhs = pa * pb;
-    const ok = !!hits && Math.abs(lhs - rhs) < 0.15;
+    const ok = Math.abs(lhs - rhs) < 0.15;
 
-    let angleRows = "";
-    let angleChip = "";
-    if (hits) {
-      const angPTA = angleAt(T, P, A);
-      const angPBT = angleAt(B, P, T);
-      const anglesMatch = Math.abs(angPTA - angPBT) < EPS_ANGLE;
-      angleRows = `
+    // △PTA ∼ △PBT with P↔P, T↔B, A↔T ⇒ PT/PB = PA/PT.
+    const angPTA = angleAt(T, P, A);
+    const angPBT = angleAt(B, P, T);
+    const angTPA = angleAt(P, T, A);
+    const altOk = Math.abs(angPTA - angPBT) < EPS_ANGLE;
+    const ratioLeft = pb > 1e-9 ? pt / pb : NaN;
+    const ratioRight = pt > 1e-9 ? pa / pt : NaN;
+    const ratioOk = Number.isFinite(ratioLeft) && Number.isFinite(ratioRight)
+      && Math.abs(ratioLeft - ratioRight) < 0.05;
+
+    return `<h3>Tangent–secant theorem ${derivationButton("tangent-secant")}</h3>
+      ${this.powerFamilyNote("tansec")}
+      <p><b>What you are looking at.</b> From external yellow <b>P</b> two lines leave:</p>
+      <ul>
+        <li>orange <b>tangent</b> — touches the circle once, at <b>T</b>; length <b>t = PT</b></li>
+        <li>blue <b>secant</b> — cuts at near <b>A</b> then far <b>B</b>; lengths
+        <b>a = PA</b> (external part) and <b>b = PB</b> (whole secant)</li>
+      </ul>
+      <p>The rule is <b>t² = a · b</b>, i.e. <b>PT² = PA · PB</b>. The square on the tangent
+      replaces a second product because the tangent meets the circle only once. Here is why.</p>
+
+      <ol class="deriv">
+        <li><b class="step-title">Build two triangles</b>
+        Draw the green chords <b>TA</b> and <b>TB</b>. You now have
+        <b>△PTA</b> (corners P, T, A) and the larger <b>△PBT</b> (corners P, B, T).</li>
+        <li><b class="step-title">Match 1 — alternate segment</b>
+        ∠PTA is the angle between the tangent and chord <b>TA</b>. ∠PBT sits in the
+        <em>other</em> segment cut off by TA (the one not next to the tangent angle).
+        Alternate-segment theorem: those two angles are equal.
+        Measured: ∠PTA = <b>${degStr(angPTA)}</b>, ∠PBT = <b>${degStr(angPBT)}</b>.</li>
+        <li><b class="step-title">Match 2 — shared angle at P</b>
+        Both triangles use the yellow angle between the tangent and the secant.
+        Same corner, same two rays, so ∠TPA = ∠BPT automatically.
+        Measured: ∠ at P = <b>${degStr(angTPA)}</b>.</li>
+        <li><b class="step-title">Same shape</b>
+        Two pairs of equal angles mean the triangles are <em>similar</em>:
+        <b>△PTA ∼ △PBT</b>.
+        Matched corners: <b>P↔P</b>, <b>T↔B</b>, <b>A↔T</b>.</li>
+        <li><b class="step-title">Matching sides scale by the same factor</b>
+        Sides opposite matched corners are proportional:
+        <b>PT / PB = PA / PT</b>, i.e. <b>t / b = a / t</b>.
+        Live values: t/b = <b>${Number.isFinite(ratioLeft) ? ratioLeft.toFixed(3) : "—"}</b>,
+        a/t = <b>${Number.isFinite(ratioRight) ? ratioRight.toFixed(3) : "—"}</b>.</li>
+        <li><b class="step-title">Cross-multiply to finish</b>
+        From t/b = a/t you get <b>t · t = a · b</b>, which is written
+        <b>PT² = PA · PB</b>. The repeated t is why a square appears — the tangent
+        only gives one length, used twice.</li>
+      </ol>
+
+      <p class="course-hint"><b>In one line:</b> green chords make two similar triangles;
+      similarity forces t/b = a/t; cross-multiplying is the power rule with a square on t.</p>
+
+      <p class="region-identity"><b>t² = a · b</b> &nbsp;→&nbsp; <b>PT² = PA · PB</b></p>
+      <div class="readout">
+        <div><span>t² = PT²</span> <b>${lhs.toFixed(2)}</b></div>
+        <div><span>a · b = PA · PB</span> <b>${rhs.toFixed(2)}</b></div>
+        <div><span>t / b = PT / PB</span> <b>${pt.toFixed(2)} / ${pb.toFixed(2)}</b></div>
+        <div><span>a / t = PA / PT</span> <b>${pa.toFixed(2)} / ${pt.toFixed(2)}</b></div>
         <div><span>∠PTA</span> <b>${degStr(angPTA)}</b></div>
-        <div><span>∠PBT</span> <b>${degStr(angPBT)}</b></div>`;
-      angleChip = checkChip(
-        anglesMatch,
-        anglesMatch ? "∠PTA = ∠PBT (alt. segment) → △PTA ∼ △PBT" : "∠PTA vs ∠PBT",
-      );
+        <div><span>∠PBT</span> <b>${degStr(angPBT)}</b></div>
+        <div><span>∠ at P</span> <b>${degStr(angTPA)}</b></div>
+      </div>
+      ${checkChip(altOk, "∠PTA = ∠PBT (alternate segment on chord TA)")}
+      ${checkChip(true, "∠TPA = ∠BPT (shared angle at P)")}
+      ${checkChip(ratioOk, "t/b = a/t (side ratios from similar triangles)")}
+      ${checkChip(ok, "PT² = PA · PB  (the product rule)")}`;
+  }
+
+  /**
+   * Two secants from an external point: PA·PB = PC·PD.
+   * Handle 0 = P, handle 1 steers secant PAB, handle 2 steers secant PCD.
+   */
+  private drawTwoSecants(): string {
+    const P = this.ext.clone();
+    const steerA = this.onCircle(1);
+    const steerC = this.onCircle(2);
+    const hitsAB = lineCircleHits(P, steerA.clone().sub(P), CENTRE, R);
+    const hitsCD = lineCircleHits(P, steerC.clone().sub(P), CENTRE, R);
+
+    const snapHits = (
+      hits: THREE.Vector3[] | null,
+      angleIndex: number,
+      handleIndex: number,
+    ): [THREE.Vector3, THREE.Vector3] | null => {
+      if (!hits || hits.length !== 2) return null;
+      hits.sort((u, v) => u.distanceTo(P) - v.distanceTo(P));
+      const near = hits[0];
+      const far = hits[1];
+      this.angles[angleIndex] = Math.atan2(near.y - CENTRE.y, near.x - CENTRE.x);
+      this.handles[handleIndex].position.copy(near);
+      return [near, far];
+    };
+
+    const ab = snapHits(hitsAB, 1, 1);
+    const cd = snapHits(hitsCD, 2, 2);
+
+    this.tag(P, "P");
+    this.tag(CENTRE, "O", 0x8b949e);
+
+    if (!ab || !cd) {
+      this.line([P, steerA], CBLUE);
+      this.line([P, steerC], CGRN);
+      return `<h3>Two-secants theorem ${derivationButton("two-secants")}</h3>
+        ${this.powerFamilyNote("twosec")}
+        <p>From external <b>P</b>, each secant must cut the circle twice. Drag <b>P</b>,
+        <b>A</b> or <b>C</b> until both lines cross the circle.</p>
+        <div class="readout"><div><span>secants</span> <b>${ab ? 1 : 0} of 2 ready</b></div></div>
+        ${checkChip(false, "need two full secants from P")}`;
     }
 
-    return `<h3>Tangent–secant theorem (power of a point) ${derivationButton("tangent-secant")}</h3>
-      <p>From external <b>P</b>: tangent touches at <b>T</b>, secant cuts at <b>A</b> then <b>B</b>.
-      Green chords <b>TA</b> and <b>TB</b> make △PTA and △PBT — similar by alternate segment + shared
-      ∠P, which forces <b>PT² = PA · PB</b>. Drag P or A to steer the secant.</p>
+    const [A, B] = ab;
+    const [C, D] = cd;
+
+    // Draw both secants past the far points.
+    this.line([P, B.clone().addScaledVector(B.clone().sub(P).normalize(), 0.45)], CBLUE);
+    this.line([P, D.clone().addScaledVector(D.clone().sub(P).normalize(), 0.45)], CGRN);
+    this.dynamic.add(this.dot(A, CBLUE));
+    this.dynamic.add(this.dot(B, CBLUE));
+    this.dynamic.add(this.dot(C, CGRN));
+    this.dynamic.add(this.dot(D, CGRN));
+    this.tag(A, "A"); this.tag(B, "B"); this.tag(C, "C"); this.tag(D, "D");
+
+    this.segmentLabel(P, A, "a = PA", CBLUE);
+    this.segmentLabel(P, B, "b = PB", CBLUE, 0.72);
+    this.segmentLabel(P, C, "c = PC", CGRN);
+    this.segmentLabel(P, D, "d = PD", CGRN, 0.72);
+
+    // Proof chords: △PAD ∼ △PCB by shared ∠P and same-segment angles on arc AD.
+    this.line([A, D], CPUR);
+    this.line([C, B], CPUR);
+    this.dynamic.add(this.angleArc(A, P, D, 0.5, CORG));
+    this.dynamic.add(this.angleArc(C, P, B, 0.55, CGRN));
+
+    const aA = Math.atan2(A.y - CENTRE.y, A.x - CENTRE.x);
+    const aD = Math.atan2(D.y - CENTRE.y, D.x - CENTRE.x);
+    this.highlightArc(aA, signedSweep(aA, aD), CARC);
+
+    const pa = P.distanceTo(A), pb = P.distanceTo(B);
+    const pc = P.distanceTo(C), pd = P.distanceTo(D);
+    const lhs = pa * pb;
+    const rhs = pc * pd;
+    const ok = Math.abs(lhs - rhs) < 0.18;
+
+    const angPAD = angleAt(A, P, D);
+    const angPCB = angleAt(C, P, B);
+    const anglesMatch = Math.abs(angPAD - angPCB) < EPS_ANGLE * 2;
+
+    return `<h3>Two-secants theorem ${derivationButton("two-secants")}</h3>
+      ${this.powerFamilyNote("twosec")}
+      <p>From external <b>P</b>, one secant meets the circle at near <b>A</b> then far <b>B</b>,
+      and another at near <b>C</b> then far <b>D</b>. Draw purple chords <b>AD</b> and <b>CB</b>:
+      △PAD ∼ △PCB (shared ∠P + angles in the same segment), so the products match.</p>
+      <p class="region-identity"><b>a · b = c · d</b> &nbsp;→&nbsp; <b>PA · PB = PC · PD</b></p>
       <div class="readout">
-        <div><span>PT²</span> <b>${lhs.toFixed(2)}</b></div>
-        <div><span>PA · PB</span> <b>${rhs.toFixed(2)}</b></div>
-        <div><span>PT / PA / PB</span> <b>${pt.toFixed(2)} / ${pa.toFixed(2)} / ${pb.toFixed(2)}</b></div>
-        ${angleRows}
+        <div><span>a · b = PA · PB</span> <b>${lhs.toFixed(2)}</b></div>
+        <div><span>c · d = PC · PD</span> <b>${rhs.toFixed(2)}</b></div>
+        <div><span>a / b = PA / PB</span> <b>${pa.toFixed(2)} / ${pb.toFixed(2)}</b></div>
+        <div><span>c / d = PC / PD</span> <b>${pc.toFixed(2)} / ${pd.toFixed(2)}</b></div>
+        <div><span>∠PAD</span> <b>${degStr(angPAD)}</b></div>
+        <div><span>∠PCB</span> <b>${degStr(angPCB)}</b></div>
       </div>
-      ${checkChip(ok, ok ? "PT² = PA · PB" : "secant needs two intersections — move P or A")}
-      ${angleChip}`;
+      ${checkChip(ok, "a·b = c·d  (PA·PB = PC·PD)")}
+      ${checkChip(
+        anglesMatch,
+        anglesMatch ? "∠PAD = ∠PCB → △PAD ∼ △PCB" : "∠PAD vs ∠PCB (same-segment pair)",
+      )}`;
   }
 
   private drawBitangents(): string {
@@ -809,17 +973,111 @@ export class CircleTheoremsLesson implements Lesson {
     const cx = C.distanceTo(X), xd = X.distanceTo(D);
     const lhs = ax * xb, rhs = cx * xd;
     const ok = Math.abs(lhs - rhs) < 0.12;
+    this.segmentLabel(A, X, "a = AX", CBLUE);
+    this.segmentLabel(X, B, "b = XB", CBLUE);
+    this.segmentLabel(C, X, "c = CX", CGRN);
+    this.segmentLabel(X, D, "d = XD", CGRN);
+
+    // Proof chords: join A–C and B–D so △AXC and △DXB appear.
+    this.line([A, C], CPUR);
+    this.line([B, D], CPUR);
+    // Vertically opposite pair at X.
+    this.dynamic.add(this.angleArc(X, A, C, 0.42, CORG));
+    this.dynamic.add(this.angleArc(X, D, B, 0.42, CORG));
+    // Same-segment pair at C and B (both stand on arc AD).
+    this.dynamic.add(this.angleArc(C, A, X, 0.5, CGRN));
+    this.dynamic.add(this.angleArc(B, D, X, 0.5, CGRN));
     this.highlightArc(this.angles[0], signedSweep(this.angles[0], this.angles[1]), CARC);
+
+    const angAXC = angleAt(X, A, C);
+    const angDXB = angleAt(X, D, B);
+    const angACX = angleAt(C, A, X);
+    const angDBX = angleAt(B, D, X);
+    const verticalOk = Math.abs(angAXC - angDXB) < EPS_ANGLE;
+    const segmentOk = Math.abs(angACX - angDBX) < EPS_ANGLE;
+    // From similarity △AXC ∼ △DXB with A↔D, X↔X, C↔B: AX/DX = CX/BX.
+    const ratioLeft = xd > 1e-9 ? ax / xd : NaN;
+    const ratioRight = xb > 1e-9 ? cx / xb : NaN;
+    const ratioOk = Number.isFinite(ratioLeft) && Number.isFinite(ratioRight)
+      && Math.abs(ratioLeft - ratioRight) < 0.05;
+
     return `<h3>Intersecting chords theorem ${derivationButton("intersecting-chords")}</h3>
-      <p>Chords <b>AB</b> and <b>CD</b> meet at <b>X</b> inside the circle.
-      Then <b>AX · XB = CX · XD</b>.</p>
+      ${this.powerFamilyNote("chords")}
+      <p><b>What you are looking at.</b> Two chords cross inside the circle at yellow <b>X</b>:
+      blue <b>AB</b> and green <b>CD</b>. The crossing cuts them into four lengths:</p>
+      <ul>
+        <li><b>a = AX</b> and <b>b = XB</b> — the two pieces of AB</li>
+        <li><b>c = CX</b> and <b>d = XD</b> — the two pieces of CD</li>
+      </ul>
+      <p>The rule is <b>a × b = c × d</b>. Here is the reason, one step at a time.</p>
+
+      <ol class="deriv">
+        <li><b class="step-title">Build two triangles</b>
+        Draw the purple lines <b>AC</b> and <b>BD</b>. You now have
+        <b>△AXC</b> (corners A, X, C) and <b>△DXB</b> (corners D, X, B).</li>
+        <li><b class="step-title">Match 1 — the X angles</b>
+        At the crossing, ∠AXC and ∠DXB sit opposite each other. Opposite angles of an
+        X are always equal (vertically opposite).
+        Measured: ∠AXC = <b>${degStr(angAXC)}</b>, ∠DXB = <b>${degStr(angDXB)}</b>.</li>
+        <li><b class="step-title">Match 2 — the rim angles</b>
+        ∠ACX (at C) and ∠DBX (at B) both look at the same arc <b>AD</b> from the
+        circumference, so they are equal (angles in the same segment).
+        Measured: ∠ACX = <b>${degStr(angACX)}</b>, ∠DBX = <b>${degStr(angDBX)}</b>.</li>
+        <li><b class="step-title">Same shape</b>
+        Two pairs of equal angles mean the triangles are <em>similar</em> — same shape,
+        maybe different size: <b>△AXC ∼ △DXB</b>.
+        Matched corners: <b>A↔D</b>, <b>X↔X</b>, <b>C↔B</b>.</li>
+        <li><b class="step-title">Matching sides scale by the same factor</b>
+        Sides opposite matched corners are proportional:
+        <b>AX / DX = CX / BX</b>, i.e. <b>a / d = c / b</b>.
+        Live values: a/d = <b>${Number.isFinite(ratioLeft) ? ratioLeft.toFixed(3) : "—"}</b>,
+        c/b = <b>${Number.isFinite(ratioRight) ? ratioRight.toFixed(3) : "—"}</b>.</li>
+        <li><b class="step-title">Cross-multiply to finish</b>
+        From a/d = c/b you get <b>a · b = c · d</b>, which is written
+        <b>AX · XB = CX · XD</b>.</li>
+      </ol>
+
+      <p class="course-hint"><b>In one line:</b> the purple lines make two similar triangles;
+      similar triangles force a/d = c/b; cross-multiplying is the product rule.</p>
+
+      <p class="region-identity"><b>a · b = c · d</b> &nbsp;→&nbsp; <b>AX · XB = CX · XD</b></p>
       <div class="readout">
-        <div><span>AX · XB</span> <b>${lhs.toFixed(2)}</b></div>
-        <div><span>CX · XD</span> <b>${rhs.toFixed(2)}</b></div>
-        <div><span>AX / XB</span> <b>${ax.toFixed(2)} / ${xb.toFixed(2)}</b></div>
-        <div><span>CX / XD</span> <b>${cx.toFixed(2)} / ${xd.toFixed(2)}</b></div>
+        <div><span>a · b = AX · XB</span> <b>${lhs.toFixed(2)}</b></div>
+        <div><span>c · d = CX · XD</span> <b>${rhs.toFixed(2)}</b></div>
+        <div><span>a / d = AX / XD</span> <b>${ax.toFixed(2)} / ${xd.toFixed(2)}</b></div>
+        <div><span>c / b = CX / XB</span> <b>${cx.toFixed(2)} / ${xb.toFixed(2)}</b></div>
       </div>
-      ${checkChip(ok, "AX·XB = CX·XD")}`;
+      ${checkChip(verticalOk, "∠AXC = ∠DXB (vertically opposite at X)")}
+      ${checkChip(segmentOk, "∠ACX = ∠DBX (angles in the same segment on arc AD)")}
+      ${checkChip(ratioOk, "a/d = c/b (side ratios from similar triangles)")}
+      ${checkChip(ok, "a·b = c·d  (the product rule)")}`;
+  }
+
+  /** Label a segment at a fraction of the way along from `from` toward `to`. */
+  private segmentLabel(from: THREE.Vector3, to: THREE.Vector3, text: string, color: number, t = 0.5): void {
+    const mid = from.clone().lerp(to, t);
+    const dir = to.clone().sub(from);
+    if (dir.lengthSq() < 1e-8) return;
+    const perp = new THREE.Vector3(-dir.y, dir.x, 0).normalize().multiplyScalar(0.28);
+    // Prefer the offset that points away from the centre so labels stay readable.
+    if (mid.clone().add(perp).distanceTo(CENTRE) < mid.clone().sub(perp).distanceTo(CENTRE)) {
+      perp.negate();
+    }
+    this.arcLabelAt(mid.add(perp), text, color);
+  }
+
+  /** One-liner that ties the three power-of-a-point product rules together. */
+  private powerFamilyNote(active: "chords" | "tansec" | "twosec"): string {
+    const chip = (id: typeof active, label: string): string =>
+      `<button type="button" class="course-btn${id === active ? "" : " ghost"}" data-circle="${id === "chords" ? "chords" : id}" style="font-size:12px">${label}</button>`;
+    return `<div class="power-family">
+      <p><b>Power of a point</b> — three pictures, one idea: products of collinear segments through a point are equal.</p>
+      <div class="course-chapters" style="margin:6px 0 2px">
+        ${chip("chords", "Inside: a·b = c·d")}
+        ${chip("tansec", "Outside + tangent: t² = a·b")}
+        ${chip("twosec", "Outside + two secants: a·b = c·d")}
+      </div>
+    </div>`;
   }
 
   // ---- primitives --------------------------------------------------------
@@ -906,7 +1164,7 @@ export class CircleTheoremsLesson implements Lesson {
   // ---- info panel --------------------------------------------------------
 
   private renderPanel(body: string): void {
-    const groups: Array<"Angles" | "Tangents" | "Chords"> = ["Angles", "Tangents", "Chords"];
+    const groups: ModeGroup[] = ["Angles", "Tangents", "Secants & power", "Chords"];
     const chapters = groups.map((group) => {
       const buttons = MODE_ORDER.filter((m) => MODES[m].group === group)
         .map((m) => {
@@ -924,6 +1182,9 @@ export class CircleTheoremsLesson implements Lesson {
       <p>A handful of rules govern angles and lines in a circle. Pick a theorem, then
       <b>drag the yellow points</b> — the picture and the measured numbers update so you
       can watch the rule hold for every position.</p>
+      <p class="course-hint"><b>Secants &amp; power</b> is the family of product rules
+      <code>a·b = c·d</code> and <code>t² = a·b</code>: intersecting chords inside the circle,
+      a tangent with a secant outside, or two secants outside.</p>
 
       <div class="course">
         <h3>Choose a theorem</h3>

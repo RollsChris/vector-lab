@@ -396,6 +396,7 @@ export class PrimeNumbersLesson implements Lesson {
 
   private disposeGroup(): void {
     this.group.traverse((object) => {
+      if (object instanceof THREE.InstancedMesh) object.dispose();
       const mesh = object as THREE.Mesh;
       mesh.geometry?.dispose();
       const materials = Array.isArray(mesh.material) ? mesh.material : mesh.material ? [mesh.material] : [];

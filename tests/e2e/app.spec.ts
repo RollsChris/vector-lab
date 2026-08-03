@@ -28,6 +28,7 @@ const LESSONS = [
   { id: "geometry", heading: "Geometry" },
   { id: "triangle-theorems", heading: "Triangle Theorems" },
   { id: "quadrilaterals", heading: "Quadrilaterals" },
+  { id: "circle-glossary", heading: "Circle Glossary" },
   { id: "circle-theorems", heading: "Circle Theorems" },
   { id: "circle-calculations", heading: "Circle Geometry & Calculations" },
   { id: "volume", heading: "Volume of Solids" },
@@ -133,11 +134,11 @@ test("app shell supports deep links, lesson search, and keyboard lesson navigati
   await page.keyboard.press("/");
   await expect(page.locator("#lesson-search")).toBeFocused();
   await page.fill("#lesson-search", "shader");
-  await expect(page.locator("#lesson-count")).toHaveText("1 / 52 shown");
-  await expect(page.locator(".nav-item:visible .nav-title")).toHaveText("52 · Shader Playground");
+  await expect(page.locator("#lesson-count")).toHaveText("1 / 53 shown");
+  await expect(page.locator(".nav-item:visible .nav-title")).toHaveText("53 · Shader Playground");
 
   await page.keyboard.press("Escape");
-  await expect(page.locator("#lesson-count")).toHaveText("52 lessons");
+  await expect(page.locator("#lesson-count")).toHaveText("53 lessons");
 
   await page.keyboard.press("]");
   await expect(page.locator("#info h2")).toHaveText("Triangle Theorems");
@@ -154,6 +155,32 @@ test("app shell falls back safely for an unknown lesson hash", async ({ page }) 
   await page.goto("/#not-a-real-lesson");
   await expect(page.locator("#info h2")).toHaveText("Foundation topics");
   await expect(page).toHaveURL(/#foundations$/);
+  expect(errors, errors.join("\n")).toEqual([]);
+});
+
+test("circle glossary labels core terms with distinct diagrams", async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto("/#circle-glossary");
+
+  await expect(page.locator("#info h2")).toHaveText("Circle Glossary");
+  await expect(page.locator("#info")).toContainText("Centre, radius, diameter");
+  await expect(page.locator('[data-glossary-term="segment"]')).toBeVisible();
+  await expect(page.locator('[data-glossary-term="same-segment"]')).toBeVisible();
+
+  await page.locator('[data-glossary-term="segment"]').click();
+  await expect(page.locator("#info")).toContainText("area segment");
+  await expect(page.locator("#info")).toContainText("sector = triangle + segment");
+  await expect(page.locator("#info")).toContainText("Angles in the same segment");
+
+  await page.locator('[data-glossary-term="same-segment"]').click();
+  await expect(page.locator("#info h3")).toHaveText("Angles in the same segment");
+  await expect(page.locator("#info")).toContainText("∠ACD = ∠ABD");
+  await expect(page.locator("#info")).toContainText("segment = sector − triangle");
+
+  await page.locator('[data-glossary-term="power"]').click();
+  await expect(page.locator("#info")).toContainText("AX · XB = CX · XD");
+  await expect(page.locator("#info")).toContainText("PT² = PA · PB");
+
   expect(errors, errors.join("\n")).toEqual([]);
 });
 
@@ -292,10 +319,48 @@ test("circle theorems groups modes and verifies the centre-angle check", async (
 
   await page.locator('[data-circle="chords"]').click();
   await expect(page.locator("#info")).toContainText("Intersecting chords");
-  await expect(page.locator("#info .theorem-check.ok")).toContainText("AX·XB = CX·XD");
+  await expect(page.locator("#info")).toContainText("a · b = c · d");
+  await expect(page.locator("#info .theorem-check.ok").filter({ hasText: "a·b = c·d" })).toBeVisible();
 
   await page.locator('[data-circle="reset"]').click();
-  await expect(page.locator("#info .theorem-check.ok")).toContainText("AX·XB = CX·XD");
+  await expect(page.locator("#info .theorem-check.ok").filter({ hasText: "a·b = c·d" })).toBeVisible();
+
+  expect(errors, errors.join("\n")).toEqual([]);
+});
+
+test("circle theorems power family covers chords, two secants and tangent–secant", async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto("/#circle-theorems");
+
+  await expect(page.locator(".circle-mode-label")).toContainText(["Angles", "Tangents", "Secants & power", "Chords"]);
+
+  await page.getByRole("button", { name: "Intersecting chords: a·b = c·d" }).click();
+  await expect(page.locator("#info")).toContainText("Power of a point");
+  await expect(page.locator("#info")).toContainText("similar triangles");
+  await expect(page.locator("#info .theorem-check.ok").filter({ hasText: "a·b = c·d" })).toBeVisible();
+  await page.locator('[data-derivation="intersecting-chords"]').click();
+  await expect(page.locator("dialog[open]")).toContainText("a · b = c · d");
+  await page.getByRole("button", { name: "Close" }).click();
+
+  await page.getByRole("button", { name: "Two secants: PA·PB = PC·PD" }).click();
+  await expect(page.getByRole("heading", { name: /Two-secants theorem/ })).toBeVisible();
+  await expect(page.locator("#info")).toContainText("PA · PB = PC · PD");
+  await expect(page.locator("#info .theorem-check.ok").filter({ hasText: "a·b = c·d" })).toBeVisible();
+  await page.locator('[data-derivation="two-secants"]').click();
+  await expect(page.locator("dialog[open]")).toContainText("PA · PB = PC · PD");
+  await expect(page.locator("dialog[open] svg")).toBeVisible();
+  await page.getByRole("button", { name: "Close" }).click();
+
+  await page.getByRole("button", { name: "Tangent–secant: PT² = PA·PB" }).click();
+  await expect(page.locator("#info")).toContainText("PT² = PA · PB");
+  await expect(page.locator("#info .theorem-check.ok").first()).toContainText("PT² = PA · PB");
+  await page.locator('[data-derivation="tangent-secant"]').click();
+  await expect(page.locator("dialog[open]")).toContainText("PT² = PA·PB");
+  await page.getByRole("button", { name: "Close" }).click();
+
+  // Jump between power modes from the in-panel family chips.
+  await page.getByRole("button", { name: "Inside: a·b = c·d" }).click();
+  await expect(page.getByRole("heading", { name: /Intersecting chords theorem/ })).toBeVisible();
 
   expect(errors, errors.join("\n")).toEqual([]);
 });
@@ -498,8 +563,37 @@ test("times tables lesson teaches strategies and gives practice feedback", async
     /dozen shown as twelve counters/,
   );
   await expect(page.locator("#info")).toContainText("6 × 7 = 42");
-  await page.getByRole("button", { name: "×9" }).click();
-  await expect(page.locator("#info")).toContainText("9 × 12");
+  await page.locator(".times-table-picker").getByRole("button", { name: "×9", exact: true }).click();
+  await expect(page.locator("#info")).toContainText("9 × 12 = 108");
+  await page.locator('[data-times-action="fact:3"]').click();
+  await expect(page.locator(".times-array-visual svg")).toHaveAttribute(
+    "aria-label",
+    "Array of 3 columns of 9 counters, 27 in total",
+  );
+  await expect(page.locator('[data-times-action="fact:3"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#info")).toContainText("9 × 3 = 27");
+  await page.locator("#times-interesting-facts summary").click();
+  await expect(page.locator("#times-interesting-facts")).toHaveAttribute("open", "");
+  await page.locator('[data-times-action="fact:4"]').click();
+  await expect(page.locator("#times-interesting-facts")).toHaveAttribute("open", "");
+  await page.locator("#times-map-target").fill("18");
+  await page.locator('[data-times-action="map-show"]').click();
+  await expect(page.locator('td[data-highlight="hit"]')).toHaveCount(4);
+  await expect(page.locator("#times-map-summary")).toContainText("2 × 9");
+  await expect(page.locator("#times-map-summary")).toContainText("3 × 6");
+  await page.locator("#times-map-target").fill("13");
+  await page.locator('[data-times-action="map-show"]').click();
+  await expect(page.locator('td[data-highlight="hit"]')).toHaveCount(0);
+  await expect(page.locator("#times-map-summary")).toContainText("does not appear");
+  await page.locator('[data-times-action="map-squares"]').click();
+  await expect(page.locator('td[data-highlight="square"]')).toHaveCount(12);
+  await expect(page.locator('[data-times-action="map-squares"]')).toHaveAttribute("aria-pressed", "true");
+  await page.locator('td[data-times-action="map-cell:4:9"]').click();
+  await expect(page.locator(".times-selected-fact")).toContainText("4 × 9 = 36");
+  await expect(page.locator(".times-array-visual svg")).toHaveAttribute(
+    "aria-label",
+    "Array of 9 columns of 4 counters, 36 in total",
+  );
   await expect(page.locator('button[data-derivation="times-nine"]')).toHaveText("Derive: n × 9 = n × 10 − n");
 
   await page.locator("#times-answer").fill("42");
@@ -562,7 +656,7 @@ test("the sidebar presents the whole curriculum in teaching order", async ({ pag
   ]);
 
   await expect(page.locator(".nav-item .nav-title").evaluateAll((titles) =>
-    titles.slice(0, 26).map((title) => title.textContent?.replace(/^\d+\s*·\s*/, "").trim()),
+    titles.slice(0, 27).map((title) => title.textContent?.replace(/^\d+\s*·\s*/, "").trim()),
   )).resolves.toEqual([
     // Stage 1 — numbers and arithmetic.
     "Foundation topics",
@@ -583,6 +677,7 @@ test("the sidebar presents the whole curriculum in teaching order", async ({ pag
     "Geometry",
     "Triangle Theorems",
     "Quadrilaterals",
+    "Circle Glossary",
     "Circle Theorems",
     "Circle Geometry & Calculations",
     "Volume of Solids",
@@ -616,6 +711,8 @@ test("the sidebar presents the whole curriculum in teaching order", async ({ pag
     ["complex-numbers", "Vectors"],
     ["mersenne-primes", "Powers & Exponential Growth"],
     ["mersenne-primes", "Prime Numbers — Complete Guide"],
+    ["circle-glossary", "Geometry"],
+    ["circle-theorems", "Circle Glossary"],
     ["volume", "Geometry"],
     ["volume", "Circle Geometry & Calculations"],
   ]) {
@@ -3008,11 +3105,11 @@ test("completing a lesson records progress, ticks the sidebar, and advances the 
   const errors = trackErrors(page);
   await page.goto("/#foundations");
 
-  await expect(page.locator("#path-progress")).toContainText("0 of 52 lessons (0%)");
+  await expect(page.locator("#path-progress")).toContainText("0 of 53 lessons (0%)");
 
   await page.getByTestId("mark-complete").click();
   await expect(page.getByTestId("mark-complete")).toContainText("Completed");
-  await expect(page.locator("#path-progress")).toContainText("1 of 52 lessons (2%)");
+  await expect(page.locator("#path-progress")).toContainText("1 of 53 lessons (2%)");
   await expect(page.locator(".nav-item.is-complete .nav-title")).toHaveText("1 · Foundation topics");
   await expect(page.locator('.nav-section[data-stage="stage-numbers"] .nav-section-count')).toHaveText("1/7");
 
@@ -3023,7 +3120,7 @@ test("completing a lesson records progress, ticks the sidebar, and advances the 
 
   // Progress survives a reload and the learner resumes where they left off.
   await page.goto("/");
-  await expect(page.locator("#path-progress")).toContainText("1 of 52 lessons (2%)");
+  await expect(page.locator("#path-progress")).toContainText("1 of 53 lessons (2%)");
   await expect(page.locator("#info h2")).toHaveText("Number Sense & Fractions");
 
   expect(errors, errors.join("\n")).toEqual([]);
