@@ -135,11 +135,11 @@ test("app shell supports deep links, lesson search, and keyboard lesson navigati
   await page.keyboard.press("/");
   await expect(page.locator("#lesson-search")).toBeFocused();
   await page.fill("#lesson-search", "shader");
-  await expect(page.locator("#lesson-count")).toHaveText("1 / 53 shown");
-  await expect(page.locator(".nav-item:visible .nav-title")).toHaveText("53 · Shader Playground");
+  await expect(page.locator("#lesson-count")).toHaveText("1 / 54 shown");
+  await expect(page.locator(".nav-item:visible .nav-title")).toHaveText("54 · Shader Playground");
 
   await page.keyboard.press("Escape");
-  await expect(page.locator("#lesson-count")).toHaveText("53 lessons");
+  await expect(page.locator("#lesson-count")).toHaveText("54 lessons");
 
   await page.keyboard.press("]");
   await expect(page.locator("#info h2")).toHaveText("Triangle Theorems");
@@ -373,7 +373,7 @@ test("circle theorems power family covers chords, two secants and tangent–seca
 
   await page.getByRole("button", { name: "Tangent–secant: PT² = PA·PB" }).click();
   await expect(page.locator("#info")).toContainText("PT² = PA · PB");
-  await expect(page.locator("#info .theorem-check.ok").first()).toContainText("PT² = PA · PB");
+  await expect(page.locator("#info .theorem-check.ok").filter({ hasText: "PT² = PA · PB" })).toBeVisible();
   await page.locator('[data-derivation="tangent-secant"]').click();
   await expect(page.locator("dialog[open]")).toContainText("PT² = PA·PB");
   await page.getByRole("button", { name: "Close" }).click();
@@ -3125,11 +3125,11 @@ test("completing a lesson records progress, ticks the sidebar, and advances the 
   const errors = trackErrors(page);
   await page.goto("/#foundations");
 
-  await expect(page.locator("#path-progress")).toContainText("0 of 53 lessons (0%)");
+  await expect(page.locator("#path-progress")).toContainText("0 of 54 lessons (0%)");
 
   await page.getByTestId("mark-complete").click();
   await expect(page.getByTestId("mark-complete")).toContainText("Completed");
-  await expect(page.locator("#path-progress")).toContainText("1 of 53 lessons (2%)");
+  await expect(page.locator("#path-progress")).toContainText("1 of 54 lessons (2%)");
   await expect(page.locator(".nav-item.is-complete .nav-title")).toHaveText("1 · Foundation topics");
   await expect(page.locator('.nav-section[data-stage="stage-numbers"] .nav-section-count')).toHaveText("1/7");
 
@@ -3140,7 +3140,7 @@ test("completing a lesson records progress, ticks the sidebar, and advances the 
 
   // Progress survives a reload and the learner resumes where they left off.
   await page.goto("/");
-  await expect(page.locator("#path-progress")).toContainText("1 of 53 lessons (2%)");
+  await expect(page.locator("#path-progress")).toContainText("1 of 54 lessons (2%)");
   await expect(page.locator("#info h2")).toHaveText("Number Sense & Fractions");
 
   expect(errors, errors.join("\n")).toEqual([]);
