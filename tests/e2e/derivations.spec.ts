@@ -42,6 +42,7 @@ const LESSONS = [
   { id: "universal-gravitation", heading: "Newton's Universal Gravitation" },
   { id: "moments", heading: "Moments & Torque" },
   { id: "load-paths", heading: "Forces, Angles & Load Paths" },
+  { id: "miter-saw-cuts", heading: "Mitre Saw Cut Planner" },
   { id: "pulleys", heading: "Ropes, Pulleys & Weights" },
   { id: "atwood-machine", heading: "Atwood Machine" },
   { id: "collisions", heading: "Collisions" },

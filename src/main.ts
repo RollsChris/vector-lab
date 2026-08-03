@@ -33,6 +33,7 @@ import { StressStrainLesson } from "./lessons/StressStrainLesson";
 import { PulleysLesson } from "./lessons/PulleysLesson";
 import { AtwoodMachineLesson } from "./lessons/AtwoodMachineLesson";
 import { LoadPathLesson } from "./lessons/LoadPathLesson";
+import { MiterSawCutsLesson } from "./lessons/MiterSawCutsLesson";
 import { PendulumLesson } from "./lessons/PendulumLesson";
 import { ShaderPlaygroundLesson } from "./lessons/ShaderPlaygroundLesson";
 import { GeometryLesson } from "./lessons/GeometryLesson";
@@ -116,6 +117,7 @@ const manager = new LessonManager(
     new UniversalGravitationLesson(),
     new MomentsLesson(),
     new LoadPathLesson(),
+    new MiterSawCutsLesson(),
     new PulleysLesson(),
     new AtwoodMachineLesson(),
     new CollisionsLesson(),

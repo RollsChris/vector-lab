@@ -51,6 +51,7 @@ const LESSONS = [
   { id: "momentum-impulse", heading: "Momentum & Impulse" },
   { id: "universal-gravitation", heading: "Newton's Universal Gravitation" },
   { id: "load-paths", heading: "Forces, Angles & Load Paths" },
+  { id: "miter-saw-cuts", heading: "Mitre Saw Cut Planner" },
   { id: "pulleys", heading: "Ropes, Pulleys & Weights" },
   { id: "atwood-machine", heading: "Atwood Machine" },
   { id: "stress-strain", heading: "Forces · Stress · Strain" },
@@ -133,11 +134,11 @@ test("app shell supports deep links, lesson search, and keyboard lesson navigati
   await page.keyboard.press("/");
   await expect(page.locator("#lesson-search")).toBeFocused();
   await page.fill("#lesson-search", "shader");
-  await expect(page.locator("#lesson-count")).toHaveText("1 / 52 shown");
-  await expect(page.locator(".nav-item:visible .nav-title")).toHaveText("52 · Shader Playground");
+  await expect(page.locator("#lesson-count")).toHaveText("1 / 53 shown");
+  await expect(page.locator(".nav-item:visible .nav-title")).toHaveText("53 · Shader Playground");
 
   await page.keyboard.press("Escape");
-  await expect(page.locator("#lesson-count")).toHaveText("52 lessons");
+  await expect(page.locator("#lesson-count")).toHaveText("53 lessons");
 
   await page.keyboard.press("]");
   await expect(page.locator("#info h2")).toHaveText("Triangle Theorems");
@@ -154,6 +155,25 @@ test("app shell falls back safely for an unknown lesson hash", async ({ page }) 
   await page.goto("/#not-a-real-lesson");
   await expect(page.locator("#info h2")).toHaveText("Foundation topics");
   await expect(page).toHaveURL(/#foundations$/);
+  expect(errors, errors.join("\n")).toEqual([]);
+});
+
+test("miter saw planner recalculates flat and compound cuts", async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto("/#miter-saw-cuts");
+
+  await expect(page.locator("#info h2")).toHaveText("Mitre Saw Cut Planner");
+  await page.locator('[data-miter-input="width"]').fill("100");
+  await page.locator('[data-miter-input="width"]').press("Tab");
+  await page.locator('[data-miter-input="miter"]').fill("45");
+  await page.locator('[data-miter-input="miter"]').press("Tab");
+  await expect(page.locator("#info")).toContainText("141.4 mm");
+  await expect(page.locator("#info")).toContainText("90.0° corner");
+
+  await page.locator('[data-miter-input="bevel"]').fill("30");
+  await page.locator('[data-miter-input="bevel"]').press("Tab");
+  await expect(page.locator("#info")).toContainText("Compound cut");
+  await expect(page.locator("#info")).toContainText("63.4°");
   expect(errors, errors.join("\n")).toEqual([]);
 });
 
@@ -3008,11 +3028,11 @@ test("completing a lesson records progress, ticks the sidebar, and advances the 
   const errors = trackErrors(page);
   await page.goto("/#foundations");
 
-  await expect(page.locator("#path-progress")).toContainText("0 of 52 lessons (0%)");
+  await expect(page.locator("#path-progress")).toContainText("0 of 53 lessons (0%)");
 
   await page.getByTestId("mark-complete").click();
   await expect(page.getByTestId("mark-complete")).toContainText("Completed");
-  await expect(page.locator("#path-progress")).toContainText("1 of 52 lessons (2%)");
+  await expect(page.locator("#path-progress")).toContainText("1 of 53 lessons (2%)");
   await expect(page.locator(".nav-item.is-complete .nav-title")).toHaveText("1 · Foundation topics");
   await expect(page.locator('.nav-section[data-stage="stage-numbers"] .nav-section-count')).toHaveText("1/7");
 
@@ -3023,7 +3043,7 @@ test("completing a lesson records progress, ticks the sidebar, and advances the 
 
   // Progress survives a reload and the learner resumes where they left off.
   await page.goto("/");
-  await expect(page.locator("#path-progress")).toContainText("1 of 52 lessons (2%)");
+  await expect(page.locator("#path-progress")).toContainText("1 of 53 lessons (2%)");
   await expect(page.locator("#info h2")).toHaveText("Number Sense & Fractions");
 
   expect(errors, errors.join("\n")).toEqual([]);
