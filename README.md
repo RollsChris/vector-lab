@@ -7,7 +7,7 @@ instead of pre-rendered video, you orbit, zoom, drag sliders, and type your own 
 
 ## How the learning path works
 
-The 55 lessons are a single ordered path, split into ten stages. Nothing assumes prior
+The 56 lessons are a single ordered path, split into ten stages. Nothing assumes prior
 knowledge: Stage 1 starts at counting and fractions, and Stage 10 ends at maths expressed as
 GPU code.
 
@@ -125,26 +125,31 @@ topic rests on.
 9. **Geometry** — a panel-only formula reference and live calculator tab for common
    geometry: circles (diameter/circumference/area), parallelograms, regular polygons,
    area tools (triangle/rectangle/trapezium), and volume tools (cuboid/cylinder/cone/sphere).
-10. **Triangle Theorems** — drag the three corners (or hit Randomise) and every classic result
+10. **Parallel Lines** — two lines and a transversal with draggable handles. Eight named corner
+    angles update live while theorem modes highlight corresponding, alternate interior/exterior,
+    co-interior, vertically opposite and straight-line pairs. Converses let you tilt line 2 into
+    a non-parallel counterexample; status chips and a hide-then-predict challenge report the live
+    verdict rather than a hard-coded parallel claim.
+11. **Triangle Theorems** — drag the three corners (or hit Randomise) and every classic result
     recomputes live on the shape you drew. Toggle overlays to *see* each theorem: the medians
     meeting at the centroid (2:1), the circumcircle through all three vertices, the incircle,
     the altitudes meeting at the orthocentre, and the Euler line that threads O, G and H. The
     panel checks angle-sum = 180°, the sine and cosine rules, and that three area formulas agree,
     with "real world" notes on where each theorem is used.
-11. **Triangle Transformations** — drag a source triangle, then translate, rotate, reflect or
+12. **Triangle Transformations** — drag a source triangle, then translate, rotate, reflect or
     enlarge it. Animated image construction, corresponding A/A′/B/B′/C/C′ vertices, live
     invariant readouts and a hide-then-predict challenge show exactly what each rule preserves.
-11. **Quadrilaterals** — drag the four corners (or pick a preset) and the shape classifies itself
+13. **Quadrilaterals** — drag the four corners (or pick a preset) and the shape classifies itself
     live: square, rectangle, parallelogram, rhombus, trapezium, kite or a plain quadrilateral.
     The angle sum is always 360° — proven even when the shape goes concave. Turn on the diagonals
     to watch which quadrilaterals have diagonals that are equal, that bisect each other, or that
     cross at right angles, and mark the parallel sides with ticks.
-12. **Circle Theorems** — a switcher through the seven classic circle rules: angle at the centre
+14. **Circle Theorems** — a switcher through the seven classic circle rules: angle at the centre
     is twice the angle at the edge, angles in the same segment, the angle in a semicircle is 90°,
     opposite angles of a cyclic quadrilateral sum to 180°, tangent ⟂ radius, two tangents from a
     point are equal, and the perpendicular from the centre bisects a chord. Drag the coloured
     points and the measured numbers update so you watch each rule hold for every position.
-13. **Conic Sections** — morph a conic through the focus–directrix definition: drag the focus
+15. **Conic Sections** — morph a conic through the focus–directrix definition: drag the focus
     and directrix, tune the eccentricity `e`, and watch the curve become a circle, ellipse,
     parabola or hyperbola while the equation updates.
 
@@ -376,12 +381,13 @@ tests can drive lessons and read runtime state.
 | `src/math/complex.ts` | complex-number operations (add, mul, polar, powers, formatting) |
 | `src/math/physics.ts` | kinematics, projectile motion, RK4, collision helpers |
 | `src/math/pendulum.ts` | pendulum periods (elliptic-integral exact form), RK4 integrator, energy |
+| `src/math/parallelAngles.ts` | two lines + transversal, eight named angles, parallel theorems and converses |
 | `src/lessons/*` | one self-contained lesson each |
 
 ### The curriculum layer
 
 Lesson modules own the interactive scene. Everything a learner needs *around* the scene is
-authored centrally so all 55 lessons read consistently:
+authored centrally so all 56 lessons read consistently:
 
 - **`src/curriculum/stages.ts`** is the single source of truth for teaching order. The
   sidebar grouping, the `[` / `]` shortcuts, the "Next lesson" button and the progress

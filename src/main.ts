@@ -45,6 +45,7 @@ import { MultiplicationDivisionLesson } from "./lessons/MultiplicationDivisionLe
 import { TimesTablesLesson } from "./lessons/TimesTablesLesson";
 import { AlgebraicLawsLesson } from "./lessons/AlgebraicLawsLesson";
 import { VectorsLesson } from "./lessons/VectorsLesson";
+import { ParallelLinesLesson } from "./lessons/ParallelLinesLesson";
 import { TriangleTheoremsLesson } from "./lessons/TriangleTheoremsLesson";
 import { TriangleTransformationsLesson } from "./lessons/TriangleTransformationsLesson";
 import { CircleGlossaryLesson } from "./lessons/CircleGlossaryLesson";
@@ -97,6 +98,7 @@ const manager = new LessonManager(
     new PrimeNumbersLesson(),
     new MersennePrimesLesson(),
     new GeometryLesson(),
+    new ParallelLinesLesson(),
     new TriangleTheoremsLesson(),
     new TriangleTransformationsLesson(),
     new QuadrilateralsLesson(),

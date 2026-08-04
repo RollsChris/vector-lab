@@ -42,6 +42,7 @@ export const STAGES: readonly CurriculumStage[] = [
     goal: "Measure and reason about lines, angles, triangles, circles and curves.",
     lessons: [
       "geometry",
+      "parallel-lines",
       "triangle-theorems",
       "triangle-transformations",
       "quadrilaterals",
