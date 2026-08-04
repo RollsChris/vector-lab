@@ -96,14 +96,13 @@ const COL = {
   line2: 0x7ee787,
   transversal: 0xffa657,
   handle: 0xffd166,
-  source: 0xffd166,
-  pair: 0xd2a8ff,
   dim: 0x6e7681,
   interior: 0x388bfd,
   ok: 0x7ee787,
   bad: 0xff7b72,
   label: 0xe6edf3,
 };
+const PAIR_COLORS = [0x56d4dd, 0xff7b72, 0xf0c674, 0xd2a8ff];
 
 const LINE_HALF = 7.2;
 const ARC_R = 0.72;
@@ -113,7 +112,7 @@ const BOX = { x: 6.4, y: 4.0 };
  * Interactive parallel-lines lesson.
  *
  * Two lines and a transversal with draggable angle handles. Eight named corner
- * angles update live; each theorem mode highlights a source/pair and reports
+ * angles update live; each theorem mode highlights each matched pair in one colour and reports
  * whether the relation holds for the current figure. Converses only claim
  * parallelism when their hypothesis (matching angles) is met.
  */
@@ -439,9 +438,7 @@ export class ParallelLinesLesson implements Lesson {
   private drawAngleArcs(result: ParallelAnglesResult, highlight: AngleId[]): void {
     if (!result.valid || !result.intersection1 || !result.intersection2) return;
     const highlighted = new Set(highlight);
-    const pairs = theoremPairs(this.mode, result);
-    const sourceIds = new Set(pairs.map((p) => p.a));
-    const pairIds = new Set(pairs.map((p) => p.b));
+    const pairColors = this.pairColors(result);
 
     for (const id of allAngleIds()) {
       const corner = id.slice(3) as Corner;
@@ -451,14 +448,11 @@ export class ParallelLinesLesson implements Lesson {
       const active = highlighted.has(id);
       if (this.anglesHidden && !active) continue;
 
-      let color = COL.dim;
-      if (active && sourceIds.has(id)) color = COL.source;
-      else if (active && pairIds.has(id)) color = COL.pair;
-      else if (active) color = COL.source;
+      const color = pairColors.get(id) ?? COL.dim;
 
-      const opacity = active ? 1 : this.anglesHidden ? 0 : 0.35;
+      const opacity = active ? 1 : this.anglesHidden ? 0 : 0.14;
       if (opacity === 0) continue;
-      this.drawCornerArc(centre, lineDir, result.transversalDir, corner, result.angles[id], color, opacity, active ? 0.02 : 0);
+      this.drawCornerArc(centre, lineDir, result.transversalDir, corner, result.angles[id], color, opacity, active ? 0.02 : 0, active);
     }
   }
 
@@ -471,6 +465,7 @@ export class ParallelLinesLesson implements Lesson {
     color: number,
     opacity: number,
     z: number,
+    active: boolean,
   ): void {
     if (!Number.isFinite(measure) || measure < 1e-4) return;
     const lineWest = t.x * lineDir.y - t.y * lineDir.x >= 0 ? lineDir : { x: -lineDir.x, y: -lineDir.y };
@@ -518,6 +513,22 @@ export class ParallelLinesLesson implements Lesson {
         new THREE.Vector3(centre.x + ARC_R * Math.cos(a), centre.y + ARC_R * Math.sin(a), z),
       );
     }
+    const wedge = new THREE.Shape();
+    wedge.moveTo(centre.x, centre.y);
+    pts.forEach((point) => wedge.lineTo(point.x, point.y));
+    wedge.lineTo(centre.x, centre.y);
+    const fill = new THREE.Mesh(
+      new THREE.ShapeGeometry(wedge),
+      new THREE.MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity: active ? 0.28 : 0.018,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+      }),
+    );
+    fill.position.z = z - 0.01;
+    this.dynamic.add(fill);
     this.dynamic.add(
       new THREE.Line(
         new THREE.BufferGeometry().setFromPoints(pts),
@@ -527,10 +538,8 @@ export class ParallelLinesLesson implements Lesson {
   }
 
   private updateAngleLabels(result: ParallelAnglesResult, evalResult: ReturnType<typeof evaluateTheorem>): void {
-    const pairs = theoremPairs(this.mode, result);
-    const sourceIds = new Set(pairs.map((p) => p.a));
-    const pairIds = new Set(pairs.map((p) => p.b));
-    const highlight = new Set<AngleId>([...sourceIds, ...pairIds]);
+    const pairColors = this.pairColors(result);
+    const highlight = new Set<AngleId>(pairColors.keys());
 
     if (!result.valid || !result.intersection1 || !result.intersection2) {
       for (const sprite of this.angleLabels.values()) sprite.visible = false;
@@ -551,25 +560,45 @@ export class ParallelLinesLesson implements Lesson {
         this.writeLabel(sprite, id, text, COL.dim);
         this.positionLabel(sprite, id, result);
         sprite.visible = true;
+        sprite.material.opacity = 1;
+        sprite.material.transparent = true;
         continue;
       }
 
       const deg = formatDegrees(result.angles[id], 1);
-      let color = COL.label;
-      if (active && sourceIds.has(id)) color = COL.source;
-      else if (active && pairIds.has(id)) color = COL.pair;
-      else if (!active) color = COL.dim;
+      const color = pairColors.get(id) ?? COL.dim;
 
-      // Dim non-focus labels slightly by leaving them visible but muted.
       this.writeLabel(sprite, id, deg, color);
       this.positionLabel(sprite, id, result);
       sprite.visible = true;
-      sprite.material.opacity = active ? 1 : 0.55;
+      sprite.material.opacity = active ? 1 : 0.2;
       sprite.material.transparent = true;
     }
 
     // evalResult reserved for future pair-error colouring on labels.
     void evalResult;
+  }
+
+  /** Both ends of a theorem pair share a colour, so paired angles read as one relationship. */
+  private pairColors(result: ParallelAnglesResult): Map<AngleId, number> {
+    const colors = new Map<AngleId, number>();
+    const pairs = theoremPairs(this.mode, result);
+    if (this.mode === "adjacent") {
+      // Adjacent pairs overlap: each corner belongs to two neighbouring pairs, so assigning
+      // per-pair colours would make a shared corner contradict itself. Treat this mode as one
+      // local straight-line family instead of implying a unique pair matching.
+      pairs.forEach((pair) => {
+        colors.set(pair.a, PAIR_COLORS[0]);
+        colors.set(pair.b, PAIR_COLORS[0]);
+      });
+      return colors;
+    }
+    pairs.forEach((pair, index) => {
+      const color = PAIR_COLORS[index % PAIR_COLORS.length];
+      colors.set(pair.a, color);
+      colors.set(pair.b, color);
+    });
+    return colors;
   }
 
   private writeLabel(sprite: THREE.Sprite, id: AngleId, text: string, color: number): void {
@@ -668,8 +697,8 @@ export class ParallelLinesLesson implements Lesson {
     this.setInfo(`
       <h2>Parallel Lines</h2>
       <p>Two lines cut by a transversal make <b>eight angles</b>. Drag the yellow handles to
-      tilt <b>line 2</b> or the <b>transversal</b>. Each theorem mode highlights a source angle
-      and its partner, then checks the relation on the figure you drew. Converses only speak
+      tilt <b>line 2</b> or the <b>transversal</b>. Each matched pair gets one bright colour;
+      unrelated angles fade to grey. Converses only speak
       when their hypothesis (matching angles) is met.</p>
 
       <div class="course">
