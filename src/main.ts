@@ -46,6 +46,7 @@ import { TimesTablesLesson } from "./lessons/TimesTablesLesson";
 import { AlgebraicLawsLesson } from "./lessons/AlgebraicLawsLesson";
 import { VectorsLesson } from "./lessons/VectorsLesson";
 import { TriangleTheoremsLesson } from "./lessons/TriangleTheoremsLesson";
+import { TriangleTransformationsLesson } from "./lessons/TriangleTransformationsLesson";
 import { CircleGlossaryLesson } from "./lessons/CircleGlossaryLesson";
 import { CircleTheoremsLesson } from "./lessons/CircleTheoremsLesson";
 import { CircleCalculationsLesson } from "./lessons/CircleCalculationsLesson";
@@ -97,6 +98,7 @@ const manager = new LessonManager(
     new MersennePrimesLesson(),
     new GeometryLesson(),
     new TriangleTheoremsLesson(),
+    new TriangleTransformationsLesson(),
     new QuadrilateralsLesson(),
     new CircleGlossaryLesson(),
     new CircleTheoremsLesson(),

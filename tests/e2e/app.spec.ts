@@ -27,6 +27,7 @@ const LESSONS = [
   { id: "logarithms", heading: "Logarithms" },
   { id: "geometry", heading: "Geometry" },
   { id: "triangle-theorems", heading: "Triangle Theorems" },
+  { id: "triangle-transformations", heading: "Triangle Transformations" },
   { id: "quadrilaterals", heading: "Quadrilaterals" },
   { id: "circle-glossary", heading: "Circle Glossary" },
   { id: "circle-theorems", heading: "Circle Theorems" },
@@ -135,11 +136,11 @@ test("app shell supports deep links, lesson search, and keyboard lesson navigati
   await page.keyboard.press("/");
   await expect(page.locator("#lesson-search")).toBeFocused();
   await page.fill("#lesson-search", "shader");
-  await expect(page.locator("#lesson-count")).toHaveText("1 / 54 shown");
-  await expect(page.locator(".nav-item:visible .nav-title")).toHaveText("54 · Shader Playground");
+  await expect(page.locator("#lesson-count")).toHaveText("1 / 55 shown");
+  await expect(page.locator(".nav-item:visible .nav-title")).toHaveText("55 · Shader Playground");
 
   await page.keyboard.press("Escape");
-  await expect(page.locator("#lesson-count")).toHaveText("54 lessons");
+  await expect(page.locator("#lesson-count")).toHaveText("55 lessons");
 
   await page.keyboard.press("]");
   await expect(page.locator("#info h2")).toHaveText("Triangle Theorems");
@@ -713,7 +714,7 @@ test("the sidebar presents the whole curriculum in teaching order", async ({ pag
   ]);
 
   await expect(page.locator(".nav-item .nav-title").evaluateAll((titles) =>
-    titles.slice(0, 27).map((title) => title.textContent?.replace(/^\d+\s*·\s*/, "").trim()),
+    titles.slice(0, 28).map((title) => title.textContent?.replace(/^\d+\s*·\s*/, "").trim()),
   )).resolves.toEqual([
     // Stage 1 — numbers and arithmetic.
     "Foundation topics",
@@ -733,6 +734,7 @@ test("the sidebar presents the whole curriculum in teaching order", async ({ pag
     // Stage 3 — shape and space.
     "Geometry",
     "Triangle Theorems",
+    "Triangle Transformations",
     "Quadrilaterals",
     "Circle Glossary",
     "Circle Theorems",
@@ -3162,11 +3164,11 @@ test("completing a lesson records progress, ticks the sidebar, and advances the 
   const errors = trackErrors(page);
   await page.goto("/#foundations");
 
-  await expect(page.locator("#path-progress")).toContainText("0 of 54 lessons (0%)");
+  await expect(page.locator("#path-progress")).toContainText("0 of 55 lessons (0%)");
 
   await page.getByTestId("mark-complete").click();
   await expect(page.getByTestId("mark-complete")).toContainText("Completed");
-  await expect(page.locator("#path-progress")).toContainText("1 of 54 lessons (2%)");
+  await expect(page.locator("#path-progress")).toContainText("1 of 55 lessons (2%)");
   await expect(page.locator(".nav-item.is-complete .nav-title")).toHaveText("1 · Foundation topics");
   await expect(page.locator('.nav-section[data-stage="stage-numbers"] .nav-section-count')).toHaveText("1/7");
 
@@ -3177,7 +3179,7 @@ test("completing a lesson records progress, ticks the sidebar, and advances the 
 
   // Progress survives a reload and the learner resumes where they left off.
   await page.goto("/");
-  await expect(page.locator("#path-progress")).toContainText("1 of 54 lessons (2%)");
+  await expect(page.locator("#path-progress")).toContainText("1 of 55 lessons (2%)");
   await expect(page.locator("#info h2")).toHaveText("Number Sense & Fractions");
 
   expect(errors, errors.join("\n")).toEqual([]);
@@ -3454,5 +3456,30 @@ test("triangle theorems construction plays through by itself and follows a dragg
   expect(await centroidY()).toBeGreaterThan(before);
   expect(await state()).toMatchObject({ done: true });
 
+  expect(errors, errors.join("\n")).toEqual([]);
+});
+
+test("triangle transformations animate and distinguish rigid motion from enlargement", async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto("/#triangle-transformations");
+
+  await expect(page.locator("#xf-rule")).toContainText("translate by (3, 1.5)");
+  await page.getByRole("button", { name: "Rotation" }).click();
+  await expect(page.locator("#xf-rule")).toContainText("rotate 90° anticlockwise");
+  await expect(page.locator("#xf-note")).toContainText("rigid transformation");
+
+  await page.getByRole("button", { name: "Enlargement" }).click();
+  await expect(page.locator("#xf-readout")).toContainText("Scale factor1.5");
+  await expect(page.locator("#xf-note")).toContainText("multiplies area by 1.5² = 2.25");
+
+  await page.getByRole("button", { name: "Hide image" }).click();
+  await expect(page.locator("#xf-verdict")).toContainText("Image hidden");
+  await page.getByRole("button", { name: "Angles match; lengths and area scale" }).click();
+  await expect(page.locator("#xf-verdict")).toContainText("Correct");
+  await page.getByRole("button", { name: "Reveal image" }).click();
+
+  await page.locator("#xf-animate").click();
+  await expect.poll(() => page.locator("#xf-animate").textContent(), { timeout: 4000 })
+    .toContain("Animate this transformation");
   expect(errors, errors.join("\n")).toEqual([]);
 });

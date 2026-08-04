@@ -7,7 +7,7 @@ instead of pre-rendered video, you orbit, zoom, drag sliders, and type your own 
 
 ## How the learning path works
 
-The 51 lessons are a single ordered path, split into ten stages. Nothing assumes prior
+The 55 lessons are a single ordered path, split into ten stages. Nothing assumes prior
 knowledge: Stage 1 starts at counting and fractions, and Stage 10 ends at maths expressed as
 GPU code.
 
@@ -131,6 +131,9 @@ topic rests on.
     the altitudes meeting at the orthocentre, and the Euler line that threads O, G and H. The
     panel checks angle-sum = 180°, the sine and cosine rules, and that three area formulas agree,
     with "real world" notes on where each theorem is used.
+11. **Triangle Transformations** — drag a source triangle, then translate, rotate, reflect or
+    enlarge it. Animated image construction, corresponding A/A′/B/B′/C/C′ vertices, live
+    invariant readouts and a hide-then-predict challenge show exactly what each rule preserves.
 11. **Quadrilaterals** — drag the four corners (or pick a preset) and the shape classifies itself
     live: square, rectangle, parallelogram, rhombus, trapezium, kite or a plain quadrilateral.
     The angle sum is always 360° — proven even when the shape goes concave. Turn on the diagonals
@@ -378,7 +381,7 @@ tests can drive lessons and read runtime state.
 ### The curriculum layer
 
 Lesson modules own the interactive scene. Everything a learner needs *around* the scene is
-authored centrally so all 51 lessons read consistently:
+authored centrally so all 55 lessons read consistently:
 
 - **`src/curriculum/stages.ts`** is the single source of truth for teaching order. The
   sidebar grouping, the `[` / `]` shortcuts, the "Next lesson" button and the progress
