@@ -115,6 +115,58 @@ export const SHAPE_AND_TRIG_GUIDES: readonly LessonGuide[] = [
       "Press Right, then drag vertices A, B and C while watching the angle sum and cosine-rule readouts. Click Animate beside each centre to watch its construction build one step at a time, then drag into an obtuse shape to see which centres move outside.",
   },
   {
+    id: "triangle-transformations",
+    plainEnglish:
+      "A transformation changes where a shape sits or how large it is without losing track of which corner becomes which. Move the triangle and watch its coloured copy follow one clear rule.",
+    objectives: [
+      "translate, rotate, reflect and enlarge a triangle from a stated rule",
+      "match each source vertex with its corresponding image vertex",
+      "identify which transformations preserve lengths, angles and area",
+      "calculate the length and area change from an enlargement scale factor",
+    ],
+    whyItMatters:
+      "Design software moves parts around a drawing, game engines rotate and scale models, and engineers use reflected or enlarged views to communicate exact geometry.",
+    keyIdea:
+      "Every image point comes from the same rule applied to its matching source point. Rigid transformations keep the shape and size; enlargement keeps the shape but changes its scale.",
+    workedExample: {
+      prompt:
+        "Triangle ABC is enlarged by scale factor 1.5 about O. Side AB is 8 units and the area is 12 square units. Find the new side and area.",
+      steps: [
+        "Multiply every length by 1.5 because the scale factor compares image lengths with source lengths.",
+        "A′B′ = 8 × 1.5 = 12 units.",
+        "Area uses two lengths, so it scales by 1.5 × 1.5 = 2.25.",
+        "Image area = 12 × 2.25 = 27 square units.",
+      ],
+      answer:
+        "The image side A′B′ is 12 units and its area is 27 square units. The angles stay equal throughout the enlargement.",
+    },
+    pitfalls: [
+      "Using the scale factor once for area → multiply area by the square of the scale factor.",
+      "Matching A with a nearest image corner → match names and the transformation rule, not screen position.",
+      "Saying reflection changes side lengths → reflection reverses orientation but preserves every length and angle.",
+      "Moving every vertex by a different translation → one translation uses the same horizontal and vertical shift for every point.",
+    ],
+    checks: [
+      {
+        question: "Which transformations preserve all side lengths and area?",
+        answer:
+          "Translation, rotation and reflection preserve every side length, angle and the area. They are rigid transformations, even though reflection reverses the vertex order.",
+      },
+      {
+        question: "A shape is enlarged by scale factor 2. What happens to its area?",
+        answer:
+          "Its area becomes four times as large because area uses two dimensions. Each length doubles, so the area factor is 2 × 2 = 4.",
+      },
+      {
+        question: "What is special about a point on a reflection mirror line?",
+        answer:
+          "It stays in the same place after reflection because its perpendicular distance from the mirror is zero. Every other point lands equally far away on the opposite side.",
+      },
+    ],
+    tryThis:
+      "Drag A, B and C, then choose Rotation and press Animate. Hide the image, predict where A′, B′ and C′ will appear, choose the invariant statement, then reveal the green triangle and compare the dashed correspondence lines.",
+  },
+  {
     id: "quadrilaterals",
     plainEnglish:
       "Four joined corners can make many familiar shapes. Their names come from simple facts about equal sides, square corners and sides that run in the same direction.",
