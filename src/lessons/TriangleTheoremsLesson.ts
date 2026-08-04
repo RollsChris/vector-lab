@@ -130,7 +130,7 @@ export class TriangleTheoremsLesson implements Lesson {
   readonly blurb = "Drag vertices, test the theorems";
   readonly category = "Shape" as const;
   readonly difficulty = "Foundation" as const;
-  readonly prerequisites = ["geometry"] as const;
+  readonly prerequisites = ["geometry", "parallel-lines"] as const;
 
   private setInfo!: (html: string) => void;
   private viewport?: Viewport;

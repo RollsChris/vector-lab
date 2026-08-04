@@ -56,6 +56,60 @@ export const SHAPE_AND_TRIG_GUIDES: readonly LessonGuide[] = [
       "Choose Volume in the Section control and Cuboid / box in the Shape control. Change Length, Width and Height one at a time and compare how the preview, Volume and Surface area respond.",
   },
   {
+    id: "parallel-lines",
+    plainEnglish:
+      "When a third line crosses two others, the eight angles it makes follow a small set of matching rules. Move the lines and watch which matches survive.",
+    objectives: [
+      "identify corresponding, alternate interior, alternate exterior and co-interior angle pairs",
+      "decide whether two lines are parallel from an angle relation on a transversal",
+      "explain why vertically opposite and straight-line angles are not evidence of parallelism",
+      "use the converse of corresponding or alternate interior angles to justify that lines are parallel",
+    ],
+    whyItMatters:
+      "Builders square walls from equal corresponding angles, mapmakers read bearings off transversals, and design software flags non-parallel edges when those angle matches break.",
+    keyIdea:
+      "A transversal creates eight angles; some pairs match exactly when the cut lines are parallel, and the converse lets equal pairs prove parallelism.",
+    workedExample: {
+      prompt:
+        "A transversal crosses lines L1 and L2. A pair of corresponding angles measure 65° and 65°. What can you conclude about L1 and L2?",
+      steps: [
+        "Corresponding angles sit in the same corner position at each crossing of the transversal.",
+        "The converse of the corresponding-angles theorem says: if corresponding angles are equal, then the two lines are parallel.",
+        "Here both readings are 65°, so the corresponding pair is equal.",
+        "Therefore L1 is parallel to L2.",
+      ],
+      answer: "L1 is parallel to L2, by the converse of corresponding angles.",
+    },
+    pitfalls: [
+      "Treating equal vertically opposite angles as proof of parallel lines → vertical angles are equal at every crossing, parallel or not.",
+      "Mixing up co-interior with alternate interior → co-interior angles sit on the same side and sum to 180° when parallel; alternate interior sit on opposite sides and are equal.",
+      "Reading screen “top-left” after rotating the figure → name angles by line and corner relative to the transversal, not by the screen.",
+      "Assuming equal corresponding angles on a sketch without measuring → drag into a non-parallel counterexample and watch the equality break.",
+    ],
+    checks: [
+      {
+        question:
+          "Lines are parallel and a transversal makes a 110° interior angle on one side. What is the co-interior angle on that same side?",
+        answer:
+          "Co-interior angles sum to 180° when the lines are parallel, so the partner is 180° − 110° = 70°.",
+      },
+      {
+        question:
+          "A transversal crosses two lines. Vertically opposite angles at one crossing are equal. Are the lines parallel?",
+        answer:
+          "Not necessarily. Vertically opposite angles are equal at every crossing, so their equality gives no information about whether the lines are parallel.",
+      },
+      {
+        question:
+          "Corresponding angles measure 58° and 64°. What does that tell you?",
+        answer:
+          "Corresponding angles are equal only when the lines are parallel, so a 6° mismatch means the lines are not parallel.",
+      },
+    ],
+    tryThis:
+      "Open Corresponding, press Reset parallel and read the equal pair. Press Make non-parallel and watch the status chips flip. Switch to Converse · corresponding, hide the angles, predict, then reveal.",
+  },
+  {
     id: "triangle-theorems",
     plainEnglish:
       "Three joined corners make a shape whose parts always obey the same dependable rules. Move the corners and watch those rules keep working.",

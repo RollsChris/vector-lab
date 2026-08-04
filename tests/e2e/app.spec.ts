@@ -26,6 +26,7 @@ const LESSONS = [
   { id: "prime-numbers", heading: "Prime Numbers — Complete Guide" },
   { id: "logarithms", heading: "Logarithms" },
   { id: "geometry", heading: "Geometry" },
+  { id: "parallel-lines", heading: "Parallel Lines" },
   { id: "triangle-theorems", heading: "Triangle Theorems" },
   { id: "triangle-transformations", heading: "Triangle Transformations" },
   { id: "quadrilaterals", heading: "Quadrilaterals" },
@@ -136,15 +137,21 @@ test("app shell supports deep links, lesson search, and keyboard lesson navigati
   await page.keyboard.press("/");
   await expect(page.locator("#lesson-search")).toBeFocused();
   await page.fill("#lesson-search", "shader");
-  await expect(page.locator("#lesson-count")).toHaveText("1 / 55 shown");
-  await expect(page.locator(".nav-item:visible .nav-title")).toHaveText("55 · Shader Playground");
+  await expect(page.locator("#lesson-count")).toHaveText("1 / 56 shown");
+  await expect(page.locator(".nav-item:visible .nav-title")).toHaveText("56 · Shader Playground");
 
   await page.keyboard.press("Escape");
-  await expect(page.locator("#lesson-count")).toHaveText("55 lessons");
+  await expect(page.locator("#lesson-count")).toHaveText("56 lessons");
 
+  await page.keyboard.press("]");
+  await expect(page.locator("#info h2")).toHaveText("Parallel Lines");
+  await expect(page).toHaveURL(/#parallel-lines$/);
   await page.keyboard.press("]");
   await expect(page.locator("#info h2")).toHaveText("Triangle Theorems");
   await expect(page).toHaveURL(/#triangle-theorems$/);
+  await page.goBack();
+  await expect(page.locator("#info h2")).toHaveText("Parallel Lines");
+  await expect(page).toHaveURL(/#parallel-lines$/);
   await page.goBack();
   await expect(page.locator("#info h2")).toHaveText("Geometry");
   await expect(page).toHaveURL(/#geometry$/);
@@ -714,7 +721,7 @@ test("the sidebar presents the whole curriculum in teaching order", async ({ pag
   ]);
 
   await expect(page.locator(".nav-item .nav-title").evaluateAll((titles) =>
-    titles.slice(0, 28).map((title) => title.textContent?.replace(/^\d+\s*·\s*/, "").trim()),
+    titles.slice(0, 29).map((title) => title.textContent?.replace(/^\d+\s*·\s*/, "").trim()),
   )).resolves.toEqual([
     // Stage 1 — numbers and arithmetic.
     "Foundation topics",
@@ -733,6 +740,7 @@ test("the sidebar presents the whole curriculum in teaching order", async ({ pag
     "Pascal's Triangle",
     // Stage 3 — shape and space.
     "Geometry",
+    "Parallel Lines",
     "Triangle Theorems",
     "Triangle Transformations",
     "Quadrilaterals",
@@ -3164,11 +3172,11 @@ test("completing a lesson records progress, ticks the sidebar, and advances the 
   const errors = trackErrors(page);
   await page.goto("/#foundations");
 
-  await expect(page.locator("#path-progress")).toContainText("0 of 55 lessons (0%)");
+  await expect(page.locator("#path-progress")).toContainText("0 of 56 lessons (0%)");
 
   await page.getByTestId("mark-complete").click();
   await expect(page.getByTestId("mark-complete")).toContainText("Completed");
-  await expect(page.locator("#path-progress")).toContainText("1 of 55 lessons (2%)");
+  await expect(page.locator("#path-progress")).toContainText("1 of 56 lessons (2%)");
   await expect(page.locator(".nav-item.is-complete .nav-title")).toHaveText("1 · Foundation topics");
   await expect(page.locator('.nav-section[data-stage="stage-numbers"] .nav-section-count')).toHaveText("1/7");
 
@@ -3179,7 +3187,7 @@ test("completing a lesson records progress, ticks the sidebar, and advances the 
 
   // Progress survives a reload and the learner resumes where they left off.
   await page.goto("/");
-  await expect(page.locator("#path-progress")).toContainText("1 of 55 lessons (2%)");
+  await expect(page.locator("#path-progress")).toContainText("1 of 56 lessons (2%)");
   await expect(page.locator("#info h2")).toHaveText("Number Sense & Fractions");
 
   expect(errors, errors.join("\n")).toEqual([]);
@@ -3289,6 +3297,104 @@ test("conversion factor lookup searches, filters and loads rows into the convert
   await expect(page.locator("#conv-result")).toHaveText("3.6 km/h");
 
   expect(errors).toEqual([]);
+});
+
+test("parallel lines modes, converse hypothesis, and predict/reveal", async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto("/#parallel-lines");
+  await expect(page.locator("#info h2")).toHaveText("Parallel Lines");
+
+  // Default figure is parallel with corresponding angles equal.
+  await expect(page.locator('[data-pl-chip="parallel"]')).toContainText("are parallel");
+  await expect(page.locator('[data-pl-chip="relation"]')).toContainText("holds");
+
+  // Mode switch rebuilds the panel but keeps interactive controls.
+  await page.locator('[data-pl="mode:alternate-interior"]').click();
+  await expect(page.locator("#pl-claim")).toContainText("Alternate interior");
+  await expect(page.locator('[data-pl="mode:alternate-interior"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator('[data-pl-chip="relation"]')).toContainText("holds");
+
+  // Converse + non-parallel with unequal angles: hypothesis not met (not a counterexample).
+  await page.locator('[data-pl="mode:converse-corresponding"]').click();
+  await expect(page.locator("#pl-claim")).toContainText("Converse");
+  await page.locator('[data-pl="skew"]').click();
+  await expect(page.locator('[data-pl-chip="parallel"]')).toContainText("are not parallel");
+  await expect(page.locator('[data-pl-chip="converse"]')).toContainText("hypothesis not met");
+  await expect(page.locator('[data-pl-chip="converse"]')).not.toContainText("counterexample");
+
+  // Predict/reveal keeps panel state (no full remount wiping the choice).
+  await page.locator('[data-pl="hide-angles"]').click();
+  await expect(page.locator("#pl-verdict")).toContainText("Angles hidden");
+  await page.locator('[data-pl="predict:fails"]').click();
+  await expect(page.locator("#pl-verdict")).toContainText("Yes");
+  await expect(page.locator("#pl-verdict")).toContainText("fails");
+
+  // Restore parallel and confirm converse supports parallelism again.
+  await page.locator('[data-pl="reset-parallel"]').click();
+  await expect(page.locator('[data-pl-chip="parallel"]')).toContainText("are parallel");
+  await expect(page.locator('[data-pl-chip="converse"]')).toContainText("supports parallelism");
+
+  expect(errors, errors.join("\n")).toEqual([]);
+});
+
+test("parallel lines line-2 drag keeps the intersection pivot", async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto("/#parallel-lines");
+  await expect(page.locator("#info h2")).toHaveText("Parallel Lines");
+
+  const reading = await page.evaluate(() => {
+    const lesson = (window as any).__lab.manager.activeLesson;
+    const before = lesson.figure() as {
+      valid: boolean;
+      intersection2: { x: number; y: number } | null;
+    };
+    const pivot = before.intersection2;
+    if (!pivot) throw new Error("missing intersection2");
+    // Drag line-2 handle to a new point about 2.6 units from the pivot at ~25°.
+    const target = {
+      x: pivot.x + Math.cos(0.45) * 2.6,
+      y: pivot.y + Math.sin(0.45) * 2.6,
+      z: 0,
+    };
+    lesson.onDrag(0, target);
+    const after = lesson.figure() as {
+      valid: boolean;
+      intersection2: { x: number; y: number } | null;
+      parallel: boolean;
+    };
+    const handle = {
+      x: lesson.handles[0].position.x as number,
+      y: lesson.handles[0].position.y as number,
+    };
+    return {
+      before: pivot,
+      after: after.intersection2,
+      valid: after.valid,
+      parallel: after.parallel,
+      handle,
+      target,
+      line2Offset: lesson.line2Offset as number,
+      line2Angle: lesson.line2Angle as number,
+    };
+  });
+
+  expect(reading.valid).toBe(true);
+  expect(reading.after).not.toBeNull();
+  expect(reading.after!.x).toBeCloseTo(reading.before.x, 5);
+  expect(reading.after!.y).toBeCloseTo(reading.before.y, 5);
+  // Handle stays on the ray from the pivot toward the pointer.
+  const hx = reading.handle.x - reading.before.x;
+  const hy = reading.handle.y - reading.before.y;
+  const tx = reading.target.x - reading.before.x;
+  const ty = reading.target.y - reading.before.y;
+  const cross = Math.abs(hx * ty - hy * tx);
+  expect(cross).toBeLessThan(1e-3);
+  // Line equation n·X = offset still passes through the pivot.
+  const nx = -Math.sin(reading.line2Angle);
+  const ny = Math.cos(reading.line2Angle);
+  expect(nx * reading.before.x + ny * reading.before.y).toBeCloseTo(reading.line2Offset, 5);
+
+  expect(errors, errors.join("\n")).toEqual([]);
 });
 
 test("triangle theorems animates each centre construction step by step", async ({ page }) => {
