@@ -5,6 +5,7 @@ import {
   computeParallelAngles,
   DEFAULT_ANGLE_TOL,
   evaluateTheorem,
+  implicationFor,
   lineAngleBetween,
   minCrossingSeparation,
   rotateInput,
@@ -176,6 +177,35 @@ describe("parallel angle geometry", () => {
     expect(forced.parallel).toBe(false);
     expect(forced.converseStatus).toBe("counterexample");
     expect(forced.theoremHolds).toBe(false);
+  });
+
+  it("swaps the given and conclusion between a theorem and its converse", () => {
+    const figure = computeParallelAngles(PARALLEL);
+    const theorem = implicationFor(evaluateTheorem(figure, "corresponding"));
+    expect(theorem).toMatchObject({
+      direction: "theorem",
+      given: "L1 ∥ L2",
+      hypothesisMet: true,
+      conclusionState: "follows",
+    });
+    expect(theorem.conclusion).toMatch(/∠₁NW = ∠₂NW/);
+
+    const supplementary = implicationFor(evaluateTheorem(figure, "co-interior"));
+    expect(supplementary.conclusion).toMatch(/∠₁NW \+ ∠₂SW = 180°/);
+
+    const converse = implicationFor(evaluateTheorem(figure, "converse-corresponding"));
+    expect(converse).toMatchObject({
+      direction: "converse",
+      conclusion: "L1 ∥ L2",
+      hypothesisMet: true,
+      conclusionState: "follows",
+    });
+    expect(converse.given).toMatch(/∠₁NW = ∠₂NW/);
+
+    const hypothesisNotMet = implicationFor(
+      evaluateTheorem(computeParallelAngles(SKEW), "converse-corresponding"),
+    );
+    expect(hypothesisNotMet.conclusionState).toBe("no-claim");
   });
 
   it("is invariant under translation of the whole figure", () => {

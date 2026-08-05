@@ -2930,6 +2930,46 @@ details.course[open] > summary { margin-bottom: 10px; }
   background: rgba(110, 118, 129, 0.12);
   border-color: rgba(110, 118, 129, 0.4);
 }
+.pl-implication {
+  display: flex;
+  align-items: stretch;
+  gap: 7px;
+  margin: 8px 0 12px;
+}
+.pl-implication-step {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--code-bg);
+}
+.pl-implication-step small {
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.pl-implication-step b { color: #e6edf3; font-size: 12px; line-height: 1.35; }
+.pl-implication-step[data-state="met"] { border-color: rgba(126, 231, 135, 0.45); }
+.pl-implication-step[data-state="met"] b,
+.pl-implication-step[data-state="follows"] b { color: #7ee787; }
+.pl-implication-step[data-state="unmet"] { border-color: rgba(110, 118, 129, 0.55); }
+.pl-implication-step[data-state="no-claim"] b,
+.pl-implication-step[data-state="pending"] b { color: #adbac7; }
+.pl-implication-arrow {
+  align-self: center;
+  color: #d2a8ff;
+  font-size: 20px;
+  font-weight: 700;
+}
+@media (max-width: 520px) {
+  .pl-implication { gap: 4px; }
+  .pl-implication-step { padding: 7px 6px; }
+  .pl-implication-step b { font-size: 11px; }
+}
 .power-family {
   margin: 0 0 10px;
   padding: 8px 10px;

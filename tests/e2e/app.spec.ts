@@ -3382,7 +3382,8 @@ test("parallel lines modes, converse hypothesis, and predict/reveal", async ({ p
 
   // Mode switch rebuilds the panel but keeps interactive controls.
   await page.locator('[data-pl="mode:alternate-interior"]').click();
-  await expect(page.locator("#pl-claim")).toContainText("Alternate interior");
+  await expect(page.locator("#pl-claim-title")).toHaveText("Theorem: start with parallel lines");
+  await expect(page.locator("[data-pl-conclusion]")).toContainText("∠");
   await expect(page.locator('[data-pl="mode:alternate-interior"]')).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator('[data-pl-chip="relation"]')).toContainText("holds");
 
@@ -3395,23 +3396,40 @@ test("parallel lines modes, converse hypothesis, and predict/reveal", async ({ p
 
   // Converse + non-parallel with unequal angles: hypothesis not met (not a counterexample).
   await page.locator('[data-pl="mode:converse-corresponding"]').click();
-  await expect(page.locator("#pl-claim")).toContainText("Converse");
+  await expect(page.locator("#pl-claim-title")).toHaveText("Converse: start with equal angles");
+  await expect(page.locator("[data-pl-given]")).toContainText("∠");
+  await expect(page.locator("[data-pl-conclusion]")).toContainText("L1 ∥ L2");
   await page.locator('[data-pl="skew"]').click();
   await expect(page.locator('[data-pl-chip="parallel"]')).toContainText("are not parallel");
   await expect(page.locator('[data-pl-chip="converse"]')).toContainText("hypothesis not met");
   await expect(page.locator('[data-pl-chip="converse"]')).not.toContainText("counterexample");
 
-  // Predict/reveal keeps panel state (no full remount wiping the choice).
+  // Converse prediction hides the conclusion, not its equal-angle hypothesis.
   await page.locator('[data-pl="hide-angles"]').click();
-  await expect(page.locator("#pl-verdict")).toContainText("Angles hidden");
+  await expect(page.locator('[data-pl-chip="parallel"]')).toContainText("lines ?");
+  await expect(page.locator("#pl-readout")).toContainText("°");
+  await expect(page.locator("#pl-readout")).not.toContainText("not parallel");
+  await expect(page.locator("#pl-readout")).toContainText("L2 angle? — hidden");
+  await expect(page.locator("#pl-message")).not.toContainText("lines are parallel");
+  await expect(page.locator("#pl-verdict")).toContainText("Parallel status hidden");
   await page.locator('[data-pl="predict:fails"]').click();
   await expect(page.locator("#pl-verdict")).toContainText("Yes");
-  await expect(page.locator("#pl-verdict")).toContainText("fails");
+  await expect(page.locator("#pl-verdict")).toContainText("hypothesis is not met");
 
   // Restore parallel and confirm converse supports parallelism again.
   await page.locator('[data-pl="reset-parallel"]').click();
   await expect(page.locator('[data-pl-chip="parallel"]')).toContainText("are parallel");
   await expect(page.locator('[data-pl-chip="converse"]')).toContainText("supports parallelism");
+  await page.locator('[data-pl="hide-angles"]').click();
+  await expect(page.locator('[data-pl-chip="parallel"]')).toContainText("lines ?");
+  await page.locator('[data-pl="reveal-angles"]').click();
+  await expect(page.locator('[data-pl-chip="parallel"]')).toContainText("are parallel");
+
+  // The ordinary theorem uses the same pair but reverses the logic direction.
+  await page.locator('[data-pl="mode:corresponding"]').click();
+  await expect(page.locator("#pl-claim-title")).toHaveText("Theorem: start with parallel lines");
+  await expect(page.locator("[data-pl-given]")).toContainText("L1 ∥ L2");
+  await expect(page.locator("[data-pl-conclusion]")).toContainText("∠");
 
   expect(errors, errors.join("\n")).toEqual([]);
 });

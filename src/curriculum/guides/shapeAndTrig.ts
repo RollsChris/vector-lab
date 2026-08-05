@@ -85,6 +85,7 @@ export const SHAPE_AND_TRIG_GUIDES: readonly LessonGuide[] = [
       "Mixing up co-interior with alternate interior → co-interior angles sit on the same side and sum to 180° when parallel; alternate interior sit on opposite sides and are equal.",
       "Reading screen “top-left” after rotating the figure → name angles by line and corner relative to the transversal, not by the screen.",
       "Assuming equal corresponding angles on a sketch without measuring → drag into a non-parallel counterexample and watch the equality break.",
+      "Treating unequal corresponding angles as a disproof of the converse → the converse only speaks when its equal-angle hypothesis is met; unequal angles mean no claim.",
     ],
     checks: [
       {

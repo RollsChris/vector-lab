@@ -573,8 +573,66 @@ export interface TheoremEvaluation {
   message: string;
 }
 
+export interface TheoremImplication {
+  direction: "theorem" | "converse" | "identity";
+  given: string;
+  conclusion: string;
+  hypothesisMet: boolean;
+  conclusionState: "follows" | "no-claim" | "contradicted";
+}
+
 /** Same band as parallel detection — see DEFAULT_ANGLE_TOL. */
 const RELATION_TOL = DEFAULT_ANGLE_TOL;
+
+function anglePairExpression(pair: AnglePair | undefined): string {
+  if (!pair) return "the highlighted angle relation";
+  const a = pair.a.replace("L1-", "∠₁").replace("L2-", "∠₂");
+  const b = pair.b.replace("L1-", "∠₁").replace("L2-", "∠₂");
+  return pair.relation === "equal" ? `${a} = ${b}` : `${a} + ${b} = 180°`;
+}
+
+/** State the direction of the theorem or converse using the current highlighted pair. */
+export function implicationFor(evaluation: TheoremEvaluation, pair?: AnglePair): TheoremImplication {
+  const angleRelation = anglePairExpression(pair ?? evaluation.pairs[0]?.pair);
+  const converse = evaluation.kind.startsWith("converse");
+  const identity = evaluation.kind === "vertically-opposite" || evaluation.kind === "adjacent";
+
+  if (identity) {
+    return {
+      direction: "identity",
+      given: "any two crossing lines",
+      conclusion: angleRelation,
+      hypothesisMet: evaluation.valid,
+      conclusionState: evaluation.relationHolds ? "follows" : "contradicted",
+    };
+  }
+
+  if (converse) {
+    return {
+      direction: "converse",
+      given: angleRelation,
+      conclusion: "L1 ∥ L2",
+      hypothesisMet: evaluation.relationHolds,
+      conclusionState: !evaluation.relationHolds
+        ? "no-claim"
+        : evaluation.parallel
+          ? "follows"
+          : "contradicted",
+    };
+  }
+
+  return {
+    direction: "theorem",
+    given: "L1 ∥ L2",
+    conclusion: angleRelation,
+    hypothesisMet: evaluation.parallel,
+    conclusionState: !evaluation.parallel
+      ? "no-claim"
+      : evaluation.relationHolds
+        ? "follows"
+        : "contradicted",
+  };
+}
 
 function pairError(relation: "equal" | "supplementary", a: number, b: number): number {
   if (!Number.isFinite(a) || !Number.isFinite(b)) return Infinity;

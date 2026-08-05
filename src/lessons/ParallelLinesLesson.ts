@@ -6,6 +6,7 @@ import {
   computeParallelAngles,
   evaluateTheorem,
   formatDegrees,
+  implicationFor,
   minCrossingSeparation,
   normal,
   separateFromLine,
@@ -153,8 +154,11 @@ export class ParallelLinesLesson implements Lesson {
   /** Persistent angle labels — textures updated in place, never per-frame alloc of new sprites. */
   private angleLabels = new Map<AngleId, THREE.Sprite>();
   private lineLabels: THREE.Sprite[] = [];
+  private logicLabels: THREE.Sprite[] = [];
   private lastLabelText = new Map<AngleId, string>();
   private lastLabelColor = new Map<AngleId, number>();
+  private lastLogicLabelText: string[] = [];
+  private lastLogicLabelColor: number[] = [];
 
   private readonly infoClickHandler = (event: Event): void => {
     const button = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-pl]");
@@ -263,6 +267,12 @@ export class ParallelLinesLesson implements Lesson {
     const tr = textSprite("T", COL.transversal, 0.36);
     this.lineLabels = [l1, l2, tr];
     this.labelRoot.add(l1, l2, tr);
+    const given = textSprite("", COL.label, 0.21);
+    const conclusion = textSprite("", COL.label, 0.21);
+    given.visible = false;
+    conclusion.visible = false;
+    this.logicLabels = [given, conclusion];
+    this.labelRoot.add(given, conclusion);
 
     this.stopDrag = createDragControls(ctx.viewport, this.handles, (index, point) => {
       this.onDrag(index, point);
@@ -285,8 +295,11 @@ export class ParallelLinesLesson implements Lesson {
     this.handles = [];
     this.angleLabels = new Map();
     this.lineLabels = [];
+    this.logicLabels = [];
     this.lastLabelText = new Map();
     this.lastLabelColor = new Map();
+    this.lastLogicLabelText = [];
+    this.lastLogicLabelColor = [];
     this.viewport = undefined;
   }
 
@@ -372,6 +385,7 @@ export class ParallelLinesLesson implements Lesson {
     this.drawAngleArcs(result, focusPairs.flatMap((pair) => [pair.a, pair.b]));
     this.updateAngleLabels(result, evalResult);
     this.placeLineLabels(result);
+    this.updateLogicLabels(result, evalResult);
   }
 
   private drawLines(result: ParallelAnglesResult): void {
@@ -405,7 +419,7 @@ export class ParallelLinesLesson implements Lesson {
     );
 
     // Parallel tick marks when parallel.
-    if (result.parallel && result.valid) {
+    if (result.parallel && result.valid && !this.parallelStatusHidden()) {
       this.parallelTicks(c1, d1, COL.line1);
       this.parallelTicks(c2, d2, COL.line2);
     }
@@ -461,11 +475,11 @@ export class ParallelLinesLesson implements Lesson {
       const centre = isL1 ? result.intersection1 : result.intersection2;
       const lineDir = isL1 ? result.line1Dir : result.line2Dir;
       const active = highlighted.has(id);
-      if (this.anglesHidden && !active) continue;
+      if (this.angleReadingsHidden() && !active) continue;
 
       const color = pairColors.get(id) ?? COL.dim;
 
-      const opacity = active ? 1 : this.anglesHidden ? 0 : 0.14;
+      const opacity = active ? 1 : this.angleReadingsHidden() ? 0 : 0.14;
       if (opacity === 0) continue;
       this.drawCornerArc(centre, lineDir, result.transversalDir, corner, result.angles[id], color, opacity, active ? 0.02 : 0, active);
     }
@@ -565,11 +579,11 @@ export class ParallelLinesLesson implements Lesson {
       const sprite = this.angleLabels.get(id);
       if (!sprite) continue;
       const active = highlight.has(id);
-      if (this.anglesHidden && !active) {
+      if (this.angleReadingsHidden() && !active) {
         sprite.visible = false;
         continue;
       }
-      if (this.anglesHidden && active) {
+      if (this.angleReadingsHidden() && active) {
         // Show position mark but hide the degree reading until reveal.
         const text = active ? "?" : "—";
         this.writeLabel(sprite, id, text, COL.dim);
@@ -672,6 +686,55 @@ export class ParallelLinesLesson implements Lesson {
     tr.position.set(t.x * 5.0, t.y * 5.0 + 0.35, 0.2);
   }
 
+  private angleReadingsHidden(): boolean {
+    return this.anglesHidden && !this.mode.startsWith("converse");
+  }
+
+  private parallelStatusHidden(): boolean {
+    return this.anglesHidden && this.mode.startsWith("converse") && !this.revealVerdict;
+  }
+
+  private updateLogicLabels(
+    result: ParallelAnglesResult,
+    evaluation: ReturnType<typeof evaluateTheorem>,
+  ): void {
+    const [given, conclusion] = this.logicLabels;
+    if (!given || !conclusion) return;
+    if (!result.valid) {
+      given.visible = false;
+      conclusion.visible = false;
+      return;
+    }
+
+    const implication = implicationFor(evaluation, this.focusPairs(result)[0]);
+    if (implication.direction === "identity") {
+      given.visible = false;
+      conclusion.visible = false;
+      return;
+    }
+    const conclusionPending = this.anglesHidden && !this.revealVerdict;
+    this.writeLogicLabel(given, `GIVEN: ${implication.given}`, implication.hypothesisMet ? COL.ok : COL.dim, 0);
+    this.writeLogicLabel(
+      conclusion,
+      conclusionPending ? `THEN: ${implication.conclusion} ?` : `THEN: ${implication.conclusion}`,
+      conclusionPending || implication.conclusionState === "no-claim" ? COL.dim : implication.conclusionState === "follows" ? COL.ok : COL.bad,
+      1,
+    );
+    // Centre the wide canvas sprites above and below the geometry so they remain in view on
+    // narrow portrait stages, where anchoring either one to the side would clip it.
+    given.position.set(0, 3.55, 0.25);
+    conclusion.position.set(0, -3.55, 0.25);
+    given.visible = true;
+    conclusion.visible = true;
+  }
+
+  private writeLogicLabel(sprite: THREE.Sprite, text: string, color: number, index: number): void {
+    if (this.lastLogicLabelText[index] === text && this.lastLogicLabelColor[index] === color) return;
+    setSpriteText(sprite, text, color);
+    this.lastLogicLabelText[index] = text;
+    this.lastLogicLabelColor[index] = color;
+  }
+
   private segment(
     a: { x: number; y: number },
     b: { x: number; y: number },
@@ -732,7 +795,7 @@ export class ParallelLinesLesson implements Lesson {
 
       <div class="course">
         <h3 id="pl-claim-title">Live reading</h3>
-        <p class="course-hint" id="pl-claim"></p>
+        <div class="pl-implication" id="pl-claim"></div>
         <div class="readout" id="pl-readout"></div>
         <div id="pl-status"></div>
         <p class="course-hint" id="pl-message"></p>
@@ -740,15 +803,14 @@ export class ParallelLinesLesson implements Lesson {
 
       <div class="course">
         <h3>Predict, then reveal</h3>
-        <p>Hide the degree labels, change the figure, predict whether the highlighted relation
-        holds, then reveal the live verdict.</p>
+        <p id="pl-predict-copy"></p>
         <div class="course-chapters">
           <button type="button" class="course-btn ghost" data-pl="hide-angles" id="pl-hide">Hide angles</button>
           <button type="button" class="course-btn ghost" data-pl="reveal-angles" id="pl-reveal">Reveal angles</button>
         </div>
         <div class="course-chapters" style="margin-top:8px">
-          <button type="button" class="course-btn ghost" data-pl="predict:holds">Relation holds</button>
-          <button type="button" class="course-btn ghost" data-pl="predict:fails">Relation fails</button>
+          <button type="button" class="course-btn ghost" data-pl="predict:holds" id="pl-predict-holds"></button>
+          <button type="button" class="course-btn ghost" data-pl="predict:fails" id="pl-predict-fails"></button>
           <button type="button" class="course-btn ghost" data-pl="predict:always">Always true (not about parallel)</button>
         </div>
         <p class="course-hint" id="pl-verdict"></p>
@@ -770,9 +832,42 @@ export class ParallelLinesLesson implements Lesson {
     const hideBtn = document.getElementById("pl-hide");
     const revealBtn = document.getElementById("pl-reveal");
     const adjacentPair = document.getElementById("pl-adjacent-pair");
+    const claimTitle = document.getElementById("pl-claim-title");
+    const predictCopy = document.getElementById("pl-predict-copy");
+    const predictHolds = document.getElementById("pl-predict-holds");
+    const predictFails = document.getElementById("pl-predict-fails");
+    const implication = implicationFor(evaluation, this.focusPairs(result)[0]);
+    const converse = implication.direction === "converse";
 
     if (hint) hint.innerHTML = `<b>Drag:</b> ${cfg.hint}`;
-    if (claim) claim.textContent = cfg.claim;
+    if (claimTitle) {
+      claimTitle.textContent = implication.direction === "theorem"
+        ? "Theorem: start with parallel lines"
+        : implication.direction === "converse"
+          ? "Converse: start with equal angles"
+          : "Always true at a crossing";
+    }
+    if (claim) {
+      const givenState = implication.hypothesisMet ? "met" : "unmet";
+      const conclusionState = this.anglesHidden && !this.revealVerdict
+        ? "pending"
+        : implication.conclusionState;
+      const conclusion = conclusionState === "pending"
+        ? `${implication.conclusion} ?`
+        : implication.conclusionState === "no-claim"
+          ? `${implication.conclusion} — no claim`
+          : implication.conclusion;
+      claim.innerHTML = `<span class="pl-implication-step" data-pl-given data-state="${givenState}"><small>Given</small><b>${implication.given}</b></span>
+        <span class="pl-implication-arrow">⇒</span>
+        <span class="pl-implication-step" data-pl-conclusion data-state="${conclusionState}"><small>Therefore</small><b>${conclusion}</b></span>`;
+    }
+    if (predictCopy) {
+      predictCopy.textContent = converse
+        ? "Keep the angle readings visible, change the figure, then decide whether equal angles let you conclude that the lines are parallel."
+        : "Hide the degree labels, change the figure, predict whether the highlighted relation holds, then reveal the live verdict.";
+    }
+    if (predictHolds) predictHolds.textContent = converse ? "Angles equal → lines parallel" : "Relation holds";
+    if (predictFails) predictFails.textContent = converse ? "Angles differ → no claim" : "Relation fails";
 
     if (readout) {
       if (!result.valid) {
@@ -791,9 +886,15 @@ export class ParallelLinesLesson implements Lesson {
             return `<div><span>${left} ${rel} ${right}</span><b>${formatDegrees(p.valueA)} ${p.pair.relation === "equal" ? "vs" : "+"} ${rhs}</b></div>`;
           })
           .join("");
+        const linesRow = this.parallelStatusHidden()
+          ? `<div><span>Lines</span><b>? — infer from the angle relation</b></div>`
+          : `<div><span>Lines</span><b>${result.parallel ? "parallel" : "not parallel"} · Δ ${formatDegrees(result.lineAngleDifference)}</b></div>`;
+        const line2Row = this.parallelStatusHidden()
+          ? `<div><span>L2 angle</span><b>? — hidden with the parallel conclusion</b></div>`
+          : `<div><span>L2 angle</span><b>${formatDegrees(this.line2Angle)}</b></div>`;
         readout.innerHTML = [
-          `<div><span>Lines</span><b>${result.parallel ? "parallel" : "not parallel"} · Δ ${formatDegrees(result.lineAngleDifference)}</b></div>`,
-          `<div><span>L2 angle</span><b>${formatDegrees(this.line2Angle)}</b></div>`,
+          linesRow,
+          line2Row,
           `<div><span>Transversal</span><b>${formatDegrees(this.transversalAngle)}</b></div>`,
           pairRows,
         ].join("");
@@ -803,13 +904,21 @@ export class ParallelLinesLesson implements Lesson {
     if (status) {
       status.innerHTML = this.statusChips(result, evaluation);
     }
-    if (message) message.textContent = evaluation.message;
+    if (message) {
+      message.textContent = this.parallelStatusHidden()
+        ? "Use the equal-angle hypothesis to decide whether L1 is parallel to L2."
+        : evaluation.message;
+    }
 
     if (verdict) {
       verdict.textContent = this.predictionMessage(result, evaluation);
     }
-    if (hideBtn) hideBtn.textContent = this.anglesHidden ? "Angles hidden" : "Hide angles";
-    if (revealBtn) revealBtn.textContent = this.anglesHidden ? "Reveal angles" : "Reveal angles";
+    if (hideBtn) {
+      hideBtn.textContent = this.anglesHidden
+        ? converse ? "Parallel status hidden" : "Angles hidden"
+        : converse ? "Hide parallel status" : "Hide angles";
+    }
+    if (revealBtn) revealBtn.textContent = converse ? "Reveal parallel status" : "Reveal angles";
     if (adjacentPair) {
       adjacentPair.textContent = evaluation.pairs.length > 0
         ? `Showing pair ${(this.adjacentPairIndex % evaluation.pairs.length) + 1} of ${evaluation.pairs.length}`
@@ -821,13 +930,19 @@ export class ParallelLinesLesson implements Lesson {
     result: ParallelAnglesResult,
     evaluation: ReturnType<typeof evaluateTheorem>,
   ): string {
-    const parallelChip = result.valid
+    const parallelChip = this.parallelStatusHidden()
+      ? `<div class="theorem-check neutral" role="status" data-pl-chip="parallel">· lines ? — conclude from the equal angles</div>`
+      : result.valid
       ? `<div class="theorem-check ${result.parallel ? "ok" : "bad"}" role="status" data-pl-chip="parallel">${result.parallel ? "✓" : "✗"} lines ${result.parallel ? "are parallel" : "are not parallel"}</div>`
       : `<div class="theorem-check bad" role="status" data-pl-chip="parallel">✗ ${result.reason ?? "invalid figure"} — drag a handle or reset</div>`;
 
     let relationChip: string;
     if (!result.valid) {
       relationChip = `<div class="theorem-check bad" role="status" data-pl-chip="relation">✗ no angle reading — recover by resetting or dragging back</div>`;
+    } else if (this.parallelStatusHidden()) {
+      relationChip = `<div class="theorem-check ${evaluation.relationHolds ? "ok" : "neutral"}" role="status" data-pl-chip="converse">${
+        evaluation.relationHolds ? "✓ hypothesis met: angles match" : "· hypothesis not met: angles differ"
+      } — decide what follows</div>`;
     } else if (this.mode.startsWith("converse")) {
       const st = evaluation.converseStatus;
       let tone = "bad";
@@ -867,6 +982,9 @@ export class ParallelLinesLesson implements Lesson {
     evaluation: ReturnType<typeof evaluateTheorem>,
   ): string {
     if (this.anglesHidden && !this.prediction) {
+      if (this.mode.startsWith("converse")) {
+        return "Parallel status hidden — the angle relation is visible. Predict whether it proves the lines are parallel, then reveal.";
+      }
       return "Angles hidden — predict whether the highlighted relation holds, then reveal.";
     }
     if (!this.prediction && !this.revealVerdict) return "";
