@@ -147,6 +147,8 @@ export class ParallelLinesLesson implements Lesson {
   private anglesHidden = false;
   private prediction = "";
   private revealVerdict = false;
+  /** Adjacent angles overlap, so show one linear pair at a time. */
+  private adjacentPairIndex = 0;
 
   /** Persistent angle labels — textures updated in place, never per-frame alloc of new sprites. */
   private angleLabels = new Map<AngleId, THREE.Sprite>();
@@ -162,6 +164,7 @@ export class ParallelLinesLesson implements Lesson {
       const next = action.slice(5) as Mode;
       if (!MODES[next]) return;
       this.mode = next;
+      if (next === "adjacent") this.adjacentPairIndex = 0;
       this.prediction = "";
       this.revealVerdict = false;
       // Keep the learner's figure (including non-parallel) across mode changes.
@@ -206,6 +209,17 @@ export class ParallelLinesLesson implements Lesson {
     if (action === "reveal-angles") {
       this.anglesHidden = false;
       this.revealVerdict = true;
+      this.renderScene();
+      this.updatePanel();
+      return;
+    }
+    if (action === "adjacent-prev" || action === "adjacent-next") {
+      if (this.mode !== "adjacent") return;
+      const count = theoremPairs(this.mode, this.figure()).length;
+      if (count === 0) return;
+      this.adjacentPairIndex = (this.adjacentPairIndex + (action === "adjacent-next" ? 1 : count - 1)) % count;
+      this.prediction = "";
+      this.revealVerdict = false;
       this.renderScene();
       this.updatePanel();
       return;
@@ -350,11 +364,12 @@ export class ParallelLinesLesson implements Lesson {
     this.disposeChildren(this.dynamic);
     const result = this.figure();
     const evalResult = evaluateTheorem(result, this.mode);
+    const focusPairs = this.focusPairs(result);
 
     this.drawLines(result);
     this.placeHandles(result);
     this.drawIntersections(result);
-    this.drawAngleArcs(result, evalResult.pairs.map((p) => [p.pair.a, p.pair.b]).flat());
+    this.drawAngleArcs(result, focusPairs.flatMap((pair) => [pair.a, pair.b]));
     this.updateAngleLabels(result, evalResult);
     this.placeLineLabels(result);
   }
@@ -582,23 +597,19 @@ export class ParallelLinesLesson implements Lesson {
   /** Both ends of a theorem pair share a colour, so paired angles read as one relationship. */
   private pairColors(result: ParallelAnglesResult): Map<AngleId, number> {
     const colors = new Map<AngleId, number>();
-    const pairs = theoremPairs(this.mode, result);
-    if (this.mode === "adjacent") {
-      // Adjacent pairs overlap: each corner belongs to two neighbouring pairs, so assigning
-      // per-pair colours would make a shared corner contradict itself. Treat this mode as one
-      // local straight-line family instead of implying a unique pair matching.
-      pairs.forEach((pair) => {
-        colors.set(pair.a, PAIR_COLORS[0]);
-        colors.set(pair.b, PAIR_COLORS[0]);
-      });
-      return colors;
-    }
-    pairs.forEach((pair, index) => {
+    this.focusPairs(result).forEach((pair, index) => {
       const color = PAIR_COLORS[index % PAIR_COLORS.length];
       colors.set(pair.a, color);
       colors.set(pair.b, color);
     });
     return colors;
+  }
+
+  private focusPairs(result: ParallelAnglesResult): ReturnType<typeof theoremPairs> {
+    const pairs = theoremPairs(this.mode, result);
+    if (this.mode !== "adjacent") return pairs;
+    const selected = pairs[this.adjacentPairIndex % pairs.length];
+    return selected ? [selected] : [];
   }
 
   private writeLabel(sprite: THREE.Sprite, id: AngleId, text: string, color: number): void {
@@ -693,18 +704,26 @@ export class ParallelLinesLesson implements Lesson {
         return `<div class="circle-mode-group"><span class="circle-mode-label">${group}</span><div class="course-chapters">${buttons}</div></div>`;
       })
       .join("");
+    const adjacentPicker = this.mode === "adjacent"
+      ? `<div class="course-chapters" style="margin-top:8px">
+          <button type="button" class="course-btn ghost" data-pl="adjacent-prev">← Previous pair</button>
+          <span class="course-hint" id="pl-adjacent-pair"></span>
+          <button type="button" class="course-btn ghost" data-pl="adjacent-next">Next pair →</button>
+        </div>`
+      : "";
 
     this.setInfo(`
       <h2>Parallel Lines</h2>
       <p>Two lines cut by a transversal make <b>eight angles</b>. Drag the yellow handles to
       tilt <b>line 2</b> or the <b>transversal</b>. Each matched pair gets one bright colour;
-      unrelated angles fade to grey. Converses only speak
+      unrelated angles fade to grey. Adjacent mode shows one linear pair at a time. Converses only speak
       when their hypothesis (matching angles) is met.</p>
 
       <div class="course">
         <h3>Choose a theorem</h3>
         <div class="circle-mode-groups">${chapters}</div>
         <p class="course-hint" id="pl-hint"></p>
+        ${adjacentPicker}
         <div class="course-chapters" style="margin-top:6px">
           <button type="button" class="course-btn ghost" data-pl="reset-parallel">Reset parallel</button>
           <button type="button" class="course-btn ghost" data-pl="skew">Make non-parallel</button>
@@ -750,6 +769,7 @@ export class ParallelLinesLesson implements Lesson {
     const verdict = document.getElementById("pl-verdict");
     const hideBtn = document.getElementById("pl-hide");
     const revealBtn = document.getElementById("pl-reveal");
+    const adjacentPair = document.getElementById("pl-adjacent-pair");
 
     if (hint) hint.innerHTML = `<b>Drag:</b> ${cfg.hint}`;
     if (claim) claim.textContent = cfg.claim;
@@ -758,7 +778,10 @@ export class ParallelLinesLesson implements Lesson {
       if (!result.valid) {
         readout.innerHTML = `<div><span>Figure</span><b>invalid — ${result.reason ?? "degenerate"}</b></div>`;
       } else {
-        const pairs = evaluation.pairs.slice(0, 2);
+        const selectedPair = this.mode === "adjacent"
+          ? evaluation.pairs[this.adjacentPairIndex % evaluation.pairs.length]
+          : undefined;
+        const pairs = selectedPair ? [selectedPair] : evaluation.pairs.slice(0, 2);
         const pairRows = pairs
           .map((p) => {
             const rel = p.pair.relation === "equal" ? "=" : "+";
@@ -787,6 +810,11 @@ export class ParallelLinesLesson implements Lesson {
     }
     if (hideBtn) hideBtn.textContent = this.anglesHidden ? "Angles hidden" : "Hide angles";
     if (revealBtn) revealBtn.textContent = this.anglesHidden ? "Reveal angles" : "Reveal angles";
+    if (adjacentPair) {
+      adjacentPair.textContent = evaluation.pairs.length > 0
+        ? `Showing pair ${(this.adjacentPairIndex % evaluation.pairs.length) + 1} of ${evaluation.pairs.length}`
+        : "No adjacent pair available";
+    }
   }
 
   private statusChips(

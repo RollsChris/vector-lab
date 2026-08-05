@@ -13,7 +13,6 @@ const COL = {
   diag: 0xd2a8ff,
   cross: 0x7ee787,
   angle: 0xffd166,
-  parallel: 0x79c0ff,
   warn: 0xff7b72,
 };
 
@@ -68,7 +67,7 @@ export class QuadrilateralsLesson implements Lesson {
   private readonly params = {
     labels: true,
     diagonals: true,
-    parallels: true,
+    congruentSides: true,
   };
 
   private infoClickHandler = (event: Event): void => {
@@ -106,7 +105,7 @@ export class QuadrilateralsLesson implements Lesson {
     const f = gui.addFolder("Show");
     tip(f.add(this.params, "labels").name("Sides & angles").onChange(() => this.rebuild()), "Label each side length and interior angle, with an arc at each corner. The four angles always add to 360°.");
     tip(f.add(this.params, "diagonals").name("Diagonals").onChange(() => this.rebuild()), "Draw the two diagonals AC and BD and mark where they cross. Special quadrilaterals have special diagonals.");
-    tip(f.add(this.params, "parallels").name("Mark parallel sides").onChange(() => this.rebuild()), "Put arrow ticks on sides that are parallel to each other.");
+    tip(f.add(this.params, "congruentSides").name("Mark equal sides").onChange(() => this.rebuild()), "Matching tick bars show sides with the same length. A square has one tick bar on all four sides.");
     f.open();
 
     document.getElementById("info")?.addEventListener("click", this.infoClickHandler);
@@ -218,7 +217,7 @@ export class QuadrilateralsLesson implements Lesson {
     }
 
     if (this.params.diagonals) this.drawDiagonals(m);
-    if (this.params.parallels) this.drawParallels(m);
+    if (this.params.congruentSides) this.drawEqualSides(m);
     if (this.params.labels) this.drawLabels(m);
 
     // Corner name tags.
@@ -245,16 +244,21 @@ export class QuadrilateralsLesson implements Lesson {
     }
   }
 
-  private drawParallels(m: Metrics): void {
-    const P = m.P;
-    // edges: 0 AB, 1 BC, 2 CD, 3 DA
-    if (m.abParDc) {
-      this.tickEdge(P[0], P[1], 1);
-      this.tickEdge(P[3], P[2], 1);
+  private drawEqualSides(m: Metrics): void {
+    const groups: number[][] = [];
+    const scale = m.sides.reduce((total, side) => total + side, 0) / m.sides.length;
+    for (let i = 0; i < m.sides.length; i++) {
+      const group = groups.find(([first]) =>
+        Math.abs(m.sides[i] - m.sides[first]) < 0.04 * scale,
+      );
+      if (group) group.push(i);
+      else groups.push([i]);
     }
-    if (m.bcParAd) {
-      this.tickEdge(P[1], P[2], 2);
-      this.tickEdge(P[0], P[3], 2);
+
+    for (const [groupIndex, group] of groups.filter((group) => group.length > 1).entries()) {
+      for (const edge of group) {
+        this.equalSideEdge(m.P[edge], m.P[(edge + 1) % 4], groupIndex + 1);
+      }
     }
   }
 
@@ -289,19 +293,22 @@ export class QuadrilateralsLesson implements Lesson {
     }
   }
 
-  private tickEdge(p: THREE.Vector3, q: THREE.Vector3, count: number): void {
+  private equalSideEdge(p: THREE.Vector3, q: THREE.Vector3, count: number): void {
     const dir = q.clone().sub(p).normalize();
     const nrm = new THREE.Vector3(-dir.y, dir.x, 0);
     const mid = p.clone().add(q).multiplyScalar(0.5);
-    const gap = 0.16;
+    const gap = 0.14;
     for (let k = 0; k < count; k++) {
       const base = mid.clone().addScaledVector(dir, (k - (count - 1) / 2) * gap);
-      const a = base.clone().addScaledVector(dir, 0.18).addScaledVector(nrm, 0.18);
-      const b = base.clone().addScaledVector(dir, -0.18).addScaledVector(nrm, -0.18);
-      const c = base.clone().addScaledVector(dir, -0.18).addScaledVector(nrm, 0.18);
-      const d = base.clone().addScaledVector(dir, 0.18).addScaledVector(nrm, -0.18);
-      this.dynamic.add(this.poly([a, b], COL.parallel, false, 1));
-      this.dynamic.add(this.poly([c, d], COL.parallel, false, 1));
+      this.dynamic.add(this.poly(
+        [
+          base.clone().addScaledVector(nrm, 0.2),
+          base.clone().addScaledVector(nrm, -0.2),
+        ],
+        COL.edge,
+        false,
+        1,
+      ));
     }
   }
 

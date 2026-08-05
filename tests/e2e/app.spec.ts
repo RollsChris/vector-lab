@@ -1951,6 +1951,78 @@ test("prime lesson teaches the frontier and inspects integer structure", async (
   expect(errors, errors.join("\n")).toEqual([]);
 });
 
+test("prime integer energy lab plots custom predicates and keeps invalid expressions", async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto("/#prime-numbers");
+  await expect(page.locator("#info h2")).toHaveText("Prime Numbers — Complete Guide");
+  await expect(page.locator("[data-prime-ch]")).toHaveCount(13);
+
+  await page.locator("[data-prime-ch='12']").click();
+  await expect(page.locator("#prime-lesson")).toContainText("Integer Energy Lab");
+  await expect(page.locator("#prime-lesson")).toContainText("Survival energy");
+  await expect(page.locator("#prime-progress")).toHaveText("13 / 13");
+
+  const baseline = await page.evaluate(() => {
+    const lab = (window as any).__lab;
+    const lesson = lab.manager.activeLesson;
+    lesson.params.visual = "Integer energy";
+    lesson.params.rangeStart = 20;
+    lesson.params.rangeEnd = 40;
+    lesson.params.expr = "n % 2";
+    lesson.params.threshold = 1;
+    lesson.applyLabExpression(true);
+    const mesh = lesson.numberMesh;
+    const matrix = new lab.viewport.camera.matrixWorld.constructor();
+    // instance 0 => n = 20; instance 5 => n = 25
+    mesh.getMatrixAt(5, matrix);
+    const position = new lab.viewport.camera.position.constructor().setFromMatrixPosition(matrix);
+    position.applyMatrix4(mesh.matrixWorld).project(lab.viewport.camera);
+    const rect = lab.viewport.renderer.domElement.getBoundingClientRect();
+    return {
+      instances: mesh.count,
+      rangeStart: lesson.labRangeStart,
+      readout: document.getElementById("prime-readout")?.textContent ?? "",
+      x: rect.left + ((position.x + 1) / 2) * rect.width,
+      y: rect.top + ((1 - position.y) / 2) * rect.height,
+    };
+  });
+
+  expect(baseline.instances).toBe(21);
+  expect(baseline.rangeStart).toBe(20);
+  expect(baseline.readout).toContain("n % 2");
+  expect(baseline.readout).toContain("Candidates");
+
+  await page.mouse.click(baseline.x, baseline.y);
+  await expect(page.locator("#prime-readout")).toContainText("25 — composite");
+  await expect(page.locator("#prime-readout")).toContainText("f(25)");
+  await expect(page.locator("#prime-readout")).toContainText("Survival energy");
+
+  const afterInvalid = await page.evaluate(() => {
+    const lesson = (window as any).__lab.manager.activeLesson;
+    const beforeCount = lesson.numberMesh?.count ?? 0;
+    const beforeStart = lesson.labRangeStart;
+    lesson.params.expr = "n.constructor";
+    lesson.applyLabExpression(true);
+    return {
+      beforeCount,
+      afterCount: lesson.numberMesh?.count ?? 0,
+      beforeStart,
+      afterStart: lesson.labRangeStart,
+      error: lesson.labExprError as string,
+      readout: document.getElementById("prime-readout")?.textContent ?? "",
+      stillEvenOdd: typeof lesson.labFn === "function" ? lesson.labFn(25) : null,
+    };
+  });
+
+  expect(afterInvalid.error).not.toBe("");
+  expect(afterInvalid.afterCount).toBe(afterInvalid.beforeCount);
+  expect(afterInvalid.afterStart).toBe(afterInvalid.beforeStart);
+  expect(afterInvalid.stillEvenOdd).toBe(1); // last valid f was n % 2
+  expect(afterInvalid.readout).toContain("Invalid");
+  expect(afterInvalid.readout).toContain("kept last plot");
+  expect(errors, errors.join("\n")).toEqual([]);
+});
+
 test("Pascal triangle connects binomial coefficients to probability", async ({ page }) => {
   const errors = trackErrors(page);
   await page.goto("/#pascal-triangle");
@@ -3313,6 +3385,13 @@ test("parallel lines modes, converse hypothesis, and predict/reveal", async ({ p
   await expect(page.locator("#pl-claim")).toContainText("Alternate interior");
   await expect(page.locator('[data-pl="mode:alternate-interior"]')).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator('[data-pl-chip="relation"]')).toContainText("holds");
+
+  // Adjacent angles overlap, so the lesson presents one unambiguous linear pair at a time.
+  await page.locator('[data-pl="mode:adjacent"]').click();
+  await expect(page.locator("#pl-adjacent-pair")).toHaveText("Showing pair 1 of 8");
+  await expect(page.locator("#pl-readout")).toContainText("∠₁NW + ∠₁NE");
+  await page.locator('[data-pl="adjacent-next"]').click();
+  await expect(page.locator("#pl-adjacent-pair")).toHaveText("Showing pair 2 of 8");
 
   // Converse + non-parallel with unequal angles: hypothesis not met (not a counterexample).
   await page.locator('[data-pl="mode:converse-corresponding"]').click();
