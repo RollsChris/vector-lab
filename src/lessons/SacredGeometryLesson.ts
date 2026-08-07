@@ -116,6 +116,7 @@ export class SacredGeometryLesson implements Lesson {
   private solidPhase: SolidPhase = "lattice";
   private constructionLines: THREE.Line[] = [];
   private rotatingSolid?: THREE.Group;
+  private targetPreview?: THREE.Group;
   private assemblyFaces: AssemblyFace[] = [];
   private assemblyProgress = 0;
   private reportedAssemblyPercent = -1;
@@ -195,6 +196,7 @@ export class SacredGeometryLesson implements Lesson {
     this.assemblyProgress = 0;
     this.reportedAssemblyPercent = -1;
     this.rotatingSolid = undefined;
+    this.targetPreview = undefined;
     this.viewport = undefined;
   }
 
@@ -203,6 +205,7 @@ export class SacredGeometryLesson implements Lesson {
     this.constructionLines = [];
     this.assemblyFaces = [];
     this.rotatingSolid = undefined;
+    this.targetPreview = undefined;
     this.assemblyProgress = 0;
     this.reportedAssemblyPercent = -1;
     this.animationStarted = 0;
@@ -223,7 +226,11 @@ export class SacredGeometryLesson implements Lesson {
 
     if (this.solidPhase === "lattice" || this.solidPhase === "face" || this.solidPhase === "plan") {
       this.viewport.controls.enableRotate = false;
-      this.frameRadius(this.contentRadius(), new THREE.Vector3(0, 0, 1));
+      this.frameRadius(
+        this.contentRadius(),
+        new THREE.Vector3(0, 0, 1),
+        this.contentCentre(),
+      );
       return;
     }
 
@@ -237,15 +244,19 @@ export class SacredGeometryLesson implements Lesson {
   }
 
   /** Pull the camera back far enough for a sphere of `radius` to fit both screen axes. */
-  private frameRadius(radius: number, direction: THREE.Vector3): void {
+  private frameRadius(
+    radius: number,
+    direction: THREE.Vector3,
+    target = new THREE.Vector3(),
+  ): void {
     if (!this.viewport) return;
     const camera = this.viewport.camera;
     const halfVertical = THREE.MathUtils.degToRad(camera.fov) / 2;
     const halfHorizontal = Math.atan(Math.tan(halfVertical) * camera.aspect);
     const distance = (radius * 1.15) / Math.sin(Math.max(0.05, Math.min(halfVertical, halfHorizontal)));
     this.viewport.frameCamera(
-      direction.clone().normalize().multiplyScalar(distance),
-      new THREE.Vector3(0, 0, 0),
+      direction.clone().normalize().multiplyScalar(distance).add(target),
+      target,
     );
   }
 
@@ -255,6 +266,12 @@ export class SacredGeometryLesson implements Lesson {
     if (box.isEmpty()) return 6;
     const sphere = box.getBoundingSphere(new THREE.Sphere());
     return Math.max(4, sphere.radius);
+  }
+
+  /** Centre the flat construction and its separately positioned 3D target together. */
+  private contentCentre(): THREE.Vector3 {
+    const box = new THREE.Box3().setFromObject(this.group);
+    return box.isEmpty() ? new THREE.Vector3() : box.getCenter(new THREE.Vector3());
   }
 
   private tick(dt: number, elapsed: number): void {
@@ -272,6 +289,7 @@ export class SacredGeometryLesson implements Lesson {
       return;
     }
     if (this.rotatingSolid) this.rotatingSolid.rotation.y += dt * 0.45;
+    if (this.targetPreview) this.targetPreview.rotation.y += dt * 0.35;
   }
 
   /** Move every face rigidly from its place in the flat plan to its place on the solid. */
@@ -355,19 +373,21 @@ export class SacredGeometryLesson implements Lesson {
     switch (this.solidPhase) {
       case "lattice":
         this.drawLatticeContext();
-        return;
+        break;
       case "face":
         this.drawSingleFace();
-        return;
+        break;
       case "plan":
         this.drawFacePlan();
-        return;
+        break;
       case "assembly":
         this.drawAssembly();
         return;
       case "solid":
         this.drawSolid();
+        return;
     }
+    this.drawTargetPreview();
   }
 
   /**
@@ -588,6 +608,41 @@ export class SacredGeometryLesson implements Lesson {
     this.group.add(solid);
   }
 
+  /** Keep the 3D destination visible while the current phase is intentionally flat. */
+  private drawTargetPreview(): void {
+    const preview = new THREE.Group();
+    const geometry = this.geometryForSolid(this.solidId);
+    preview.add(
+      new THREE.Mesh(
+        geometry,
+        new THREE.MeshStandardMaterial({
+          color: 0x58a6ff,
+          transparent: true,
+          opacity: 0.58,
+          side: THREE.DoubleSide,
+          roughness: 0.32,
+          metalness: 0.18,
+        }),
+      ),
+      new THREE.LineSegments(
+        new THREE.EdgesGeometry(geometry),
+        new THREE.LineBasicMaterial({ color: 0xd2e8ff, transparent: true, opacity: 0.98 }),
+      ),
+    );
+    preview.scale.setScalar(0.72);
+    preview.rotation.set(0.35, -0.55, 0.15);
+    const targetBounds = new THREE.Box3().setFromObject(preview);
+    const phaseBounds = new THREE.Box3().setFromObject(this.group);
+    const margin = 0.9;
+    preview.position.set(
+      phaseBounds.max.x - targetBounds.min.x + margin,
+      0,
+      0.5 - targetBounds.min.z,
+    );
+    this.targetPreview = preview;
+    this.group.add(preview);
+  }
+
   private geometryForSolid(id: PlatonicSolidId): THREE.BufferGeometry {
     switch (id) {
       case "tetrahedron":
@@ -693,15 +748,15 @@ export class SacredGeometryLesson implements Lesson {
     switch (this.solidPhase) {
       case "lattice":
         return solid.faceFromFlowerLattice
-          ? `Any three touching circle centres in the Flower of Life sit one compass width apart, so every lattice cell is an equilateral triangle. One cell is highlighted: that triangle is exactly the face the ${lowerName(solid)} needs, ${solid.faces} congruent copies of it.`
-          : `The Flower of Life's lattice cells are equilateral triangles, drawn faintly here. The ${lowerName(solid)} needs ${solid.faceName}s, and ${NON_LATTICE_NOTE[solid.id] ?? ""} The orange ${solid.faceName} stands on one lattice step, so its first two corners (green) are lattice points while every other corner (orange) misses the lattice. It is constructed separately, by dividing a circle into ${solid.faceSides} equal parts. The Flower is context here, not the source.`;
+          ? `The flat Flower construction is on the left; the rotating translucent ${lowerName(solid)} on the right is the 3D destination. Any three touching circle centres in the Flower of Life sit one compass width apart, so every lattice cell is an equilateral triangle. One cell is highlighted: that triangle is exactly the face the ${lowerName(solid)} needs, ${solid.faces} congruent copies of it.`
+          : `The flat Flower construction is on the left; the rotating translucent ${lowerName(solid)} on the right is the 3D destination. The Flower of Life's lattice cells are equilateral triangles, drawn faintly here. The ${lowerName(solid)} needs ${solid.faceName}s, and ${NON_LATTICE_NOTE[solid.id] ?? ""} The orange ${solid.faceName} stands on one lattice step, so its first two corners (green) are lattice points while every other corner (orange) misses the lattice. It is constructed separately, by dividing a circle into ${solid.faceSides} equal parts. The Flower is context here, not the source.`;
       case "face":
-        return `One face at true size: a ${solid.faceName} with ${solid.faceSides} equal sides, ${solid.faceSides} equal interior angles of ${interior}°, and every corner the same distance from its centre. All ${solid.faces} faces of the ${lowerName(solid)} are congruent copies of this one polygon.`;
+        return `The flat polygon on the left is one face at true size; the rotating translucent ${lowerName(solid)} on the right shows where those faces will end up. It is a ${solid.faceName} with ${solid.faceSides} equal sides, ${solid.faceSides} equal interior angles of ${interior}°, and every corner the same distance from its centre. All ${solid.faces} faces of the ${lowerName(solid)} are congruent copies of this one polygon.`;
       case "plan": {
         const layout = solid.id === "dodecahedron"
           ? "Two six-pentagon rosettes lay all 12 faces flat at true size."
           : `All ${solid.faces} faces lay flat at true size, edge to edge${solid.faceFromFlowerLattice ? " on the same triangular lattice the Flower draws" : ""}.`;
-        return `${layout} Use the plan to count the faces and compare their size; it is a layout of the faces rather than a set of creases to fold.`;
+        return `${layout} The rotating translucent ${lowerName(solid)} at the right is the destination. Use the plan to count the faces and compare their size; it is a layout of the faces rather than a set of creases to fold.`;
       }
       case "assembly":
         return `Watch each face travel from its place in the flat plan to its place on the ${lowerName(solid)}. Every face keeps its size and shape exactly — the motion is a rotation plus a translation — but the faces move independently instead of hinging along shared edges, so this is an assembly animation rather than a physical fold. They finish meeting at the ${solid.dihedralDegrees}° dihedral angle.`;

@@ -208,6 +208,7 @@ const sacredState = () =>
     assemblyProgress: number;
     assemblyFaces: unknown[];
     rotatingSolid?: unknown;
+    targetPreview?: { rotation: { y: number } };
     group: { children: unknown[] };
   });
 
@@ -225,6 +226,16 @@ test("sacred geometry walks one solid through five visibly different constructio
   expect(lattice.solidPhase).toBe("lattice");
   expect(lattice.group.children.length).toBeGreaterThan(19);
   expect(lattice.rotatingSolid).toBeUndefined();
+  expect(lattice.targetPreview).toBeDefined();
+  await expect(page.locator("[data-sacred-phase-copy]")).toContainText("3D destination");
+  const previewBefore = await page.evaluate(
+    () => (window as any).__lab.manager.activeLesson.targetPreview.rotation.y,
+  );
+  await page.waitForTimeout(400);
+  const previewAfter = await page.evaluate(
+    () => (window as any).__lab.manager.activeLesson.targetPreview.rotation.y,
+  );
+  expect(previewAfter).toBeGreaterThan(previewBefore);
 
   // Phase 2 — a single equilateral triangle at true size.
   await page.locator('[data-sacred-phase="face"]').click();
@@ -238,7 +249,7 @@ test("sacred geometry walks one solid through five visibly different constructio
   await expect(page.locator("[data-sacred-phase-name]")).toHaveText("Flat face plan");
   await expect(page.locator("[data-sacred-face-plan-count]")).toHaveText("4");
   const plan = await page.evaluate(sacredState);
-  expect(plan.group.children.length).toBe(8); // four fills plus four outlines
+  expect(plan.group.children.length).toBe(9); // four fills, four outlines, and 3D target
   expect(plan.group.children.length).not.toBe(face.group.children.length);
 
   // Phase 4 — the faces animate from the plan onto the solid.
