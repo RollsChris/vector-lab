@@ -10,6 +10,7 @@ import {
   platonicFacePlan,
   platonicFaces,
   platonicProjection,
+  platonicVertices,
   polygonCircumradius,
   regularPolygon,
   seedOfLife,
@@ -116,7 +117,7 @@ const FLAT_PHASES: readonly SolidPhase[] = ["lattice", "projection", "face", "pl
  * projection phase is deliberately excluded: its whole point is a single fixed viewing
  * direction, so nothing in that phase may spin.
  */
-const PREVIEW_PHASES: readonly SolidPhase[] = ["lattice", "face", "plan"];
+const PREVIEW_PHASES: readonly SolidPhase[] = ["lattice", "projection", "face", "plan"];
 
 const PHASE_COUNT_WORD = numberWord(PHASES.length);
 
@@ -436,6 +437,7 @@ export class SacredGeometryLesson implements Lesson {
     for (const centre of flowerOfLife(CIRCLE_RADIUS)) this.drawCircle(centre, false);
 
     const projection = this.projection();
+    if (this.solidId === "cube") this.drawCubeProjectionFaces(projection);
     for (const segment of projection.segments) {
       const from = projection.points[segment.from];
       const to = projection.points[segment.to];
@@ -444,12 +446,49 @@ export class SacredGeometryLesson implements Lesson {
           new THREE.Vector3(from.x, from.y, 0.02),
           new THREE.Vector3(to.x, to.y, 0.02),
         ]),
-        new THREE.LineBasicMaterial({ color: 0xffa657, transparent: true, opacity: 0.92 }),
+        new THREE.LineBasicMaterial({
+          color: 0xffa657,
+          transparent: true,
+          opacity: this.solidId === "cube" ? 0.46 : 0.92,
+        }),
       );
       this.group.add(line);
     }
     for (const point of projection.points) {
       this.addMarker(point, point.onLattice ? 0x7ee787 : 0xff7b72, point.onLattice ? 0.11 : 0.08);
+    }
+  }
+
+  /**
+   * The cube's body-diagonal shadow has three front square faces, each seen as a rhombus.
+   * Rendering these on top of the full wireframe makes its depth legible without hiding the
+   * twelve aligned Flower segments that define the projection.
+   */
+  private drawCubeProjectionFaces(projection: SolidProjection): void {
+    const vertices = platonicVertices("cube", 1);
+    const faces: readonly { axis: "x" | "y" | "z"; color: number }[] = [
+      { axis: "x", color: 0x58a6ff },
+      { axis: "y", color: 0x3fb950 },
+      { axis: "z", color: 0xd2a8ff },
+    ];
+
+    for (const { axis, color } of faces) {
+      const projected = vertices
+        .map((vertex, index) => ({ vertex, index }))
+        .filter(({ vertex }) => vertex[axis] > 0)
+        .map(({ index }) => projection.points.find((point) => point.sourceVertices.includes(index)))
+        .filter((point): point is NonNullable<typeof point> => point !== undefined);
+      const centre = projected.reduce(
+        (sum, point) => ({ x: sum.x + point.x / projected.length, y: sum.y + point.y / projected.length }),
+        { x: 0, y: 0 },
+      );
+      projected.sort(
+        (a, b) =>
+          Math.atan2(a.y - centre.y, a.x - centre.x) -
+          Math.atan2(b.y - centre.y, b.x - centre.x),
+      );
+      this.addPolygonFill(projected, color, 0.26, 0.015);
+      this.addPolygonOutline(projected, color, 0.94, 0.03);
     }
   }
 
@@ -860,9 +899,9 @@ export class SacredGeometryLesson implements Lesson {
         : `${projection.latticeAlignedCount} of the ${projection.points.length} points land on a Flower circle centre at this scale (green); the rest (red) miss it. This projection does not land completely on the lattice.`;
     const cube =
       solid.id === "cube"
-        ? " This particular figure — a hexagon with a centre and six spokes — is the one usually called Metatron's Cube. Geometrically it is nothing more than a cube viewed straight down its body diagonal, the line joining two opposite corners: three edges at the near corner make three spokes, three at the far corner make three further spokes, and the remaining six edges close the hexagon."
+        ? " This particular figure — a hexagon with a centre and six spokes — is the one usually called Metatron's Cube. Geometrically it is nothing more than a cube viewed straight down its body diagonal, the line joining two opposite corners: three edges at the near corner make three spokes, three at the far corner make three further spokes, and the remaining six edges close the hexagon. The blue, green and purple rhombi are the three front square faces; the dim orange lines remain as the rear wireframe."
         : "";
-    return `This is the ${name} seen as a shadow: every vertex is dropped straight onto a plane at right angles to its ${projection.axis.label}, and depth is thrown away.${cube} ${merged} Its ${projection.originalEdgeCount} edges draw ${projection.segments.length} segments${projection.equalSegments ? ", all exactly the same length" : ""}. ${alignment} A projection is a view, not a plan and not a fold: it can merge vertices, it loses depth, and you cannot cut it out and build the solid from it — that is what the flat face plan two phases on is for.`;
+    return `This is the ${name} seen as a shadow: every vertex is dropped straight onto a plane at right angles to its ${projection.axis.label}, and depth is thrown away.${cube} ${merged} Its ${projection.originalEdgeCount} edges draw ${projection.segments.length} segments${projection.equalSegments ? ", all exactly the same length" : ""}. ${alignment} The rotating translucent ${name} at the right is the 3D object casting this view. A projection is a view, not a plan and not a fold: it can merge vertices, it loses depth, and you cannot cut it out and build the solid from it — that is what the flat face plan two phases on is for.`;
   }
 
   private phaseExtras(solid: PlatonicSolid): string {

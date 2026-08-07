@@ -238,7 +238,7 @@ test("sacred geometry walks one solid through every visibly different constructi
   );
   expect(previewAfter).toBeGreaterThan(previewBefore);
 
-  // Phase 2 — the flat projection: a fixed view, so nothing in it may rotate.
+  // Phase 2 — the flat projection stays fixed while its separate 3D reference rotates.
   await page.locator('[data-sacred-phase="projection"]').click();
   await expect(page.locator("[data-sacred-phase-name]")).toHaveText("2D projection");
   await expect(page.locator("[data-sacred-projection-axis]")).toHaveText("3-fold vertex axis");
@@ -249,16 +249,23 @@ test("sacred geometry walks one solid through every visibly different constructi
   const projection = await page.evaluate(sacredState);
   expect(projection.solidPhase).toBe("projection");
   expect(projection.rotatingSolid).toBeUndefined();
-  expect(projection.targetPreview).toBeUndefined();
-  expect(projection.group.children.length).toBe(19 + 6 + 4); // flower circles, segments, points
+  expect(projection.targetPreview).toBeDefined();
+  expect(projection.group.children.length).toBe(19 + 6 + 4 + 1); // flower, overlay, target
   const projectionBefore = await page.evaluate(
-    () => (window as any).__lab.manager.activeLesson.group.children.map((child: any) => child.rotation.y),
+    () => (window as any).__lab.manager.activeLesson.group.children.slice(0, -1).map((child: any) => child.rotation.y),
+  );
+  const projectionPreviewBefore = await page.evaluate(
+    () => (window as any).__lab.manager.activeLesson.targetPreview.rotation.y,
   );
   await page.waitForTimeout(400);
   const projectionAfter = await page.evaluate(
-    () => (window as any).__lab.manager.activeLesson.group.children.map((child: any) => child.rotation.y),
+    () => (window as any).__lab.manager.activeLesson.group.children.slice(0, -1).map((child: any) => child.rotation.y),
+  );
+  const projectionPreviewAfter = await page.evaluate(
+    () => (window as any).__lab.manager.activeLesson.targetPreview.rotation.y,
   );
   expect(projectionAfter).toEqual(projectionBefore);
+  expect(projectionPreviewAfter).toBeGreaterThan(projectionPreviewBefore);
 
   // Phase 3 — a single equilateral triangle at true size.
   await page.locator('[data-sacred-phase="face"]').click();
@@ -361,10 +368,14 @@ test("sacred geometry projects each solid onto the Flower and reports how much o
     await expect(page.locator("[data-sacred-projection-equal]")).toHaveText(equal);
 
     const state = await page.evaluate(sacredState);
-    // Nineteen faint Flower circles beneath, then one line per segment and one marker per point.
-    expect(state.group.children.length).toBe(19 + Number(segments) + Number(points));
+    // Nineteen faint Flower circles, then one line per segment and one marker per point.
+    // The cube also draws three coloured face fills and their outlines, plus every flat
+    // phase has a separate 3D target preview.
+    expect(state.group.children.length).toBe(
+      19 + Number(segments) + Number(points) + (id === "cube" ? 6 : 0) + 1,
+    );
     expect(state.rotatingSolid).toBeUndefined();
-    expect(state.targetPreview).toBeUndefined();
+    expect(state.targetPreview).toBeDefined();
 
     const copy = (await page.locator("[data-sacred-phase-copy]").textContent()) ?? "";
     expect(copy).toContain("shadow");
