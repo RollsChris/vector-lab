@@ -194,10 +194,110 @@ test("sacred geometry traces the circle construction and inspects every Platonic
     await expect(page.locator("[data-sacred-euler]")).toContainText("= 2");
   }
 
+  await page.locator('[data-sacred-phase="solid"]').click();
   const before = await page.evaluate(() => (window as any).__lab.manager.activeLesson.rotatingSolid.rotation.y);
   await page.waitForTimeout(400);
   const after = await page.evaluate(() => (window as any).__lab.manager.activeLesson.rotatingSolid.rotation.y);
   expect(after).toBeGreaterThan(before);
+  expect(errors, errors.join("\n")).toEqual([]);
+});
+
+const sacredState = () =>
+  ((window as any).__lab.manager.activeLesson as {
+    solidPhase: string;
+    assemblyProgress: number;
+    assemblyFaces: unknown[];
+    rotatingSolid?: unknown;
+    group: { children: unknown[] };
+  });
+
+test("sacred geometry walks one solid through five visibly different construction phases", async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto("/#sacred-geometry");
+  await page.locator('[data-sacred-view="solids"]').click();
+  await page.locator('[data-sacred-solid="tetrahedron"]').click();
+
+  // Phase 1 — the Flower drawn as the triangular lattice that supplies the face.
+  await expect(page.locator('[data-sacred-phase="lattice"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("[data-sacred-phase-name]")).toHaveText("Flower lattice");
+  await expect(page.locator("[data-sacred-lattice-source]")).toHaveText("yes");
+  const lattice = await page.evaluate(sacredState);
+  expect(lattice.solidPhase).toBe("lattice");
+  expect(lattice.group.children.length).toBeGreaterThan(19);
+  expect(lattice.rotatingSolid).toBeUndefined();
+
+  // Phase 2 — a single equilateral triangle at true size.
+  await page.locator('[data-sacred-phase="face"]').click();
+  await expect(page.locator("[data-sacred-phase-name]")).toHaveText("One regular face");
+  await expect(page.locator("[data-sacred-face-shape]")).toHaveText("equilateral triangle");
+  const face = await page.evaluate(sacredState);
+  expect(face.group.children.length).toBeLessThan(lattice.group.children.length);
+
+  // Phase 3 — every face laid flat.
+  await page.locator('[data-sacred-phase="plan"]').click();
+  await expect(page.locator("[data-sacred-phase-name]")).toHaveText("Flat face plan");
+  await expect(page.locator("[data-sacred-face-plan-count]")).toHaveText("4");
+  const plan = await page.evaluate(sacredState);
+  expect(plan.group.children.length).toBe(8); // four fills plus four outlines
+  expect(plan.group.children.length).not.toBe(face.group.children.length);
+
+  // Phase 4 — the faces animate from the plan onto the solid.
+  await page.locator('[data-sacred-phase="assembly"]').click();
+  await expect(page.locator("[data-sacred-phase-name]")).toHaveText("Assembly animation");
+  await expect(page.locator("#info")).toContainText("assembly animation rather than a physical fold");
+  expect((await page.evaluate(sacredState)).assemblyFaces.length).toBe(4);
+  await expect(page.locator("[data-sacred-assembly-progress]")).toHaveText("100%", { timeout: 10_000 });
+  expect((await page.evaluate(sacredState)).assemblyProgress).toBeCloseTo(1, 3);
+
+  await page.locator("[data-sacred-replay]").click();
+  await expect(page.locator("[data-sacred-assembly-progress]")).not.toHaveText("100%");
+  await expect(page.locator("[data-sacred-assembly-progress]")).toHaveText("100%", { timeout: 10_000 });
+
+  // Phase 5 — the finished solid rotates.
+  await page.locator('[data-sacred-phase="solid"]').click();
+  await expect(page.locator("[data-sacred-phase-name]")).toHaveText("Finished solid");
+  const spinBefore = await page.evaluate(() => (window as any).__lab.manager.activeLesson.rotatingSolid.rotation.y);
+  await page.waitForTimeout(400);
+  const spinAfter = await page.evaluate(() => (window as any).__lab.manager.activeLesson.rotatingSolid.rotation.y);
+  expect(spinAfter).toBeGreaterThan(spinBefore);
+
+  expect(errors, errors.join("\n")).toEqual([]);
+});
+
+test("sacred geometry offers all five phases for every solid and says which faces the lattice supplies", async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto("/#sacred-geometry");
+  await page.locator('[data-sacred-view="solids"]').click();
+
+  const solids = [
+    ["tetrahedron", "equilateral triangle", "yes", 4],
+    ["cube", "square", "no", 6],
+    ["octahedron", "equilateral triangle", "yes", 8],
+    ["dodecahedron", "regular pentagon", "no", 12],
+    ["icosahedron", "equilateral triangle", "yes", 20],
+  ] as const;
+
+  for (const [id, faceShape, fromLattice, faces] of solids) {
+    await page.locator(`[data-sacred-solid="${id}"]`).click();
+
+    await page.locator('[data-sacred-phase="lattice"]').click();
+    await expect(page.locator("[data-sacred-face-shape]")).toHaveText(faceShape);
+    await expect(page.locator("[data-sacred-lattice-source]")).toHaveText(fromLattice);
+    await expect(page.locator("[data-sacred-phase-copy]")).toContainText(
+      fromLattice === "yes" ? "every lattice cell is an equilateral triangle" : "Flower is context here, not the source",
+    );
+
+    for (const phase of ["face", "plan", "assembly", "solid"] as const) {
+      await page.locator(`[data-sacred-phase="${phase}"]`).click();
+      await expect(page.locator(`[data-sacred-phase="${phase}"]`)).toHaveAttribute("aria-pressed", "true");
+      const state = await page.evaluate(sacredState);
+      expect(state.solidPhase).toBe(phase);
+      expect(state.group.children.length).toBeGreaterThan(0);
+      if (phase === "assembly") expect(state.assemblyFaces.length).toBe(faces);
+      if (phase === "solid") expect(state.rotatingSolid).toBeTruthy();
+    }
+  }
+
   expect(errors, errors.join("\n")).toEqual([]);
 });
 

@@ -3,6 +3,12 @@ export interface SacredPoint {
   readonly y: number;
 }
 
+export interface SacredVector3 {
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+}
+
 export type PlatonicSolidId =
   | "tetrahedron"
   | "cube"
@@ -21,6 +27,29 @@ export interface PlatonicSolid {
   readonly dual: PlatonicSolidId;
   readonly dihedralDegrees: number;
   readonly schlafli: string;
+  /** Plain-English name of the face polygon. */
+  readonly faceName: string;
+  /**
+   * True only when the face polygon is a cell of the Flower of Life's triangular lattice,
+   * i.e. an equilateral triangle. Squares and regular pentagons are not lattice cells.
+   */
+  readonly faceFromFlowerLattice: boolean;
+}
+
+/** One face of a solid, as a closed regular polygon in space. */
+export interface SolidFace {
+  readonly vertices: readonly SacredVector3[];
+  readonly centroid: SacredVector3;
+  /** Unit normal pointing away from the solid's centre. */
+  readonly normal: SacredVector3;
+}
+
+/** One face of the flat face plan, as a regular polygon in the plane. */
+export interface FlatFace {
+  readonly vertices: readonly SacredPoint[];
+  readonly centre: SacredPoint;
+  /** Direction of the first vertex from the centre, in radians. */
+  readonly rotation: number;
 }
 
 /** The seven circle centres in the first hexagonal ring around a centre. */
@@ -49,6 +78,8 @@ export const PLATONIC_SOLIDS: readonly PlatonicSolid[] = [
     dual: "tetrahedron",
     dihedralDegrees: 70.53,
     schlafli: "{3, 3}",
+    faceName: "equilateral triangle",
+    faceFromFlowerLattice: true,
   },
   {
     id: "cube",
@@ -61,6 +92,8 @@ export const PLATONIC_SOLIDS: readonly PlatonicSolid[] = [
     dual: "octahedron",
     dihedralDegrees: 90,
     schlafli: "{4, 3}",
+    faceName: "square",
+    faceFromFlowerLattice: false,
   },
   {
     id: "octahedron",
@@ -73,6 +106,8 @@ export const PLATONIC_SOLIDS: readonly PlatonicSolid[] = [
     dual: "cube",
     dihedralDegrees: 109.47,
     schlafli: "{3, 4}",
+    faceName: "equilateral triangle",
+    faceFromFlowerLattice: true,
   },
   {
     id: "dodecahedron",
@@ -85,6 +120,8 @@ export const PLATONIC_SOLIDS: readonly PlatonicSolid[] = [
     dual: "icosahedron",
     dihedralDegrees: 116.57,
     schlafli: "{5, 3}",
+    faceName: "regular pentagon",
+    faceFromFlowerLattice: false,
   },
   {
     id: "icosahedron",
@@ -97,6 +134,8 @@ export const PLATONIC_SOLIDS: readonly PlatonicSolid[] = [
     dual: "dodecahedron",
     dihedralDegrees: 138.19,
     schlafli: "{3, 5}",
+    faceName: "equilateral triangle",
+    faceFromFlowerLattice: true,
   },
 ];
 
@@ -124,4 +163,359 @@ function hexagonalCentres(radius: number, rings: number): SacredPoint[] {
   return points
     .sort((a, b) => a.ring - b.ring || a.angle - b.angle)
     .map(({ point }) => point);
+}
+
+const EPSILON = 1e-9;
+
+/** Distance from a regular polygon's centre to a vertex, given its side length. */
+export function polygonCircumradius(sides: number, edgeLength: number): number {
+  requireInteger(sides, 3, "sides");
+  requirePositive(edgeLength, "edgeLength");
+  return edgeLength / (2 * Math.sin(Math.PI / sides));
+}
+
+/** Interior angle of a regular polygon in degrees. */
+export function interiorAngleDegrees(sides: number): number {
+  requireInteger(sides, 3, "sides");
+  return ((sides - 2) * 180) / sides;
+}
+
+/** Vertices of a regular polygon, counter-clockwise from the given rotation. */
+export function regularPolygon(
+  sides: number,
+  circumradius: number,
+  centre: SacredPoint = { x: 0, y: 0 },
+  rotation = 0,
+): SacredPoint[] {
+  requireInteger(sides, 3, "sides");
+  requirePositive(circumradius, "circumradius");
+  return Array.from({ length: sides }, (_, index) => {
+    const angle = rotation + (index / sides) * Math.PI * 2;
+    return {
+      x: centre.x + circumradius * Math.cos(angle),
+      y: centre.y + circumradius * Math.sin(angle),
+    };
+  });
+}
+
+/**
+ * Vertices of a Platonic solid centred on the origin, scaled so every edge has the
+ * requested length. Coordinates come from the standard golden-ratio constructions.
+ */
+export function platonicVertices(id: PlatonicSolidId, edgeLength = 1): SacredVector3[] {
+  requirePositive(edgeLength, "edgeLength");
+  const raw = RAW_VERTICES[id]();
+  const scale = edgeLength / shortestDistance(raw);
+  return raw.map((vertex) => scaleVector(vertex, scale));
+}
+
+/** Distance from the centre to any vertex, for the given edge length. */
+export function platonicCircumradius(id: PlatonicSolidId, edgeLength = 1): number {
+  const vertices = platonicVertices(id, edgeLength);
+  return length(vertices[0]);
+}
+
+/**
+ * The faces of a Platonic solid as ordered regular polygons. Each face plane is found
+ * from a vertex and two of its neighbours, then kept only when no vertex lies outside
+ * it and it holds exactly the expected number of vertices.
+ */
+export function platonicFaces(id: PlatonicSolidId, edgeLength = 1): SolidFace[] {
+  const vertices = platonicVertices(id, edgeLength);
+  const meta = PLATONIC_SOLIDS.find((solid) => solid.id === id)!;
+  const tolerance = edgeLength * 1e-6;
+
+  const faces = new Map<string, SolidFace>();
+  for (let i = 0; i < vertices.length; i++) {
+    const neighbours = vertices.filter(
+      (vertex) => vertex !== vertices[i] && Math.abs(length(subtract(vertex, vertices[i])) - edgeLength) < tolerance,
+    );
+    for (let j = 0; j < neighbours.length; j++) {
+      for (let k = j + 1; k < neighbours.length; k++) {
+        const candidate = cross(subtract(neighbours[j], vertices[i]), subtract(neighbours[k], vertices[i]));
+        if (length(candidate) < tolerance) continue;
+        let normal = normalise(candidate);
+        if (dot(normal, vertices[i]) < 0) normal = scaleVector(normal, -1);
+
+        const reach = Math.max(...vertices.map((vertex) => dot(vertex, normal)));
+        if (reach - dot(vertices[i], normal) > tolerance) continue; // an interior plane, not a face
+        const onIndices = vertices
+          .map((vertex, index) => ({ vertex, index }))
+          .filter(({ vertex }) => Math.abs(dot(vertex, normal) - reach) < tolerance);
+        if (onIndices.length !== meta.faceSides) continue;
+        const onFace = onIndices.map(({ vertex }) => vertex);
+
+        const centroid = averageVector(onFace);
+        const u = normalise(subtract(onFace[0], centroid));
+        const w = cross(normal, u);
+        const ordered = [...onFace].sort(
+          (a, b) => faceAngle(a, centroid, u, w) - faceAngle(b, centroid, u, w),
+        );
+        faces.set(onIndices.map(({ index }) => index).join("-"), { vertices: ordered, centroid, normal });
+      }
+    }
+  }
+
+  // A stable order keeps the assembly animation reproducible between runs.
+  return [...faces.values()].sort(
+    (a, b) =>
+      b.normal.y - a.normal.y ||
+      Math.atan2(a.normal.z, a.normal.x) - Math.atan2(b.normal.z, b.normal.x),
+  );
+}
+
+/**
+ * A flat plan of every face of a solid, laid out at true size and centred on the origin.
+ * Triangle-faced solids are laid out on the same triangular lattice the Flower of Life
+ * draws; the cube's squares and the dodecahedron's pentagons are laid out separately,
+ * because neither polygon is a cell of that lattice.
+ */
+export function platonicFacePlan(id: PlatonicSolidId, edgeLength = 1): FlatFace[] {
+  requirePositive(edgeLength, "edgeLength");
+  const meta = PLATONIC_SOLIDS.find((solid) => solid.id === id)!;
+  const circumradius = polygonCircumradius(meta.faceSides, edgeLength);
+  const placements =
+    meta.faceSides === 3
+      ? TRIANGLE_PLAN[id]!.map((cell) => triangleCell(cell[0], cell[1], edgeLength))
+      : id === "cube"
+        ? squarePlan(edgeLength)
+        : pentagonPlan(edgeLength);
+
+  const faces = placements.map((placement) => ({
+    centre: placement.centre,
+    rotation: placement.rotation,
+    vertices: regularPolygon(meta.faceSides, circumradius, placement.centre, placement.rotation),
+  }));
+  return centrePlan(faces);
+}
+
+/**
+ * Every equilateral triangle whose corners are three mutually adjacent circle centres of
+ * the Flower of Life. These are the lattice cells that supply triangular faces.
+ */
+export function flowerLatticeTriangles(radius: number): SacredPoint[][] {
+  const centres = flowerOfLife(radius);
+  const adjacent = (a: SacredPoint, b: SacredPoint) =>
+    Math.abs(Math.hypot(a.x - b.x, a.y - b.y) - radius) < radius * 1e-9;
+
+  const triangles: SacredPoint[][] = [];
+  for (let i = 0; i < centres.length; i++) {
+    for (let j = i + 1; j < centres.length; j++) {
+      if (!adjacent(centres[i], centres[j])) continue;
+      for (let k = j + 1; k < centres.length; k++) {
+        if (adjacent(centres[i], centres[k]) && adjacent(centres[j], centres[k])) {
+          triangles.push([centres[i], centres[j], centres[k]]);
+        }
+      }
+    }
+  }
+  return triangles;
+}
+
+const PHI = (1 + Math.sqrt(5)) / 2;
+
+
+const RAW_VERTICES: Record<PlatonicSolidId, () => SacredVector3[]> = {
+  tetrahedron: () => [
+    { x: 1, y: 1, z: 1 },
+    { x: 1, y: -1, z: -1 },
+    { x: -1, y: 1, z: -1 },
+    { x: -1, y: -1, z: 1 },
+  ],
+  cube: () => signCombinations([1, 1, 1]),
+  octahedron: () => [
+    { x: 1, y: 0, z: 0 },
+    { x: -1, y: 0, z: 0 },
+    { x: 0, y: 1, z: 0 },
+    { x: 0, y: -1, z: 0 },
+    { x: 0, y: 0, z: 1 },
+    { x: 0, y: 0, z: -1 },
+  ],
+  dodecahedron: () => [...signCombinations([1, 1, 1]), ...cyclicPermutations(0, 1 / PHI, PHI)],
+  icosahedron: () => cyclicPermutations(0, 1, PHI),
+};
+
+/** Row/column cells of the triangular lattice used by each triangle-faced solid. */
+const TRIANGLE_PLAN: Partial<Record<PlatonicSolidId, readonly (readonly [number, number])[]>> = {
+  tetrahedron: [
+    [0, 0],
+    [0, 1],
+    [0, 2],
+    [1, 1],
+  ],
+  octahedron: [
+    [0, 0],
+    [0, 1],
+    [0, 2],
+    [0, 3],
+    [1, 1],
+    [1, 2],
+    [1, 3],
+    [1, 4],
+  ],
+  icosahedron: Array.from({ length: 4 }, (_, row) =>
+    Array.from({ length: 5 }, (_, index) => [row, row + index] as const),
+  ).flat(),
+};
+
+interface Placement {
+  readonly centre: SacredPoint;
+  readonly rotation: number;
+}
+
+/**
+ * One cell of the triangular lattice. Cells alternate between point-up and point-down
+ * along a row, exactly as the Flower of Life's circle centres divide the plane.
+ */
+function triangleCell(row: number, column: number, edgeLength: number): Placement {
+  const height = (edgeLength * Math.sqrt(3)) / 2;
+  const pointsUp = (((row + column) % 2) + 2) % 2 === 0;
+  return {
+    centre: {
+      x: ((column + 1) * edgeLength) / 2,
+      y: row * height + (pointsUp ? height / 3 : (2 * height) / 3),
+    },
+    rotation: pointsUp ? Math.PI / 2 : -Math.PI / 2,
+  };
+}
+
+/** Six squares in a cross, the arrangement most cube nets use. */
+function squarePlan(edgeLength: number): Placement[] {
+  const centres: SacredPoint[] = [
+    { x: 0, y: 1.5 * edgeLength },
+    { x: 0, y: 0.5 * edgeLength },
+    { x: 0, y: -0.5 * edgeLength },
+    { x: 0, y: -1.5 * edgeLength },
+    { x: -edgeLength, y: 0.5 * edgeLength },
+    { x: edgeLength, y: 0.5 * edgeLength },
+  ];
+  return centres.map((centre) => ({ centre, rotation: Math.PI / 4 }));
+}
+
+/** Twelve pentagons as two rosettes: a central pentagon ringed by five more, twice. */
+function pentagonPlan(edgeLength: number): Placement[] {
+  const apothem = edgeLength / (2 * Math.tan(Math.PI / 5));
+  const circumradius = polygonCircumradius(5, edgeLength);
+  const rosetteRadius = 2 * apothem + circumradius;
+  const gap = edgeLength * 0.3;
+
+  const rosette = (offsetX: number, flip: number): Placement[] => {
+    const base = Math.PI / 2 + flip;
+    const centre = { x: offsetX, y: 0 };
+    const placements: Placement[] = [{ centre, rotation: base }];
+    for (let k = 0; k < 5; k++) {
+      const direction = base + Math.PI / 5 + (k * Math.PI * 2) / 5;
+      placements.push({
+        centre: {
+          x: centre.x + 2 * apothem * Math.cos(direction),
+          y: centre.y + 2 * apothem * Math.sin(direction),
+        },
+        rotation: direction,
+      });
+    }
+    return placements;
+  };
+
+  const offset = rosetteRadius + gap / 2;
+  return [...rosette(-offset, 0), ...rosette(offset, Math.PI / 5)];
+}
+
+/** Shift a plan so its bounding box is centred on the origin. */
+function centrePlan(faces: FlatFace[]): FlatFace[] {
+  const points = faces.flatMap((face) => face.vertices);
+  const midX = (Math.min(...points.map((p) => p.x)) + Math.max(...points.map((p) => p.x))) / 2;
+  const midY = (Math.min(...points.map((p) => p.y)) + Math.max(...points.map((p) => p.y))) / 2;
+  return faces.map((face) => ({
+    rotation: face.rotation,
+    centre: { x: face.centre.x - midX, y: face.centre.y - midY },
+    vertices: face.vertices.map((vertex) => ({ x: vertex.x - midX, y: vertex.y - midY })),
+  }));
+}
+
+function signCombinations([x, y, z]: [number, number, number]): SacredVector3[] {
+  const vertices: SacredVector3[] = [];
+  for (const sx of [1, -1]) {
+    for (const sy of [1, -1]) {
+      for (const sz of [1, -1]) vertices.push({ x: sx * x, y: sy * y, z: sz * z });
+    }
+  }
+  return vertices;
+}
+
+/** The twelve points made by cycling (0, ±b, ±c) through the three coordinate slots. */
+function cyclicPermutations(a: number, b: number, c: number): SacredVector3[] {
+  const vertices: SacredVector3[] = [];
+  for (const sb of [1, -1]) {
+    for (const sc of [1, -1]) {
+      vertices.push({ x: a, y: sb * b, z: sc * c });
+      vertices.push({ x: sb * b, y: sc * c, z: a });
+      vertices.push({ x: sc * c, y: a, z: sb * b });
+    }
+  }
+  return vertices;
+}
+
+function faceAngle(point: SacredVector3, centroid: SacredVector3, u: SacredVector3, w: SacredVector3): number {
+  const offset = subtract(point, centroid);
+  return Math.atan2(dot(offset, w), dot(offset, u));
+}
+
+function shortestDistance(points: readonly SacredVector3[]): number {
+  let shortest = Infinity;
+  for (let i = 0; i < points.length; i++) {
+    for (let j = i + 1; j < points.length; j++) {
+      shortest = Math.min(shortest, length(subtract(points[i], points[j])));
+    }
+  }
+  return shortest;
+}
+
+function subtract(a: SacredVector3, b: SacredVector3): SacredVector3 {
+  return { x: a.x - b.x, y: a.y - b.y, z: a.z - b.z };
+}
+
+function scaleVector(a: SacredVector3, factor: number): SacredVector3 {
+  return { x: a.x * factor, y: a.y * factor, z: a.z * factor };
+}
+
+function dot(a: SacredVector3, b: SacredVector3): number {
+  return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
+function cross(a: SacredVector3, b: SacredVector3): SacredVector3 {
+  return {
+    x: a.y * b.z - a.z * b.y,
+    y: a.z * b.x - a.x * b.z,
+    z: a.x * b.y - a.y * b.x,
+  };
+}
+
+function length(a: SacredVector3): number {
+  return Math.sqrt(dot(a, a));
+}
+
+function normalise(a: SacredVector3): SacredVector3 {
+  const size = length(a);
+  if (size < EPSILON) throw new RangeError("cannot normalise a zero-length vector");
+  return scaleVector(a, 1 / size);
+}
+
+function averageVector(points: readonly SacredVector3[]): SacredVector3 {
+  const total = points.reduce(
+    (sum, point) => ({ x: sum.x + point.x, y: sum.y + point.y, z: sum.z + point.z }),
+    { x: 0, y: 0, z: 0 },
+  );
+  return scaleVector(total, 1 / points.length);
+}
+
+function requirePositive(value: number, name: string): void {
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new RangeError(`${name} must be a positive finite number`);
+  }
+}
+
+function requireInteger(value: number, minimum: number, name: string): void {
+  if (!Number.isInteger(value) || value < minimum) {
+    throw new RangeError(`${name} must be an integer of at least ${minimum}`);
+  }
 }

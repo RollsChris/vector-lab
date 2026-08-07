@@ -567,8 +567,8 @@ export const SHAPE_AND_TRIG_GUIDES: readonly LessonGuide[] = [
       "construct the vesica piscis, Seed of Life and Flower of Life from one compass width",
       "identify the triangular lattice and six-fold symmetry made by equal circle centres",
       "count vertices, edges and faces for each Platonic solid",
-      "use Euler's check to verify a convex regular solid",
-      "match each Platonic solid with its dual",
+      "use Euler's check to verify a convex regular solid and name its dual",
+      "build each Platonic solid phase by phase, from its face polygon to the finished solid",
     ],
     whyItMatters:
       "Repeated circle centres form the same hexagonal arrangement found in close packing, tiling and crystal structures, while regular polyhedra connect symmetry to molecular models, architecture and computer graphics.",
@@ -591,7 +591,7 @@ export const SHAPE_AND_TRIG_GUIDES: readonly LessonGuide[] = [
       "Changing the compass width while adding circles → every circle must keep the same radius or the triangular lattice no longer fits.",
       "Counting triangular render facets as the faces of a dodecahedron → its mathematical faces are twelve pentagons, even when graphics software splits them into triangles.",
       "Calling any symmetric solid Platonic → every face must be the same regular polygon and the same arrangement must meet at every vertex.",
-      "Treating historical names as scientific evidence → the useful claims here are the measurable circle distances, symmetries and polyhedron counts.",
+      "Assuming the Flower of Life generates all five solids → its lattice cells are equilateral triangles, so it supplies the faces of the tetrahedron, octahedron and icosahedron only; the cube's squares and the dodecahedron's pentagons are constructed separately, and the historical names are not evidence for anything.",
     ],
     checks: [
       {
@@ -605,13 +605,18 @@ export const SHAPE_AND_TRIG_GUIDES: readonly LessonGuide[] = [
           "Euler's rule gives 4 − 6 + F = 2. Adding 2 to both sides gives F = 4, which matches the tetrahedron's four triangular faces.",
       },
       {
+        question: "Which Platonic solids can take their face straight from the Flower of Life's lattice, and why?",
+        answer:
+          "Only the tetrahedron, octahedron and icosahedron. Every cell of that triangular lattice is an equilateral triangle, which is their face; a cube needs squares and a dodecahedron needs regular pentagons, and neither polygon is a cell of a triangular lattice.",
+      },
+      {
         question: "Which solid is the dual of a cube, and what exchanges when you make the dual?",
         answer:
           "The octahedron is the cube's dual. A cube's six face centres become the octahedron's six vertices, while the cube's eight vertices become eight triangular faces.",
       },
     ],
     tryThis:
-      "Open Compass construction and step from First circle to Flower of Life, replaying each trace. Then open Platonic solids, select every solid, rotate it and compare its Euler check and dual.",
+      "Open Compass construction and step from First circle to Flower of Life, replaying each trace. Then open Platonic solids, pick a solid and walk phases 1 to 5: lattice, one face, flat face plan, the assembly animation and the finished solid. Repeat for the cube and watch phase 1 report that its square is not a lattice cell.",
   },
   {
     id: "radians",
