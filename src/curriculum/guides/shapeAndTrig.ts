@@ -560,6 +560,60 @@ export const SHAPE_AND_TRIG_GUIDES: readonly LessonGuide[] = [
       "Turn on Show directrix and Show focus, then move Eccentricity e slowly from 0.5 through 1 to 1.5. Watch the Conic type change from ellipse to parabola to hyperbola.",
   },
   {
+    id: "sacred-geometry",
+    plainEnglish:
+      "One fixed compass width can build a repeating pattern of equal circles. The same lesson also shows the five perfectly regular solids that can close up in three dimensions.",
+    objectives: [
+      "construct the vesica piscis, Seed of Life and Flower of Life from one compass width",
+      "identify the triangular lattice and six-fold symmetry made by equal circle centres",
+      "count vertices, edges and faces for each Platonic solid",
+      "use Euler's check to verify a convex regular solid",
+      "match each Platonic solid with its dual",
+    ],
+    whyItMatters:
+      "Repeated circle centres form the same hexagonal arrangement found in close packing, tiling and crystal structures, while regular polyhedra connect symmetry to molecular models, architecture and computer graphics.",
+    keyIdea:
+      "Keep the compass width fixed: each new circle centre sits one radius away from a neighbour, so equal-sided triangles tile the plane. In three dimensions, strict regularity leaves exactly five convex possibilities.",
+    workedExample: {
+      prompt:
+        "A cube has 8 vertices, 12 edges and 6 faces. Use Euler's check to test the count.",
+      steps: [
+        "Write the vertex, edge and face counts as V = 8, E = 12 and F = 6.",
+        "Use Euler's rule for a convex polyhedron: V − E + F = 2.",
+        "Substitute the cube's counts: 8 − 12 + 6.",
+        "Calculate from left to right: 8 − 12 + 6 = 2.",
+        "The result is 2, so the counts pass Euler's check.",
+      ],
+      answer:
+        "The cube passes Euler's check because 8 − 12 + 6 = 2.",
+    },
+    pitfalls: [
+      "Changing the compass width while adding circles → every circle must keep the same radius or the triangular lattice no longer fits.",
+      "Counting triangular render facets as the faces of a dodecahedron → its mathematical faces are twelve pentagons, even when graphics software splits them into triangles.",
+      "Calling any symmetric solid Platonic → every face must be the same regular polygon and the same arrangement must meet at every vertex.",
+      "Treating historical names as scientific evidence → the useful claims here are the measurable circle distances, symmetries and polyhedron counts.",
+    ],
+    checks: [
+      {
+        question: "Why are the six outer centres in the Seed of Life equally spaced around the middle?",
+        answer:
+          "Each is one fixed compass radius from the centre, and successive centres are placed one radius apart. That makes six equal-sided triangles around a full turn.",
+      },
+      {
+        question: "A tetrahedron has 4 vertices and 6 edges. How many faces must it have to satisfy Euler's check?",
+        answer:
+          "Euler's rule gives 4 − 6 + F = 2. Adding 2 to both sides gives F = 4, which matches the tetrahedron's four triangular faces.",
+      },
+      {
+        question: "Which solid is the dual of a cube, and what exchanges when you make the dual?",
+        answer:
+          "The octahedron is the cube's dual. A cube's six face centres become the octahedron's six vertices, while the cube's eight vertices become eight triangular faces.",
+      },
+    ],
+    tryThis:
+      "Open Compass construction and step from First circle to Flower of Life, replaying each trace. Then open Platonic solids, select every solid, rotate it and compare its Euler check and dual.",
+  },
+  {
     id: "radians",
     plainEnglish:
       "An angle can be measured by asking how many copies of the circle's own reach fit along the swept edge. This makes turns and curved distances fit together naturally.",

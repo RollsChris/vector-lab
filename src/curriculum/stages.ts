@@ -51,6 +51,7 @@ export const STAGES: readonly CurriculumStage[] = [
       "circle-calculations",
       "volume",
       "conic-sections",
+      "sacred-geometry",
     ],
   },
   {

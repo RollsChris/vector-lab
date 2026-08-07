@@ -58,6 +58,7 @@ import { RadiansLesson } from "./lessons/RadiansLesson";
 import { BinomialsLesson } from "./lessons/BinomialsLesson";
 import { NumberSenseFractionsLesson } from "./lessons/NumberSenseFractionsLesson";
 import { ArithmeticOperationsLesson } from "./lessons/ArithmeticOperationsLesson";
+import { SacredGeometryLesson } from "./lessons/SacredGeometryLesson";
 
 const stage = document.getElementById("stage")!;
 const nav = document.getElementById("nav")!;
@@ -107,6 +108,7 @@ const manager = new LessonManager(
     new CircleCalculationsLesson(),
     new VolumeLesson(),
     new ConicSectionsLesson(),
+    new SacredGeometryLesson(),
     new RadiansLesson(),
     new TrigonometricFunctionsLesson(),
     new WaveformsLesson(),

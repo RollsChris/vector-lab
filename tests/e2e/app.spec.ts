@@ -35,6 +35,7 @@ const LESSONS = [
   { id: "circle-calculations", heading: "Circle Geometry & Calculations" },
   { id: "volume", heading: "Volume of Solids" },
   { id: "conic-sections", heading: "Conic Sections" },
+  { id: "sacred-geometry", heading: "Sacred Geometry" },
   { id: "radians", heading: "Radians" },
   { id: "trig-functions", heading: "Trigonometric Functions" },
   { id: "waveforms", heading: "Waveforms" },
@@ -137,11 +138,11 @@ test("app shell supports deep links, lesson search, and keyboard lesson navigati
   await page.keyboard.press("/");
   await expect(page.locator("#lesson-search")).toBeFocused();
   await page.fill("#lesson-search", "shader");
-  await expect(page.locator("#lesson-count")).toHaveText("1 / 56 shown");
-  await expect(page.locator(".nav-item:visible .nav-title")).toHaveText("56 · Shader Playground");
+  await expect(page.locator("#lesson-count")).toHaveText("1 / 57 shown");
+  await expect(page.locator(".nav-item:visible .nav-title")).toHaveText("57 · Shader Playground");
 
   await page.keyboard.press("Escape");
-  await expect(page.locator("#lesson-count")).toHaveText("56 lessons");
+  await expect(page.locator("#lesson-count")).toHaveText("57 lessons");
 
   await page.keyboard.press("]");
   await expect(page.locator("#info h2")).toHaveText("Parallel Lines");
@@ -164,6 +165,39 @@ test("app shell falls back safely for an unknown lesson hash", async ({ page }) 
   await page.goto("/#not-a-real-lesson");
   await expect(page.locator("#info h2")).toHaveText("Foundation topics");
   await expect(page).toHaveURL(/#foundations$/);
+  expect(errors, errors.join("\n")).toEqual([]);
+});
+
+test("sacred geometry traces the circle construction and inspects every Platonic solid", async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto("/#sacred-geometry");
+
+  await expect(page.locator("[data-sacred-circle-count]")).toHaveText("1");
+  for (const [step, count] of [["vesica", "2"], ["seed", "7"], ["flower", "19"]] as const) {
+    await page.locator(`[data-sacred-step="${step}"]`).click();
+    await expect(page.locator("[data-sacred-circle-count]")).toHaveText(count);
+  }
+
+  await page.locator('[data-sacred-view="solids"]').click();
+  const solids = [
+    ["tetrahedron", "4", "6", "4"],
+    ["cube", "8", "12", "6"],
+    ["octahedron", "6", "12", "8"],
+    ["dodecahedron", "20", "30", "12"],
+    ["icosahedron", "12", "30", "20"],
+  ] as const;
+  for (const [id, vertices, edges, faces] of solids) {
+    await page.locator(`[data-sacred-solid="${id}"]`).click();
+    await expect(page.locator("[data-sacred-vertices]")).toHaveText(vertices);
+    await expect(page.locator("[data-sacred-edges]")).toHaveText(edges);
+    await expect(page.locator("[data-sacred-faces]")).toHaveText(faces);
+    await expect(page.locator("[data-sacred-euler]")).toContainText("= 2");
+  }
+
+  const before = await page.evaluate(() => (window as any).__lab.manager.activeLesson.rotatingSolid.rotation.y);
+  await page.waitForTimeout(400);
+  const after = await page.evaluate(() => (window as any).__lab.manager.activeLesson.rotatingSolid.rotation.y);
+  expect(after).toBeGreaterThan(before);
   expect(errors, errors.join("\n")).toEqual([]);
 });
 
@@ -721,7 +755,7 @@ test("the sidebar presents the whole curriculum in teaching order", async ({ pag
   ]);
 
   await expect(page.locator(".nav-item .nav-title").evaluateAll((titles) =>
-    titles.slice(0, 29).map((title) => title.textContent?.replace(/^\d+\s*·\s*/, "").trim()),
+    titles.slice(0, 30).map((title) => title.textContent?.replace(/^\d+\s*·\s*/, "").trim()),
   )).resolves.toEqual([
     // Stage 1 — numbers and arithmetic.
     "Foundation topics",
@@ -749,6 +783,7 @@ test("the sidebar presents the whole curriculum in teaching order", async ({ pag
     "Circle Geometry & Calculations",
     "Volume of Solids",
     "Conic Sections",
+    "Sacred Geometry",
     // Stage 4 — trigonometry and waves.
     "Radians",
     "Trigonometric Functions",
@@ -3244,11 +3279,11 @@ test("completing a lesson records progress, ticks the sidebar, and advances the 
   const errors = trackErrors(page);
   await page.goto("/#foundations");
 
-  await expect(page.locator("#path-progress")).toContainText("0 of 56 lessons (0%)");
+  await expect(page.locator("#path-progress")).toContainText("0 of 57 lessons (0%)");
 
   await page.getByTestId("mark-complete").click();
   await expect(page.getByTestId("mark-complete")).toContainText("Completed");
-  await expect(page.locator("#path-progress")).toContainText("1 of 56 lessons (2%)");
+  await expect(page.locator("#path-progress")).toContainText("1 of 57 lessons (2%)");
   await expect(page.locator(".nav-item.is-complete .nav-title")).toHaveText("1 · Foundation topics");
   await expect(page.locator('.nav-section[data-stage="stage-numbers"] .nav-section-count')).toHaveText("1/7");
 
@@ -3259,7 +3294,7 @@ test("completing a lesson records progress, ticks the sidebar, and advances the 
 
   // Progress survives a reload and the learner resumes where they left off.
   await page.goto("/");
-  await expect(page.locator("#path-progress")).toContainText("1 of 56 lessons (2%)");
+  await expect(page.locator("#path-progress")).toContainText("1 of 57 lessons (2%)");
   await expect(page.locator("#info h2")).toHaveText("Number Sense & Fractions");
 
   expect(errors, errors.join("\n")).toEqual([]);
