@@ -9,17 +9,19 @@ import {
   platonicCircumradius,
   platonicFacePlan,
   platonicFaces,
+  platonicProjection,
   polygonCircumradius,
   regularPolygon,
   seedOfLife,
   type PlatonicSolid,
   type PlatonicSolidId,
   type SacredPoint,
+  type SolidProjection,
 } from "../math/sacredGeometry";
 
 type View = "construction" | "solids";
 type ConstructionStep = "first-circle" | "vesica" | "seed" | "flower";
-type SolidPhase = "lattice" | "face" | "plan" | "assembly" | "solid";
+type SolidPhase = "lattice" | "projection" | "face" | "plan" | "assembly" | "solid";
 
 interface Construction {
   readonly id: ConstructionStep;
@@ -90,13 +92,43 @@ const NON_LATTICE_NOTE: Partial<Record<PlatonicSolidId, string>> = {
     "no repeating lattice of any kind holds a regular pentagon, because five-fold symmetry cannot tile the plane periodically.",
 };
 
-const PHASES: readonly PhaseStep[] = [
-  { id: "lattice", label: "1 · Lattice", name: "Flower lattice" },
-  { id: "face", label: "2 · One face", name: "One regular face" },
-  { id: "plan", label: "3 · Face plan", name: "Flat face plan" },
-  { id: "assembly", label: "4 · Assemble", name: "Assembly animation" },
-  { id: "solid", label: "5 · Solid", name: "Finished solid" },
+/** Phase order, in teaching order. Labels are numbered from this list, never hardcoded. */
+const PHASE_ORDER: readonly { id: SolidPhase; short: string; name: string }[] = [
+  { id: "lattice", short: "Lattice", name: "Flower lattice" },
+  { id: "projection", short: "Projection", name: "2D projection" },
+  { id: "face", short: "One face", name: "One regular face" },
+  { id: "plan", short: "Face plan", name: "Flat face plan" },
+  { id: "assembly", short: "Assemble", name: "Assembly animation" },
+  { id: "solid", short: "Solid", name: "Finished solid" },
 ];
+
+const PHASES: readonly PhaseStep[] = PHASE_ORDER.map((phase, index) => ({
+  id: phase.id,
+  label: `${index + 1} · ${phase.short}`,
+  name: phase.name,
+}));
+
+/** Phases that draw a flat 2D construction rather than a 3D scene. */
+const FLAT_PHASES: readonly SolidPhase[] = ["lattice", "projection", "face", "plan"];
+
+/**
+ * Phases that also show the rotating 3D destination beside the flat drawing. The
+ * projection phase is deliberately excluded: its whole point is a single fixed viewing
+ * direction, so nothing in that phase may spin.
+ */
+const PREVIEW_PHASES: readonly SolidPhase[] = ["lattice", "face", "plan"];
+
+const PHASE_COUNT_WORD = numberWord(PHASES.length);
+
+/** Words for the small phase counts this lesson can produce. */
+function numberWord(count: number): string {
+  const words = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight"];
+  return words[count] ?? String(count);
+}
+
+function assertNeverPhase(phase: never): never {
+  throw new Error(`unhandled solid phase: ${String(phase)}`);
+}
 
 /** Construct a hexagonal circle lattice, then inspect the five convex regular polyhedra. */
 export class SacredGeometryLesson implements Lesson {
@@ -224,7 +256,7 @@ export class SacredGeometryLesson implements Lesson {
       return;
     }
 
-    if (this.solidPhase === "lattice" || this.solidPhase === "face" || this.solidPhase === "plan") {
+    if (FLAT_PHASES.includes(this.solidPhase)) {
       this.viewport.controls.enableRotate = false;
       this.frameRadius(
         this.contentRadius(),
@@ -374,6 +406,9 @@ export class SacredGeometryLesson implements Lesson {
       case "lattice":
         this.drawLatticeContext();
         break;
+      case "projection":
+        this.drawProjection();
+        break;
       case "face":
         this.drawSingleFace();
         break;
@@ -386,8 +421,41 @@ export class SacredGeometryLesson implements Lesson {
       case "solid":
         this.drawSolid();
         return;
+      default:
+        assertNeverPhase(this.solidPhase);
     }
-    this.drawTargetPreview();
+    if (PREVIEW_PHASES.includes(this.solidPhase)) this.drawTargetPreview();
+  }
+
+  /**
+   * Phase 2. The solid's orthographic shadow along a symmetry axis, drawn over the same
+   * Flower of Life. Points that land on a circle centre are marked differently from those
+   * that miss, so the panel's count is visible rather than asserted.
+   */
+  private drawProjection(): void {
+    for (const centre of flowerOfLife(CIRCLE_RADIUS)) this.drawCircle(centre, false);
+
+    const projection = this.projection();
+    for (const segment of projection.segments) {
+      const from = projection.points[segment.from];
+      const to = projection.points[segment.to];
+      const line = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(from.x, from.y, 0.02),
+          new THREE.Vector3(to.x, to.y, 0.02),
+        ]),
+        new THREE.LineBasicMaterial({ color: 0xffa657, transparent: true, opacity: 0.92 }),
+      );
+      this.group.add(line);
+    }
+    for (const point of projection.points) {
+      this.addMarker(point, point.onLattice ? 0x7ee787 : 0xff7b72, point.onLattice ? 0.11 : 0.08);
+    }
+  }
+
+  /** The current solid's projection, scaled so the Flower's spacing is the lattice unit. */
+  private projection(): SolidProjection {
+    return platonicProjection(this.solidId, CIRCLE_RADIUS, CIRCLE_RADIUS);
   }
 
   /**
@@ -714,7 +782,7 @@ export class SacredGeometryLesson implements Lesson {
       <div class="course">
         <h3>Choose a regular solid</h3>
         <div class="course-chapters">${choices}</div>
-        <h3>Build the ${lowerName(current)} in five phases</h3>
+        <h3>Build the ${lowerName(current)} in ${PHASE_COUNT_WORD} phases</h3>
         <div class="course-chapters" data-sacred-phases>${phaseButtons}</div>
         <p data-sacred-phase-copy>${this.phaseCopy(current)}</p>
         <div class="readout">
@@ -738,6 +806,11 @@ export class SacredGeometryLesson implements Lesson {
         <p>The Flower of Life is a triangular lattice, so its cells are equilateral triangles. That single polygon is the face of the tetrahedron, the octahedron and the icosahedron, so for those three the lattice supplies the face geometry directly. A cube needs squares and a dodecahedron needs regular pentagons; neither polygon is a cell of this lattice, so those two are constructed from their own polygon and the Flower is only context.</p>
       </details>
       <details class="course">
+        <summary>Projection, face plan and fold are three different relationships</summary>
+        <p>A <b>face</b> question asks whether the Flower's lattice cell is the solid's face polygon. A <b>flat face plan</b> lays every face out at true size; it is a layout for counting and comparing, not a net of creases, and folding it is not what the assembly animation does. A <b>projection</b> is neither: it is a shadow of the finished solid cast along one stated direction. It keeps no true lengths in general, it merges any vertices that line up with the viewing direction, and it throws depth away, so it cannot be folded back into the solid.</p>
+        <p>So a solid whose face is not a lattice cell can still cast a shadow that lands on lattice points, and a solid whose face is a lattice cell can still cast one that misses. The cube is the clearest case of the first: its square face is not a cell of a triangular lattice, yet viewed along its body diagonal all seven of its projected points sit on Flower circle centres. Use the projection phase's readout for each solid rather than assuming any of them line up.</p>
+      </details>
+      <details class="course">
         <summary>Why only five?</summary>
         <p>At least three faces must meet at each vertex, and their interior angles must leave room to fold around it. That restriction permits exactly five convex regular polyhedra. Pair each face centre to form the dual: cube and octahedron exchange, dodecahedron and icosahedron exchange, and the tetrahedron is its own dual.</p>
       </details>`;
@@ -750,9 +823,10 @@ export class SacredGeometryLesson implements Lesson {
         return solid.faceFromFlowerLattice
           ? `The flat Flower construction is on the left; the rotating translucent ${lowerName(solid)} on the right is the 3D destination. Any three touching circle centres in the Flower of Life sit one compass width apart, so every lattice cell is an equilateral triangle. One cell is highlighted: that triangle is exactly the face the ${lowerName(solid)} needs, ${solid.faces} congruent copies of it.`
           : `The flat Flower construction is on the left; the rotating translucent ${lowerName(solid)} on the right is the 3D destination. The Flower of Life's lattice cells are equilateral triangles, drawn faintly here. The ${lowerName(solid)} needs ${solid.faceName}s, and ${NON_LATTICE_NOTE[solid.id] ?? ""} The orange ${solid.faceName} stands on one lattice step, so its first two corners (green) are lattice points while every other corner (orange) misses the lattice. It is constructed separately, by dividing a circle into ${solid.faceSides} equal parts. The Flower is context here, not the source.`;
+      case "projection":
+        return this.projectionCopy(solid);
       case "face":
-        return `The flat polygon on the left is one face at true size; the rotating translucent ${lowerName(solid)} on the right shows where those faces will end up. It is a ${solid.faceName} with ${solid.faceSides} equal sides, ${solid.faceSides} equal interior angles of ${interior}°, and every corner the same distance from its centre. All ${solid.faces} faces of the ${lowerName(solid)} are congruent copies of this one polygon.`;
-      case "plan": {
+        return `The flat polygon on the left is one face at true size; the rotating translucent ${lowerName(solid)} on the right shows where those faces will end up. It is a ${solid.faceName} with ${solid.faceSides} equal sides, ${solid.faceSides} equal interior angles of ${interior}°, and every corner the same distance from its centre. All ${solid.faces} faces of the ${lowerName(solid)} are congruent copies of this one polygon.`;      case "plan": {
         const layout = solid.id === "dodecahedron"
           ? "Two six-pentagon rosettes lay all 12 faces flat at true size."
           : `All ${solid.faces} faces lay flat at true size, edge to edge${solid.faceFromFlowerLattice ? " on the same triangular lattice the Flower draws" : ""}.`;
@@ -762,10 +836,49 @@ export class SacredGeometryLesson implements Lesson {
         return `Watch each face travel from its place in the flat plan to its place on the ${lowerName(solid)}. Every face keeps its size and shape exactly — the motion is a rotation plus a translation — but the faces move independently instead of hinging along shared edges, so this is an assembly animation rather than a physical fold. They finish meeting at the ${solid.dihedralDegrees}° dihedral angle.`;
       case "solid":
         return `The finished ${lowerName(solid)} rotates automatically; drag the view to inspect it. Its Schläfli symbol <code>${solid.schlafli}</code> says each face is a regular ${solid.faceSides}-gon and ${solid.vertexDegree} faces meet at every vertex.`;
+      default:
+        return assertNeverPhase(this.solidPhase);
     }
   }
 
+  /**
+   * Copy for the projection phase. The numbers are read from the projection data, so the
+   * text can never claim an alignment the geometry does not produce.
+   */
+  private projectionCopy(solid: PlatonicSolid): string {
+    const projection = this.projection();
+    const name = lowerName(solid);
+    const merged =
+      projection.mergedVertexCount === 0
+        ? `No two vertices line up, so all ${projection.originalVertexCount} stay separate.`
+        : projection.mergedVertexCount === 1
+          ? `One pair of vertices lines up along the axis and merges, so ${projection.originalVertexCount} vertices become ${projection.points.length} points.`
+          : `${projection.mergedVertexCount} vertices are hidden behind others along the axis, so ${projection.originalVertexCount} vertices become ${projection.points.length} points.`;
+    const alignment =
+      projection.latticeAlignedCount === projection.points.length
+        ? `Every one of the ${projection.points.length} points lands on a Flower circle centre at this scale.`
+        : `${projection.latticeAlignedCount} of the ${projection.points.length} points land on a Flower circle centre at this scale (green); the rest (red) miss it. This projection does not land completely on the lattice.`;
+    const cube =
+      solid.id === "cube"
+        ? " This particular figure — a hexagon with a centre and six spokes — is the one usually called Metatron's Cube. Geometrically it is nothing more than a cube viewed straight down its body diagonal, the line joining two opposite corners: three edges at the near corner make three spokes, three at the far corner make three further spokes, and the remaining six edges close the hexagon."
+        : "";
+    return `This is the ${name} seen as a shadow: every vertex is dropped straight onto a plane at right angles to its ${projection.axis.label}, and depth is thrown away.${cube} ${merged} Its ${projection.originalEdgeCount} edges draw ${projection.segments.length} segments${projection.equalSegments ? ", all exactly the same length" : ""}. ${alignment} A projection is a view, not a plan and not a fold: it can merge vertices, it loses depth, and you cannot cut it out and build the solid from it — that is what the flat face plan two phases on is for.`;
+  }
+
   private phaseExtras(solid: PlatonicSolid): string {
+    if (this.solidPhase === "projection") {
+      const projection = this.projection();
+      return `
+        <div class="readout">
+          <div><span>Viewed along</span><b data-sacred-projection-axis>${projection.axis.label}</b></div>
+          <div><span>Projected points</span><b data-sacred-projection-points>${projection.points.length}</b></div>
+          <div><span>Projected segments</span><b data-sacred-projection-segments>${projection.segments.length}</b></div>
+          <div><span>Vertices merged</span><b data-sacred-projection-merged>${projection.mergedVertexCount}</b></div>
+          <div><span>On Flower centres</span><b data-sacred-projection-lattice>${projection.latticeAlignedCount} of ${projection.points.length}</b></div>
+          <div><span>Segment lengths</span><b data-sacred-projection-equal>${projection.equalSegments ? "all equal" : "mixed"}</b></div>
+        </div>
+        <p class="course-hint">The view is fixed: a projection only means anything along a stated direction, so this phase does not rotate.</p>`;
+    }
     if (this.solidPhase === "assembly") {
       return `
         <div class="readout">
@@ -778,7 +891,7 @@ export class SacredGeometryLesson implements Lesson {
     if (this.solidPhase === "solid") {
       return `<p class="course-hint">Euler's check holds for every convex polyhedron: V − E + F = 2.</p>`;
     }
-    return `<p class="course-hint">Phases run in order: lattice context, one face, the flat plan of all ${solid.faces} faces, the assembly animation, then the finished solid.</p>`;
+    return `<p class="course-hint">Phases run in order: ${PHASES.map((item) => item.name.toLowerCase()).join(", ")}. The flat plan lays out all ${solid.faces} faces.</p>`;
   }
 
   private disposeChildren(group: THREE.Group): void {

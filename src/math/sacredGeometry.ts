@@ -52,6 +52,72 @@ export interface FlatFace {
   readonly rotation: number;
 }
 
+/** A group of 3D vertices that land on one another when projected to the plane. */
+export interface PointCluster {
+  /** Average position of every member, in projection units. */
+  readonly point: SacredPoint;
+  /** Indices into the source list, ascending. */
+  readonly sources: readonly number[];
+}
+
+/** One projected vertex of a solid's shadow. */
+export interface ProjectedPoint {
+  readonly x: number;
+  readonly y: number;
+  /** Indices of the solid's 3D vertices that project onto this point. */
+  readonly sourceVertices: readonly number[];
+  /** True when the point coincides with a circle centre of the Flower's lattice. */
+  readonly onLattice: boolean;
+  /** Distance from the projection centre. */
+  readonly radius: number;
+}
+
+/** One projected edge, as indices into the projection's point list. */
+export interface ProjectedSegment {
+  readonly from: number;
+  readonly to: number;
+  readonly length: number;
+  /** Indices of the solid's 3D edges that project onto this segment. */
+  readonly sourceEdges: readonly number[];
+}
+
+/** The axis a solid is viewed along, and the rotational symmetry that axis carries. */
+export interface ProjectionAxis {
+  /** Unit direction in the solid's own coordinates. */
+  readonly axis: SacredVector3;
+  /** Order of the rotational symmetry about the axis: 3-fold or 5-fold here. */
+  readonly order: number;
+  /** Which feature of the solid the axis passes through. */
+  readonly through: "vertex" | "face";
+  /** Short human description, e.g. "3-fold body diagonal". */
+  readonly label: string;
+}
+
+/**
+ * A solid's orthographic shadow along a symmetry axis, as plain data: no render objects,
+ * no styling, nothing that needs a canvas to be true.
+ */
+export interface SolidProjection {
+  readonly id: PlatonicSolidId;
+  readonly axis: ProjectionAxis;
+  readonly points: readonly ProjectedPoint[];
+  readonly segments: readonly ProjectedSegment[];
+  /** Vertices of the 3D solid, before any of them merged. */
+  readonly originalVertexCount: number;
+  /** Edges of the 3D solid, before any of them merged. */
+  readonly originalEdgeCount: number;
+  /** How many 3D vertices were lost to merging: originalVertexCount − points.length. */
+  readonly mergedVertexCount: number;
+  /** How many projected points sit on a circle centre of the Flower's lattice. */
+  readonly latticeAlignedCount: number;
+  /** Circumradius of the projection, i.e. the requested overlay radius. */
+  readonly radius: number;
+  /** Lattice spacing the alignment was measured against. */
+  readonly latticeSpacing: number;
+  /** True when every projected segment has the same length. */
+  readonly equalSegments: boolean;
+}
+
 /** The seven circle centres in the first hexagonal ring around a centre. */
 export function seedOfLife(radius: number): SacredPoint[] {
   return hexagonalCentres(radius, 1);
@@ -313,6 +379,223 @@ export function flowerLatticeTriangles(radius: number): SacredPoint[][] {
 }
 
 const PHI = (1 + Math.sqrt(5)) / 2;
+
+/**
+ * The symmetry axis each solid is viewed along. Every entry is an axis of the solid's own
+ * rotation group, so the shadow it casts is itself rotationally symmetric of that order.
+ * Four solids use a 3-fold axis; the icosahedron has no 3-fold vertex axis that produces a
+ * hexagonal shadow, so it uses one of its 5-fold vertex axes instead.
+ */
+export const PROJECTION_AXES: Readonly<Record<PlatonicSolidId, ProjectionAxis>> = {
+  tetrahedron: {
+    axis: { x: 1, y: 1, z: 1 },
+    order: 3,
+    through: "vertex",
+    label: "3-fold vertex axis",
+  },
+  // (1, 1, 1) joins two opposite corners of the cube: its body diagonal.
+  cube: { axis: { x: 1, y: 1, z: 1 }, order: 3, through: "vertex", label: "3-fold body diagonal" },
+  octahedron: {
+    axis: { x: 1, y: 1, z: 1 },
+    order: 3,
+    through: "face",
+    label: "3-fold face axis",
+  },
+  dodecahedron: {
+    axis: { x: 1, y: 1, z: 1 },
+    order: 3,
+    through: "vertex",
+    label: "3-fold vertex axis",
+  },
+  icosahedron: {
+    axis: { x: 0, y: 1, z: PHI },
+    order: 5,
+    through: "vertex",
+    label: "5-fold vertex axis",
+  },
+};
+
+/**
+ * Index pairs for the solid's edges, found as the vertex pairs exactly one edge length
+ * apart. Pairs are ordered ascending and the list is stable for a given solid.
+ */
+export function platonicEdges(id: PlatonicSolidId): readonly (readonly [number, number])[] {
+  const vertices = platonicVertices(id, 1);
+  const tolerance = 1e-6;
+  const edges: [number, number][] = [];
+  for (let i = 0; i < vertices.length; i++) {
+    for (let j = i + 1; j < vertices.length; j++) {
+      if (Math.abs(length(subtract(vertices[j], vertices[i])) - 1) < tolerance) edges.push([i, j]);
+    }
+  }
+  return edges;
+}
+
+/**
+ * Collapse points that land within `tolerance` of each other into single clusters. A
+ * tolerance test is used rather than rounding to a fixed number of decimals, because two
+ * coordinates can agree to any number of decimals and still round to different strings.
+ */
+export function clusterPlanarPoints(
+  points: readonly SacredPoint[],
+  tolerance: number,
+): PointCluster[] {
+  requirePositive(tolerance, "tolerance");
+  const clusters: { xs: number[]; ys: number[]; sources: number[] }[] = [];
+  points.forEach((point, index) => {
+    const existing = clusters.find(
+      (cluster) =>
+        Math.hypot(point.x - average(cluster.xs), point.y - average(cluster.ys)) <= tolerance,
+    );
+    if (existing) {
+      existing.xs.push(point.x);
+      existing.ys.push(point.y);
+      existing.sources.push(index);
+      return;
+    }
+    clusters.push({ xs: [point.x], ys: [point.y], sources: [index] });
+  });
+  return clusters.map((cluster) => ({
+    point: { x: average(cluster.xs), y: average(cluster.ys) },
+    sources: [...cluster.sources].sort((a, b) => a - b),
+  }));
+}
+
+/**
+ * True when a point sits on a circle centre of the triangular lattice the Flower of Life
+ * draws at the given spacing. The lattice is tested as the infinite lattice: the drawn
+ * Flower is a finite patch of it, so a point beyond the patch still either is or is not a
+ * lattice point.
+ */
+export function isFlowerLatticePoint(
+  point: SacredPoint,
+  spacing: number,
+  tolerance = spacing * 1e-6,
+): boolean {
+  requirePositive(spacing, "spacing");
+  const r = point.y / ((spacing * Math.sqrt(3)) / 2);
+  const q = point.x / spacing - r / 2;
+  const nearestR = Math.round(r);
+  const nearestQ = Math.round(q);
+  return (
+    Math.hypot(
+      point.x - spacing * (nearestQ + nearestR / 2),
+      point.y - (spacing * Math.sqrt(3) * nearestR) / 2,
+    ) <= tolerance
+  );
+}
+
+/**
+ * The orthographic shadow of a solid viewed along its symmetry axis, scaled so the outer
+ * points sit at `radius` and rotated so one outer point lies on the positive x axis. That
+ * is what makes the shadow comparable with a Flower of Life drawn at the same spacing.
+ *
+ * A projection is a view, not a fold: vertices in line with the axis merge, and depth is
+ * discarded, so the point and segment counts can be lower than the solid's V and E.
+ */
+export function platonicProjection(
+  id: PlatonicSolidId,
+  radius: number,
+  latticeSpacing = radius,
+): SolidProjection {
+  requirePositive(radius, "radius");
+  requirePositive(latticeSpacing, "latticeSpacing");
+  const axis = PROJECTION_AXES[id];
+  const vertices = platonicVertices(id, 1);
+  const edges = platonicEdges(id);
+  const normal = normalise(axis.axis);
+  const u = normalise(anyPerpendicular(normal));
+  const w = cross(normal, u);
+
+  const flat = vertices.map((vertex) => ({ x: dot(vertex, u), y: dot(vertex, w) }));
+  const tolerance = 1e-6;
+  const clusters = clusterPlanarPoints(flat, tolerance);
+
+  const outer = Math.max(...clusters.map((cluster) => Math.hypot(cluster.point.x, cluster.point.y)));
+  if (outer < EPSILON) throw new RangeError("projection collapsed to a single point");
+  const scale = radius / outer;
+  // Rotate the outermost point onto +x, so the shadow lines up with the Flower's own
+  // first-ring centre at angle zero rather than at an arbitrary angle.
+  const anchor = clusters
+    .filter((cluster) => outer - Math.hypot(cluster.point.x, cluster.point.y) <= tolerance)
+    .map((cluster) => Math.atan2(cluster.point.y, cluster.point.x))
+    .sort((a, b) => a - b)[0];
+
+  const placed = clusters.map((cluster) => {
+    const angle = Math.atan2(cluster.point.y, cluster.point.x) - anchor;
+    const distance = Math.hypot(cluster.point.x, cluster.point.y) * scale;
+    return {
+      x: distance < EPSILON ? 0 : distance * Math.cos(angle),
+      y: distance < EPSILON ? 0 : distance * Math.sin(angle),
+      sources: cluster.sources,
+      radius: distance,
+    };
+  });
+
+  const points: ProjectedPoint[] = placed.map((point) => ({
+    x: point.x,
+    y: point.y,
+    sourceVertices: point.sources,
+    radius: point.radius,
+    onLattice: isFlowerLatticePoint(point, latticeSpacing, latticeSpacing * 1e-6),
+  }));
+
+  const clusterOf = new Map<number, number>();
+  placed.forEach((point, index) => {
+    for (const source of point.sources) clusterOf.set(source, index);
+  });
+
+  const merged = new Map<string, { from: number; to: number; sourceEdges: number[] }>();
+  edges.forEach(([a, b], edgeIndex) => {
+    const from = clusterOf.get(a)!;
+    const to = clusterOf.get(b)!;
+    if (from === to) return; // an edge parallel to the axis projects to a point
+    const key = `${Math.min(from, to)}-${Math.max(from, to)}`;
+    const existing = merged.get(key);
+    if (existing) {
+      existing.sourceEdges.push(edgeIndex);
+      return;
+    }
+    merged.set(key, { from: Math.min(from, to), to: Math.max(from, to), sourceEdges: [edgeIndex] });
+  });
+
+  const segments: ProjectedSegment[] = [...merged.values()]
+    .sort((a, b) => a.from - b.from || a.to - b.to)
+    .map((segment) => ({
+      from: segment.from,
+      to: segment.to,
+      sourceEdges: segment.sourceEdges,
+      length: Math.hypot(
+        points[segment.from].x - points[segment.to].x,
+        points[segment.from].y - points[segment.to].y,
+      ),
+    }));
+
+  const lengths = segments.map((segment) => segment.length);
+  return {
+    id,
+    axis,
+    points,
+    segments,
+    originalVertexCount: vertices.length,
+    originalEdgeCount: edges.length,
+    mergedVertexCount: vertices.length - points.length,
+    latticeAlignedCount: points.filter((point) => point.onLattice).length,
+    radius,
+    latticeSpacing,
+    equalSegments: Math.max(...lengths) - Math.min(...lengths) < radius * 1e-6,
+  };
+}
+
+/** Any unit vector perpendicular to `normal`, chosen deterministically. */
+function anyPerpendicular(normal: SacredVector3): SacredVector3 {
+  const seed = Math.abs(normal.x) < 0.9 ? { x: 1, y: 0, z: 0 } : { x: 0, y: 1, z: 0 };
+  return cross(normal, seed);
+}
+
+function average(values: readonly number[]): number {
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
 
 
 const RAW_VERTICES: Record<PlatonicSolidId, () => SacredVector3[]> = {

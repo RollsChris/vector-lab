@@ -205,6 +205,7 @@ test("sacred geometry traces the circle construction and inspects every Platonic
 const sacredState = () =>
   ((window as any).__lab.manager.activeLesson as {
     solidPhase: string;
+    solidId: string;
     assemblyProgress: number;
     assemblyFaces: unknown[];
     rotatingSolid?: unknown;
@@ -212,7 +213,7 @@ const sacredState = () =>
     group: { children: unknown[] };
   });
 
-test("sacred geometry walks one solid through five visibly different construction phases", async ({ page }) => {
+test("sacred geometry walks one solid through every visibly different construction phase", async ({ page }) => {
   const errors = trackErrors(page);
   await page.goto("/#sacred-geometry");
   await page.locator('[data-sacred-view="solids"]').click();
@@ -237,14 +238,36 @@ test("sacred geometry walks one solid through five visibly different constructio
   );
   expect(previewAfter).toBeGreaterThan(previewBefore);
 
-  // Phase 2 — a single equilateral triangle at true size.
+  // Phase 2 — the flat projection: a fixed view, so nothing in it may rotate.
+  await page.locator('[data-sacred-phase="projection"]').click();
+  await expect(page.locator("[data-sacred-phase-name]")).toHaveText("2D projection");
+  await expect(page.locator("[data-sacred-projection-axis]")).toHaveText("3-fold vertex axis");
+  await expect(page.locator("[data-sacred-projection-points]")).toHaveText("4");
+  await expect(page.locator("[data-sacred-projection-segments]")).toHaveText("6");
+  await expect(page.locator("[data-sacred-phase-copy]")).toContainText("shadow");
+  await expect(page.locator("[data-sacred-phase-copy]")).toContainText("not a plan and not a fold");
+  const projection = await page.evaluate(sacredState);
+  expect(projection.solidPhase).toBe("projection");
+  expect(projection.rotatingSolid).toBeUndefined();
+  expect(projection.targetPreview).toBeUndefined();
+  expect(projection.group.children.length).toBe(19 + 6 + 4); // flower circles, segments, points
+  const projectionBefore = await page.evaluate(
+    () => (window as any).__lab.manager.activeLesson.group.children.map((child: any) => child.rotation.y),
+  );
+  await page.waitForTimeout(400);
+  const projectionAfter = await page.evaluate(
+    () => (window as any).__lab.manager.activeLesson.group.children.map((child: any) => child.rotation.y),
+  );
+  expect(projectionAfter).toEqual(projectionBefore);
+
+  // Phase 3 — a single equilateral triangle at true size.
   await page.locator('[data-sacred-phase="face"]').click();
   await expect(page.locator("[data-sacred-phase-name]")).toHaveText("One regular face");
   await expect(page.locator("[data-sacred-face-shape]")).toHaveText("equilateral triangle");
   const face = await page.evaluate(sacredState);
   expect(face.group.children.length).toBeLessThan(lattice.group.children.length);
 
-  // Phase 3 — every face laid flat.
+  // Phase 4 — every face laid flat.
   await page.locator('[data-sacred-phase="plan"]').click();
   await expect(page.locator("[data-sacred-phase-name]")).toHaveText("Flat face plan");
   await expect(page.locator("[data-sacred-face-plan-count]")).toHaveText("4");
@@ -252,7 +275,7 @@ test("sacred geometry walks one solid through five visibly different constructio
   expect(plan.group.children.length).toBe(9); // four fills, four outlines, and 3D target
   expect(plan.group.children.length).not.toBe(face.group.children.length);
 
-  // Phase 4 — the faces animate from the plan onto the solid.
+  // Phase 5 — the faces animate from the plan onto the solid.
   await page.locator('[data-sacred-phase="assembly"]').click();
   await expect(page.locator("[data-sacred-phase-name]")).toHaveText("Assembly animation");
   await expect(page.locator("#info")).toContainText("assembly animation rather than a physical fold");
@@ -264,7 +287,7 @@ test("sacred geometry walks one solid through five visibly different constructio
   await expect(page.locator("[data-sacred-assembly-progress]")).not.toHaveText("100%");
   await expect(page.locator("[data-sacred-assembly-progress]")).toHaveText("100%", { timeout: 10_000 });
 
-  // Phase 5 — the finished solid rotates.
+  // Phase 6 — the finished solid rotates.
   await page.locator('[data-sacred-phase="solid"]').click();
   await expect(page.locator("[data-sacred-phase-name]")).toHaveText("Finished solid");
   const spinBefore = await page.evaluate(() => (window as any).__lab.manager.activeLesson.rotatingSolid.rotation.y);
@@ -275,7 +298,7 @@ test("sacred geometry walks one solid through five visibly different constructio
   expect(errors, errors.join("\n")).toEqual([]);
 });
 
-test("sacred geometry offers all five phases for every solid and says which faces the lattice supplies", async ({ page }) => {
+test("sacred geometry offers every phase for every solid and says which faces the lattice supplies", async ({ page }) => {
   const errors = trackErrors(page);
   await page.goto("/#sacred-geometry");
   await page.locator('[data-sacred-view="solids"]').click();
@@ -298,7 +321,7 @@ test("sacred geometry offers all five phases for every solid and says which face
       fromLattice === "yes" ? "every lattice cell is an equilateral triangle" : "Flower is context here, not the source",
     );
 
-    for (const phase of ["face", "plan", "assembly", "solid"] as const) {
+    for (const phase of ["projection", "face", "plan", "assembly", "solid"] as const) {
       await page.locator(`[data-sacred-phase="${phase}"]`).click();
       await expect(page.locator(`[data-sacred-phase="${phase}"]`)).toHaveAttribute("aria-pressed", "true");
       const state = await page.evaluate(sacredState);
@@ -309,6 +332,54 @@ test("sacred geometry offers all five phases for every solid and says which face
     }
   }
 
+  expect(errors, errors.join("\n")).toEqual([]);
+});
+
+test("sacred geometry projects each solid onto the Flower and reports how much of it lands there", async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto("/#sacred-geometry");
+  await page.locator('[data-sacred-view="solids"]').click();
+
+  const projections = [
+    ["tetrahedron", "3-fold vertex axis", "4", "6", "0", "4 of 4", "mixed"],
+    ["cube", "3-fold body diagonal", "7", "12", "1", "7 of 7", "all equal"],
+    ["octahedron", "3-fold face axis", "6", "12", "0", "6 of 6", "mixed"],
+    ["dodecahedron", "3-fold vertex axis", "19", "30", "1", "7 of 19", "mixed"],
+    ["icosahedron", "5-fold vertex axis", "11", "30", "1", "3 of 11", "mixed"],
+  ] as const;
+
+  for (const [id, axis, points, segments, merged, lattice, equal] of projections) {
+    await page.locator(`[data-sacred-solid="${id}"]`).click();
+    await page.locator('[data-sacred-phase="projection"]').click();
+
+    await expect(page.locator("[data-sacred-phase-name]")).toHaveText("2D projection");
+    await expect(page.locator("[data-sacred-projection-axis]")).toHaveText(axis);
+    await expect(page.locator("[data-sacred-projection-points]")).toHaveText(points);
+    await expect(page.locator("[data-sacred-projection-segments]")).toHaveText(segments);
+    await expect(page.locator("[data-sacred-projection-merged]")).toHaveText(merged);
+    await expect(page.locator("[data-sacred-projection-lattice]")).toHaveText(lattice);
+    await expect(page.locator("[data-sacred-projection-equal]")).toHaveText(equal);
+
+    const state = await page.evaluate(sacredState);
+    // Nineteen faint Flower circles beneath, then one line per segment and one marker per point.
+    expect(state.group.children.length).toBe(19 + Number(segments) + Number(points));
+    expect(state.rotatingSolid).toBeUndefined();
+    expect(state.targetPreview).toBeUndefined();
+
+    const copy = (await page.locator("[data-sacred-phase-copy]").textContent()) ?? "";
+    expect(copy).toContain("shadow");
+    expect(copy.match(/Metatron/g)?.length ?? 0).toBe(id === "cube" ? 1 : 0);
+    if (id === "cube") {
+      expect(copy).toContain("body diagonal");
+      expect(copy).toContain("Every one of the 7 points lands on a Flower circle centre");
+    } else if (lattice !== `${points} of ${points}`) {
+      expect(copy).toContain("miss it");
+    }
+  }
+
+  // The projection is a different relationship from the face-lattice teaching, which stays.
+  await expect(page.locator("#info")).toContainText("three different relationships");
+  await expect(page.locator("#info")).toContainText("neither polygon is a cell of this lattice");
   expect(errors, errors.join("\n")).toEqual([]);
 });
 

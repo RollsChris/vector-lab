@@ -566,9 +566,9 @@ export const SHAPE_AND_TRIG_GUIDES: readonly LessonGuide[] = [
     objectives: [
       "construct the vesica piscis, Seed of Life and Flower of Life from one compass width",
       "identify the triangular lattice and six-fold symmetry made by equal circle centres",
-      "count vertices, edges and faces for each Platonic solid",
-      "use Euler's check to verify a convex regular solid and name its dual",
-      "build each Platonic solid phase by phase, from its face polygon to the finished solid",
+      "count vertices, edges and faces for each Platonic solid, and use Euler's check to verify the count and name its dual",
+      "build each Platonic solid phase by phase, from its 2D projection and face polygon to the finished solid",
+      "explain why a projection is a shadow along one axis, and read off how many of its points land on Flower circle centres",
     ],
     whyItMatters:
       "Repeated circle centres form the same hexagonal arrangement found in close packing, tiling and crystal structures, while regular polyhedra connect symmetry to molecular models, architecture and computer graphics.",
@@ -591,7 +591,7 @@ export const SHAPE_AND_TRIG_GUIDES: readonly LessonGuide[] = [
       "Changing the compass width while adding circles → every circle must keep the same radius or the triangular lattice no longer fits.",
       "Counting triangular render facets as the faces of a dodecahedron → its mathematical faces are twelve pentagons, even when graphics software splits them into triangles.",
       "Calling any symmetric solid Platonic → every face must be the same regular polygon and the same arrangement must meet at every vertex.",
-      "Assuming the Flower of Life generates all five solids → its lattice cells are equilateral triangles, so it supplies the faces of the tetrahedron, octahedron and icosahedron only; the cube's squares and the dodecahedron's pentagons are constructed separately, and the historical names are not evidence for anything.",
+      "Assuming the Flower of Life generates all five solids, or reading a 2D projection as a net → the lattice's cells are equilateral triangles, so it supplies the faces of the tetrahedron, octahedron and icosahedron only, and a projection is a separate relationship: a shadow along one stated axis that merges lined-up vertices and discards depth, so it cannot be folded back into the solid and only some solids land every projected point on a circle centre.",
     ],
     checks: [
       {
@@ -605,9 +605,9 @@ export const SHAPE_AND_TRIG_GUIDES: readonly LessonGuide[] = [
           "Euler's rule gives 4 − 6 + F = 2. Adding 2 to both sides gives F = 4, which matches the tetrahedron's four triangular faces.",
       },
       {
-        question: "Which Platonic solids can take their face straight from the Flower of Life's lattice, and why?",
+        question: "Which Platonic solids can take their face straight from the Flower of Life's lattice, and why does the cube's projection still land on that lattice?",
         answer:
-          "Only the tetrahedron, octahedron and icosahedron. Every cell of that triangular lattice is an equilateral triangle, which is their face; a cube needs squares and a dodecahedron needs regular pentagons, and neither polygon is a cell of a triangular lattice.",
+          "Only the tetrahedron, octahedron and icosahedron take their face from it: every cell of that triangular lattice is an equilateral triangle, which is their face, while a cube needs squares and a dodecahedron needs regular pentagons, and neither polygon is a cell of a triangular lattice. The cube's projection is a different relationship. Viewed along its body diagonal its 8 vertices project to 7 points — the two end corners land on the same centre point — and its 12 edges draw 12 equal segments, a hexagon with six spokes, whose seven points all coincide with circle centres. That is a shadow of the finished cube, not a source for its square face.",
       },
       {
         question: "Which solid is the dual of a cube, and what exchanges when you make the dual?",
@@ -616,7 +616,7 @@ export const SHAPE_AND_TRIG_GUIDES: readonly LessonGuide[] = [
       },
     ],
     tryThis:
-      "Open Compass construction and step from First circle to Flower of Life, replaying each trace. Then open Platonic solids, pick a solid and walk phases 1 to 5: lattice, one face, flat face plan, the assembly animation and the finished solid. Repeat for the cube and watch phase 1 report that its square is not a lattice cell.",
+      "Open Compass construction and step from First circle to Flower of Life, replaying each trace. Then open Platonic solids, pick a solid and walk the phases in order: lattice, the 2D projection, one face, the flat face plan, the assembly animation and the finished solid. Compare the projection phase across all five solids and read the 'On Flower centres' count each time — the cube gives 7 of 7, while the dodecahedron and icosahedron leave most points off the lattice. Historical names like Flower of Life or Metatron's Cube describe the picture, not evidence for anything.",
   },
   {
     id: "radians",

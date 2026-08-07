@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
+  clusterPlanarPoints,
   flowerLatticeTriangles,
   flowerOfLife,
   interiorAngleDegrees,
+  isFlowerLatticePoint,
   PLATONIC_SOLIDS,
+  platonicEdges,
   platonicFacePlan,
   platonicFaces,
+  platonicProjection,
   platonicVertices,
   polygonCircumradius,
   regularPolygon,
@@ -209,5 +213,156 @@ describe("regular polygon helpers", () => {
     expect(() => polygonCircumradius(3, 0)).toThrow(RangeError);
     expect(() => regularPolygon(3, -1)).toThrow(RangeError);
     expect(() => platonicVertices("cube", 0)).toThrow(RangeError);
+  });
+});
+
+describe("planar clustering", () => {
+  it("collapses points inside the tolerance and keeps points outside it", () => {
+    const clusters = clusterPlanarPoints(
+      [
+        { x: 0, y: 0 },
+        { x: 1e-9, y: -1e-9 },
+        { x: 1, y: 0 },
+      ],
+      1e-6,
+    );
+
+    expect(clusters).toHaveLength(2);
+    expect(clusters[0].sources).toEqual([0, 1]);
+    expect(clusters[0].point.x).toBeCloseTo(0, 8);
+    expect(clusters[1].sources).toEqual([2]);
+  });
+
+  it("merges values that agree to many decimals but round to different strings", () => {
+    // These two are 1e-11 apart, far inside any sane tolerance, but they sit either
+    // side of a rounding boundary so a toFixed key would put them in different buckets.
+    const straddle = [
+      { x: 0.1 + 0.2, y: 0.0000015 },
+      { x: 0.3, y: 0.00000149999 },
+    ];
+    expect(clusterPlanarPoints(straddle, 1e-6)).toHaveLength(1);
+    expect(straddle[0].y.toFixed(6)).not.toBe(straddle[1].y.toFixed(6));
+  });
+
+  it("rejects a non-positive tolerance", () => {
+    expect(() => clusterPlanarPoints([{ x: 0, y: 0 }], 0)).toThrow(RangeError);
+  });
+});
+
+describe("Flower lattice membership", () => {
+  const spacing = 1.45;
+
+  it("accepts every drawn Flower centre and rejects points between them", () => {
+    for (const centre of flowerOfLife(spacing)) {
+      expect(isFlowerLatticePoint(centre, spacing)).toBe(true);
+    }
+    expect(isFlowerLatticePoint({ x: spacing / 2, y: 0 }, spacing)).toBe(false);
+    expect(isFlowerLatticePoint({ x: 0, y: spacing / 2 }, spacing)).toBe(false);
+  });
+
+  it("rejects a non-positive spacing", () => {
+    expect(() => isFlowerLatticePoint({ x: 0, y: 0 }, 0)).toThrow(RangeError);
+  });
+});
+
+describe("Platonic solid edge topology", () => {
+  for (const meta of PLATONIC_SOLIDS) {
+    it(`finds exactly ${meta.edges} edges for the ${meta.id}`, () => {
+      const edges = platonicEdges(meta.id);
+      expect(edges).toHaveLength(meta.edges);
+
+      const degree = new Map<number, number>();
+      for (const [a, b] of edges) {
+        expect(a).toBeLessThan(b);
+        degree.set(a, (degree.get(a) ?? 0) + 1);
+        degree.set(b, (degree.get(b) ?? 0) + 1);
+      }
+      expect(degree.size).toBe(meta.vertices);
+      for (const count of degree.values()) expect(count).toBe(meta.vertexDegree);
+    });
+  }
+});
+
+describe("Platonic solid projections", () => {
+  const radius = 1.45;
+
+  it("views four solids along a 3-fold axis and the icosahedron along a 5-fold one", () => {
+    for (const meta of PLATONIC_SOLIDS) {
+      const projection = platonicProjection(meta.id, radius);
+      expect(projection.axis.order).toBe(meta.id === "icosahedron" ? 5 : 3);
+      expect(projection.originalVertexCount).toBe(meta.vertices);
+      expect(projection.originalEdgeCount).toBe(meta.edges);
+      expect(projection.mergedVertexCount).toBe(meta.vertices - projection.points.length);
+      expect(projection.latticeAlignedCount).toBe(
+        projection.points.filter((point) => point.onLattice).length,
+      );
+    }
+  });
+
+  it("scales the outer points onto the requested radius and anchors one on +x", () => {
+    for (const meta of PLATONIC_SOLIDS) {
+      const projection = platonicProjection(meta.id, radius);
+      const outer = Math.max(...projection.points.map((point) => point.radius));
+      expect(outer).toBeCloseTo(radius, 9);
+      const onAxis = projection.points.find(
+        (point) => Math.abs(point.x - radius) < 1e-9 && Math.abs(point.y) < 1e-9,
+      );
+      expect(onAxis, `${meta.id} has no outer point on +x`).toBeDefined();
+    }
+  });
+
+  it("gives the cube seven points and twelve equal segments, all on Flower centres", () => {
+    const projection = platonicProjection("cube", radius, radius);
+
+    expect(projection.axis.label).toBe("3-fold body diagonal");
+    expect(projection.points).toHaveLength(7);
+    expect(projection.segments).toHaveLength(12);
+    expect(projection.originalVertexCount).toBe(8);
+    expect(projection.mergedVertexCount).toBe(1);
+    expect(projection.latticeAlignedCount).toBe(7);
+    expect(projection.equalSegments).toBe(true);
+
+    // A hexagon of six points around one shared centre: the Metatron's Cube figure.
+    const centre = projection.points.filter((point) => point.radius < 1e-9);
+    expect(centre).toHaveLength(1);
+    expect(centre[0].sourceVertices).toHaveLength(2);
+    expect(projection.points.filter((point) => Math.abs(point.radius - radius) < 1e-9)).toHaveLength(6);
+
+    for (const segment of projection.segments) expect(segment.length).toBeCloseTo(radius, 9);
+    const spokes = projection.segments.filter(
+      (segment) =>
+        projection.points[segment.from].radius < 1e-9 || projection.points[segment.to].radius < 1e-9,
+    );
+    expect(spokes).toHaveLength(6);
+    expect(projection.segments.flatMap((segment) => segment.sourceEdges)).toHaveLength(12);
+  });
+
+  it("leaves most points off the lattice for the dodecahedron and icosahedron", () => {
+    for (const id of ["dodecahedron", "icosahedron"] as const) {
+      const projection = platonicProjection(id, radius, radius);
+      expect(projection.latticeAlignedCount).toBeGreaterThan(0);
+      expect(projection.latticeAlignedCount).toBeLessThan(projection.points.length);
+      expect(projection.equalSegments).toBe(false);
+    }
+
+    // Concretely: the icosahedron's 5-fold view makes a ten-point ring plus a merged centre.
+    const icosahedron = platonicProjection("icosahedron", radius, radius);
+    expect(icosahedron.points).toHaveLength(11);
+    expect(icosahedron.mergedVertexCount).toBe(1);
+    expect(icosahedron.latticeAlignedCount).toBe(3);
+  });
+
+  it("never reports more points or segments than the solid has vertices and edges", () => {
+    for (const meta of PLATONIC_SOLIDS) {
+      const projection = platonicProjection(meta.id, radius);
+      expect(projection.points.length).toBeLessThanOrEqual(meta.vertices);
+      expect(projection.segments.length).toBeLessThanOrEqual(meta.edges);
+      for (const segment of projection.segments) expect(segment.from).not.toBe(segment.to);
+    }
+  });
+
+  it("rejects a non-positive radius or lattice spacing", () => {
+    expect(() => platonicProjection("cube", 0)).toThrow(RangeError);
+    expect(() => platonicProjection("cube", 1, -1)).toThrow(RangeError);
   });
 });
