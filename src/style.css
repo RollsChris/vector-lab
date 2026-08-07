@@ -3114,3 +3114,17 @@ details.course[open] > summary { margin-bottom: 10px; }
   color: #fff;
 }
 .glossary-entry h3 { margin-top: 0; }
+
+/* Sacred geometry: scrubbing the projection collapse. */
+.sacred-collapse {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+.sacred-collapse label { margin: 0; }
+.sacred-collapse-slider {
+  width: 100%;
+  min-height: 34px;
+  accent-color: #7ee787;
+  background: transparent;
+}

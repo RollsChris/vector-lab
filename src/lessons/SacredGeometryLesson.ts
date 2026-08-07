@@ -14,9 +14,11 @@ import {
   polygonCircumradius,
   regularPolygon,
   seedOfLife,
+  solidCollapse,
   type PlatonicSolid,
   type PlatonicSolidId,
   type SacredPoint,
+  type SolidCollapse,
   type SolidProjection,
 } from "../math/sacredGeometry";
 
@@ -44,6 +46,39 @@ interface AssemblyFace {
   readonly solidPosition: THREE.Vector3;
   readonly solidQuaternion: THREE.Quaternion;
   readonly delay: number;
+}
+
+/** One coloured bundle of the collapsing solid's edges, grouped by where they sit on it. */
+interface CollapseEdgeGroup {
+  readonly line: THREE.LineSegments;
+  /** Indices into the collapse's edge list, in the order the buffer stores them. */
+  readonly edges: readonly number[];
+}
+
+/** The solid's faces while it still has depth, drawn from the collapsing vertices. */
+interface CollapseFaceGroup {
+  readonly mesh: THREE.Mesh;
+  /** Vertex indices, one closed polygon per face, triangulated as a fan. */
+  readonly faces: readonly (readonly number[])[];
+  readonly opacity: number;
+}
+
+/**
+ * The projection phase's scene, held by name rather than by child index so both the
+ * per-frame update and the tests can reach a part without counting children.
+ */
+interface CollapseScene {
+  readonly root: THREE.Group;
+  readonly solid: THREE.Group;
+  readonly edgeGroups: readonly CollapseEdgeGroup[];
+  readonly faceGroups: readonly CollapseFaceGroup[];
+  /** One line per vertex, dropped straight down the viewing direction onto the plane. */
+  readonly rays: THREE.LineSegments;
+  readonly vertexMarkers: readonly THREE.Mesh[];
+  /** The viewing axis itself, drawn through the centre of the solid. */
+  readonly axisLine: THREE.Line;
+  readonly shadow: THREE.Group;
+  readonly flower: THREE.Group;
 }
 
 const CONSTRUCTIONS: readonly Construction[] = [
@@ -85,6 +120,14 @@ const SOLID_CIRCUMRADII: Record<PlatonicSolidId, number> = {
 };
 const ASSEMBLY_DURATION = 0.9;
 const ASSEMBLY_STAGGER = 0.11;
+/** Seconds the projection collapse takes to run from solid to flat shadow. */
+const COLLAPSE_DURATION = 3.4;
+/**
+ * Where the camera sits while depth still exists, relative to the viewing direction it
+ * eases back to. The projection direction itself never moves: this only lets you see the
+ * depth that is being removed, and it is gone by the time the figure is flat.
+ */
+const COLLAPSE_OBLIQUE = new THREE.Vector3(0.34, 0.25, 1);
 
 /** Why the two non-triangular faces cannot come from the Flower's triangular lattice. */
 const NON_LATTICE_NOTE: Partial<Record<PlatonicSolidId, string>> = {
@@ -114,10 +157,10 @@ const FLAT_PHASES: readonly SolidPhase[] = ["lattice", "projection", "face", "pl
 
 /**
  * Phases that also show the rotating 3D destination beside the flat drawing. The
- * projection phase is deliberately excluded: its whole point is a single fixed viewing
- * direction, so nothing in that phase may spin.
+ * projection phase is excluded because it has no separate destination to show: its own
+ * scene is the solid, collapsing along a fixed viewing direction onto the Flower.
  */
-const PREVIEW_PHASES: readonly SolidPhase[] = ["lattice", "projection", "face", "plan"];
+const PREVIEW_PHASES: readonly SolidPhase[] = ["lattice", "face", "plan"];
 
 const PHASE_COUNT_WORD = numberWord(PHASES.length);
 
@@ -150,6 +193,13 @@ export class SacredGeometryLesson implements Lesson {
   private constructionLines: THREE.Line[] = [];
   private rotatingSolid?: THREE.Group;
   private targetPreview?: THREE.Group;
+  private collapseScene?: CollapseScene;
+  /** How far the projection collapse has run: 0 is the solid, 1 is the flat shadow. */
+  private collapseProgress = 0;
+  private collapsePlaying = true;
+  private collapseStarted = 0;
+  private collapseCameraDistance = 12;
+  private reportedCollapsePercent = -1;
   private assemblyFaces: AssemblyFace[] = [];
   private assemblyProgress = 0;
   private reportedAssemblyPercent = -1;
@@ -196,6 +246,11 @@ export class SacredGeometryLesson implements Lesson {
       return;
     }
 
+    if (target.closest<HTMLButtonElement>("[data-sacred-collapse-play]")) {
+      this.startCollapse();
+      return;
+    }
+
     const solidButton = target.closest<HTMLButtonElement>("[data-sacred-solid]");
     if (!solidButton) return;
     const solidId = solidButton.dataset.sacredSolid as PlatonicSolidId;
@@ -205,6 +260,16 @@ export class SacredGeometryLesson implements Lesson {
     }
   };
 
+  private readonly inputHandler = (event: Event): void => {
+    const slider = (event.target as HTMLElement).closest<HTMLInputElement>(
+      "[data-sacred-collapse-slider]",
+    );
+    if (!slider) return;
+    // Scrubbing takes over from playback, so the figure sits exactly where it is dragged.
+    this.collapsePlaying = false;
+    this.setCollapseProgress(Number(slider.value) / 100);
+  };
+
   enter(ctx: LessonContext): void {
     this.setInfo = ctx.setInfo;
     this.viewport = ctx.viewport;
@@ -212,12 +277,14 @@ export class SacredGeometryLesson implements Lesson {
     ctx.viewport.world.add(this.group);
     ctx.viewport.setHelpers(false);
     document.getElementById("info")?.addEventListener("click", this.infoHandler);
+    document.getElementById("info")?.addEventListener("input", this.inputHandler);
     this.stopTick = ctx.viewport.onTick((dt, elapsed) => this.tick(dt, elapsed));
     this.rebuild();
   }
 
   exit(): void {
     document.getElementById("info")?.removeEventListener("click", this.infoHandler);
+    document.getElementById("info")?.removeEventListener("input", this.inputHandler);
     this.stopTick?.();
     this.stopTick = undefined;
     if (this.viewport) this.viewport.controls.enableRotate = this.previousRotate;
@@ -230,6 +297,7 @@ export class SacredGeometryLesson implements Lesson {
     this.reportedAssemblyPercent = -1;
     this.rotatingSolid = undefined;
     this.targetPreview = undefined;
+    this.collapseScene = undefined;
     this.viewport = undefined;
   }
 
@@ -239,6 +307,11 @@ export class SacredGeometryLesson implements Lesson {
     this.assemblyFaces = [];
     this.rotatingSolid = undefined;
     this.targetPreview = undefined;
+    this.collapseScene = undefined;
+    this.collapseProgress = 0;
+    this.collapsePlaying = true;
+    this.collapseStarted = 0;
+    this.reportedCollapsePercent = -1;
     this.assemblyProgress = 0;
     this.reportedAssemblyPercent = -1;
     this.animationStarted = 0;
@@ -246,6 +319,12 @@ export class SacredGeometryLesson implements Lesson {
     else this.drawSolidPhase();
     this.configureCamera();
     this.renderPanel();
+    // The panel is written after the scene, so push the collapse figures into the freshly
+    // rendered readouts rather than leaving their placeholders.
+    if (this.collapseScene) {
+      this.reportedCollapsePercent = -1;
+      this.setCollapseProgress(this.collapseProgress);
+    }
   }
 
   private configureCamera(): void {
@@ -254,6 +333,17 @@ export class SacredGeometryLesson implements Lesson {
     if (this.view === "construction") {
       this.viewport.controls.enableRotate = false;
       this.viewport.frameCamera(new THREE.Vector3(0, 0, 13), new THREE.Vector3(0, 0, 0));
+      return;
+    }
+
+    if (this.solidPhase === "projection") {
+      // The viewing direction is fixed, so the user may not swing the scene around and
+      // break the alignment the phase is about; the camera is driven by the collapse.
+      this.viewport.controls.enableRotate = false;
+      // Frame the Flower itself: the depth the solid stands in is what the collapse
+      // removes, so letting it push the camera back would shrink the alignment on screen.
+      this.collapseCameraDistance = this.cameraDistance(CIRCLE_RADIUS * 3, 1.02);
+      this.updateCollapseCamera();
       return;
     }
 
@@ -283,14 +373,18 @@ export class SacredGeometryLesson implements Lesson {
     target = new THREE.Vector3(),
   ): void {
     if (!this.viewport) return;
-    const camera = this.viewport.camera;
-    const halfVertical = THREE.MathUtils.degToRad(camera.fov) / 2;
-    const halfHorizontal = Math.atan(Math.tan(halfVertical) * camera.aspect);
-    const distance = (radius * 1.15) / Math.sin(Math.max(0.05, Math.min(halfVertical, halfHorizontal)));
     this.viewport.frameCamera(
-      direction.clone().normalize().multiplyScalar(distance).add(target),
+      direction.clone().normalize().multiplyScalar(this.cameraDistance(radius)).add(target),
       target,
     );
+  }
+
+  /** Distance at which a sphere of `radius` fits both screen axes. */
+  private cameraDistance(radius: number, padding = 1.15): number {
+    const camera = this.viewport!.camera;
+    const halfVertical = THREE.MathUtils.degToRad(camera.fov) / 2;
+    const halfHorizontal = Math.atan(Math.tan(halfVertical) * camera.aspect);
+    return (radius * padding) / Math.sin(Math.max(0.05, Math.min(halfVertical, halfHorizontal)));
   }
 
   /** Radius of a sphere around whatever the current phase draws, used to frame the camera. */
@@ -321,8 +415,138 @@ export class SacredGeometryLesson implements Lesson {
       this.tickAssembly(elapsed);
       return;
     }
+    if (this.solidPhase === "projection") {
+      this.tickCollapse(elapsed);
+      return;
+    }
     if (this.rotatingSolid) this.rotatingSolid.rotation.y += dt * 0.45;
     if (this.targetPreview) this.targetPreview.rotation.y += dt * 0.35;
+  }
+
+  /** Restart the collapse from the solid and let it run to the flat shadow. */
+  private startCollapse(): void {
+    this.collapsePlaying = true;
+    this.collapseStarted = 0;
+    this.setCollapseProgress(0);
+  }
+
+  /**
+   * Advance the collapse. Nothing here spins: the only thing that changes is how much
+   * depth is left, so the figure lands on the Flower in exactly one orientation.
+   */
+  private tickCollapse(elapsed: number): void {
+    if (!this.collapseScene) return;
+    if (this.collapsePlaying) {
+      if (this.collapseStarted === 0) this.collapseStarted = elapsed;
+      const progress = (elapsed - this.collapseStarted) / COLLAPSE_DURATION;
+      if (progress >= 1) this.collapsePlaying = false;
+      this.setCollapseProgress(THREE.MathUtils.clamp(progress, 0, 1));
+    }
+  }
+
+  /** Move every vertex, edge and ray to where this much collapse puts it. */
+  private setCollapseProgress(t: number): void {
+    this.collapseProgress = THREE.MathUtils.clamp(t, 0, 1);
+    const scene = this.collapseScene;
+    if (!scene) return;
+    const collapse = solidCollapse(
+      this.solidId,
+      this.collapseProgress,
+      CIRCLE_RADIUS,
+      CIRCLE_RADIUS,
+    );
+
+    scene.vertexMarkers.forEach((marker, index) => {
+      const vertex = collapse.vertices[index];
+      marker.position.set(vertex.x, vertex.y, vertex.z);
+    });
+
+    for (const group of scene.edgeGroups) {
+      const positions = group.line.geometry.getAttribute("position") as THREE.BufferAttribute;
+      group.edges.forEach((edgeIndex, slot) => {
+        const [a, b] = collapse.edges[edgeIndex];
+        positions.setXYZ(slot * 2, collapse.vertices[a].x, collapse.vertices[a].y, collapse.vertices[a].z);
+        positions.setXYZ(slot * 2 + 1, collapse.vertices[b].x, collapse.vertices[b].y, collapse.vertices[b].z);
+      });
+      positions.needsUpdate = true;
+      group.line.geometry.computeBoundingSphere();
+    }
+
+    for (const group of scene.faceGroups) {
+      const positions = group.mesh.geometry.getAttribute("position") as THREE.BufferAttribute;
+      let slot = 0;
+      for (const face of group.faces) {
+        for (let corner = 1; corner < face.length - 1; corner++) {
+          for (const index of [face[0], face[corner], face[corner + 1]]) {
+            const vertex = collapse.vertices[index];
+            positions.setXYZ(slot++, vertex.x, vertex.y, vertex.z);
+          }
+        }
+      }
+      positions.needsUpdate = true;
+      group.mesh.geometry.computeBoundingSphere();
+      // The faces belong to the solid, so they go as its depth does, rather than staying
+      // behind as flat colour over the shadow.
+      (group.mesh.material as THREE.Material).opacity = group.opacity * (1 - this.collapseProgress);
+    }
+
+    const rays = scene.rays.geometry.getAttribute("position") as THREE.BufferAttribute;    collapse.vertices.forEach((vertex, index) => {
+      rays.setXYZ(index * 2, vertex.x, vertex.y, vertex.z);
+      rays.setXYZ(index * 2 + 1, vertex.x, vertex.y, 0);
+    });
+    rays.needsUpdate = true;
+    scene.rays.geometry.computeBoundingSphere();
+    // Once flat, every ray has zero length and would only clutter the shadow.
+    (scene.rays.material as THREE.Material).opacity = 0.42 * (1 - this.collapseProgress);
+
+    const axis = scene.axisLine.geometry.getAttribute("position") as THREE.BufferAttribute;
+    const reach = collapse.depthSpan / 2 + CIRCLE_RADIUS * 0.35 * (1 - this.collapseProgress);
+    axis.setXYZ(0, 0, 0, reach);
+    axis.setXYZ(1, 0, 0, -reach);
+    axis.needsUpdate = true;
+    scene.axisLine.geometry.computeBoundingSphere();
+
+    this.updateCollapseCamera();
+    this.reportCollapseProgress(collapse);
+  }
+
+  /**
+   * Swing the camera from an oblique view, where the depth being removed is visible, to
+   * dead-on the viewing direction by the time the collapse finishes. The projection itself
+   * is unaffected: at t = 1 the camera looks straight down the axis, so what is on screen
+   * is exactly the projection lying on the Flower.
+   */
+  private updateCollapseCamera(): void {
+    if (!this.viewport) return;
+    const t = this.collapseProgress;
+    const eased = t * t * (3 - 2 * t);
+    const direction = COLLAPSE_OBLIQUE.clone()
+      .normalize()
+      .lerp(new THREE.Vector3(0, 0, 1), eased)
+      .normalize();
+    this.viewport.frameCamera(
+      direction.multiplyScalar(this.collapseCameraDistance),
+      new THREE.Vector3(0, 0, 0),
+    );
+  }
+
+  /** Mirror the collapse into the panel so it is readable, scrubbable and testable. */
+  private reportCollapseProgress(collapse: SolidCollapse): void {
+    // 100% has to mean genuinely flat, not "nearly there and rounded up", because the
+    // readout is the claim that the figure now is the projection.
+    const percent =
+      this.collapseProgress === 1 ? 100 : Math.min(99, Math.round(this.collapseProgress * 100));
+    if (percent === this.reportedCollapsePercent) return;
+    this.reportedCollapsePercent = percent;
+
+    const readout = document.querySelector<HTMLElement>("[data-sacred-collapse-percent]");
+    if (readout) readout.textContent = `${percent}%`;
+    const depth = document.querySelector<HTMLElement>("[data-sacred-collapse-depth]");
+    if (depth) depth.textContent = collapse.depthSpan.toFixed(2);
+    const host = document.querySelector<HTMLElement>("[data-sacred-collapse]");
+    if (host) host.dataset.sacredCollapse = String(percent);
+    const slider = document.querySelector<HTMLInputElement>("[data-sacred-collapse-slider]");
+    if (slider && Number(slider.value) !== percent) slider.value = String(percent);
   }
 
   /** Move every face rigidly from its place in the flat plan to its place on the solid. */
@@ -378,7 +602,7 @@ export class SacredGeometryLesson implements Lesson {
     }
   }
 
-  private drawCircle(centre: SacredPoint, animated = true): void {
+  private drawCircle(centre: SacredPoint, animated = true, parent: THREE.Object3D = this.group): void {
     const points = Array.from({ length: CIRCLE_SEGMENTS + 1 }, (_, index) => {
       const angle = (index / CIRCLE_SEGMENTS) * Math.PI * 2;
       return new THREE.Vector3(
@@ -399,7 +623,7 @@ export class SacredGeometryLesson implements Lesson {
       line.geometry.setDrawRange(0, 0);
       this.constructionLines.push(line);
     }
-    this.group.add(line);
+    parent.add(line);
   }
 
   private drawSolidPhase(): void {
@@ -429,67 +653,214 @@ export class SacredGeometryLesson implements Lesson {
   }
 
   /**
-   * Phase 2. The solid's orthographic shadow along a symmetry axis, drawn over the same
-   * Flower of Life. Points that land on a circle centre are marked differently from those
-   * that miss, so the panel's count is visible rather than asserted.
+   * Phase 2. One scene, not two: the solid itself, held in a fixed viewing direction and
+   * squashed along it until nothing is left but the shadow it casts on the Flower of Life.
+   * Every vertex keeps the x and y it will land on for the whole collapse — only depth
+   * changes — so the figure never slides around, and the end state is the projection the
+   * panel's numbers describe rather than a look-alike.
    */
   private drawProjection(): void {
-    for (const centre of flowerOfLife(CIRCLE_RADIUS)) this.drawCircle(centre, false);
+    const collapse = solidCollapse(this.solidId, 0, CIRCLE_RADIUS, CIRCLE_RADIUS);
+    const projection = collapse.projection;
 
-    const projection = this.projection();
-    if (this.solidId === "cube") this.drawCubeProjectionFaces(projection);
-    for (const segment of projection.segments) {
-      const from = projection.points[segment.from];
-      const to = projection.points[segment.to];
-      const line = new THREE.Line(
-        new THREE.BufferGeometry().setFromPoints([
-          new THREE.Vector3(from.x, from.y, 0.02),
-          new THREE.Vector3(to.x, to.y, 0.02),
-        ]),
-        new THREE.LineBasicMaterial({
-          color: 0xffa657,
+    const root = new THREE.Group();
+    root.name = "projection-collapse";
+
+    const flower = new THREE.Group();
+    flower.name = "flower-overlay";
+    for (const centre of flowerOfLife(CIRCLE_RADIUS)) this.drawCircle(centre, false, flower);
+    root.add(flower);
+
+    const shadow = this.buildShadow(projection);
+    root.add(shadow);
+
+    const solid = new THREE.Group();
+    solid.name = "collapse-solid";
+    const faceGroups = this.buildFaceGroups(collapse);
+    for (const group of faceGroups) solid.add(group.mesh);
+    const edgeGroups = this.buildEdgeGroups(collapse);
+    for (const group of edgeGroups) solid.add(group.line);
+
+    const rays = new THREE.LineSegments(
+      dynamicSegments(collapse.vertices.length),
+      new THREE.LineBasicMaterial({ color: 0x8b949e, transparent: true, opacity: 0.42 }),
+    );
+    rays.name = "projection-rays";
+    solid.add(rays);
+
+    const axisLine = new THREE.Line(
+      dynamicSegments(1),
+      new THREE.LineBasicMaterial({ color: 0xd2a8ff, transparent: true, opacity: 0.75 }),
+    );
+    axisLine.name = "viewing-axis";
+    solid.add(axisLine);
+
+    const vertexMarkers = collapse.vertices.map((vertex, index) => {
+      const onAxis = collapse.axisVertices.includes(index);
+      const towardsViewer = vertex.depth > 0;
+      const marker = new THREE.Mesh(
+        new THREE.SphereGeometry(onAxis ? 0.13 : 0.075, 16, 12),
+        new THREE.MeshBasicMaterial({
+          color: onAxis ? (towardsViewer ? 0xffd166 : 0xff7b72) : towardsViewer ? 0x79c0ff : 0x2f6db3,
           transparent: true,
-          opacity: this.solidId === "cube" ? 0.46 : 0.92,
+          opacity: 0.96,
         }),
       );
-      this.group.add(line);
-    }
-    for (const point of projection.points) {
-      this.addMarker(point, point.onLattice ? 0x7ee787 : 0xff7b72, point.onLattice ? 0.11 : 0.08);
-    }
+      marker.name = onAxis
+        ? `axis-vertex-${towardsViewer ? "near" : "far"}`
+        : `vertex-${index}`;
+      solid.add(marker);
+      return marker;
+    });
+
+    root.add(solid);
+    this.group.add(root);
+    this.collapseScene = {
+      root,
+      solid,
+      edgeGroups,
+      faceGroups,
+      rays,
+      vertexMarkers,
+      axisLine,
+      shadow,
+      flower,
+    };
+    this.setCollapseProgress(0);
   }
 
   /**
-   * The cube's body-diagonal shadow has three front square faces, each seen as a rhombus.
-   * Rendering these on top of the full wireframe makes its depth legible without hiding the
-   * twelve aligned Flower segments that define the projection.
+   * The solid's real faces, split into the ones turned towards the viewer and the ones
+   * turned away. They are the solid's own surface rather than a drawing laid over the
+   * shadow: their corners are the collapsing vertices, so they squash with everything else
+   * and fade out as the last of the depth goes, leaving the Flower unobscured.
    */
-  private drawCubeProjectionFaces(projection: SolidProjection): void {
-    const vertices = platonicVertices("cube", 1);
-    const faces: readonly { axis: "x" | "y" | "z"; color: number }[] = [
-      { axis: "x", color: 0x58a6ff },
-      { axis: "y", color: 0x3fb950 },
-      { axis: "z", color: 0xd2a8ff },
+  private buildFaceGroups(collapse: SolidCollapse): CollapseFaceGroup[] {
+    const faces = platonicFaces(this.solidId, 1);
+    const vertices = platonicVertices(this.solidId, 1);
+    const indexOf = (point: { x: number; y: number; z: number }): number => {
+      let best = 0;
+      let bestDistance = Infinity;
+      vertices.forEach((vertex, index) => {
+        const distance = Math.hypot(vertex.x - point.x, vertex.y - point.y, vertex.z - point.z);
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          best = index;
+        }
+      });
+      return best;
+    };
+
+    const buckets: { name: string; opacity: number; palette: readonly number[]; faces: number[][] }[] = [
+      // The faces around the near end of the axis, each in its own hue: for the cube these
+      // are the three squares that will read as three rhombi once the depth has gone.
+      { name: "faces-towards-viewer", opacity: 0.34, palette: [0x58a6ff, 0x3fb950, 0xd2a8ff], faces: [] },
+      { name: "faces-away", opacity: 0.14, palette: [0x8b949e], faces: [] },
+    ];
+    for (const face of faces) {
+      const towardsViewer =
+        face.normal.x * collapse.frame.view.x +
+          face.normal.y * collapse.frame.view.y +
+          face.normal.z * collapse.frame.view.z >
+        0;
+      buckets[towardsViewer ? 0 : 1].faces.push(face.vertices.map(indexOf));
+    }
+
+    return buckets
+      .filter((bucket) => bucket.faces.length > 0)
+      .map((bucket) => {
+        const triangles = bucket.faces.reduce((sum, face) => sum + face.length - 2, 0);
+        const geometry = new THREE.BufferGeometry();
+        const attribute = new THREE.BufferAttribute(new Float32Array(triangles * 9), 3);
+        attribute.setUsage(THREE.DynamicDrawUsage);
+        geometry.setAttribute("position", attribute);
+
+        const colours = new THREE.BufferAttribute(new Float32Array(triangles * 9), 3);
+        let slot = 0;
+        bucket.faces.forEach((face, index) => {
+          const colour = new THREE.Color(bucket.palette[index % bucket.palette.length]);
+          for (let corner = 0; corner < (face.length - 2) * 3; corner++) {
+            colours.setXYZ(slot++, colour.r, colour.g, colour.b);
+          }
+        });
+        geometry.setAttribute("color", colours);
+
+        const mesh = new THREE.Mesh(
+          geometry,
+          new THREE.MeshBasicMaterial({
+            vertexColors: true,
+            transparent: true,
+            opacity: bucket.opacity,
+            side: THREE.DoubleSide,
+            depthWrite: false,
+          }),
+        );
+        mesh.name = bucket.name;
+        return { mesh, faces: bucket.faces, opacity: bucket.opacity };
+      });
+  }
+
+  /** The flat shadow the collapse lands on, drawn from the projection data itself. */
+  private buildShadow(projection: SolidProjection): THREE.Group {
+    const shadow = new THREE.Group();
+    shadow.name = "projection-shadow";
+
+    const points: THREE.Vector3[] = [];
+    for (const segment of projection.segments) {
+      points.push(
+        new THREE.Vector3(projection.points[segment.from].x, projection.points[segment.from].y, 0),
+        new THREE.Vector3(projection.points[segment.to].x, projection.points[segment.to].y, 0),
+      );
+    }
+    const edges = new THREE.LineSegments(
+      new THREE.BufferGeometry().setFromPoints(points),
+      new THREE.LineBasicMaterial({ color: 0xffa657, transparent: true, opacity: 0.9 }),
+    );
+    edges.name = "shadow-edges";
+    shadow.add(edges);
+
+    const markers = new THREE.Group();
+    markers.name = "shadow-points";
+    projection.points.forEach((point, index) => {
+      const marker = this.makeMarker(point.onLattice ? 0x7ee787 : 0xff7b72, point.onLattice ? 0.11 : 0.08);
+      marker.position.set(point.x, point.y, 0.01);
+      marker.name = `shadow-point-${index}`;
+      markers.add(marker);
+    });
+    shadow.add(markers);
+    return shadow;
+  }
+
+  /**
+   * The collapsing solid's edges, split into the three bundles the body-diagonal view
+   * makes legible: the edges at the near end of the axis, the edges at the far end, and
+   * the ring of edges between them. For the cube those are its three near spokes, three
+   * far spokes and six hexagon edges, which is the whole of the figure.
+   */
+  private buildEdgeGroups(collapse: SolidCollapse): CollapseEdgeGroup[] {
+    const near = new Set(collapse.axisVertices.filter((index) => collapse.vertices[index].depth > 0));
+    const far = new Set(collapse.axisVertices.filter((index) => collapse.vertices[index].depth < 0));
+    const buckets: { name: string; color: number; edges: number[] }[] = [
+      { name: "edges-near-axis", color: 0xffd166, edges: [] },
+      { name: "edges-far-axis", color: 0xff7b72, edges: [] },
+      { name: "edges-rim", color: 0x79c0ff, edges: [] },
     ];
 
-    for (const { axis, color } of faces) {
-      const projected = vertices
-        .map((vertex, index) => ({ vertex, index }))
-        .filter(({ vertex }) => vertex[axis] > 0)
-        .map(({ index }) => projection.points.find((point) => point.sourceVertices.includes(index)))
-        .filter((point): point is NonNullable<typeof point> => point !== undefined);
-      const centre = projected.reduce(
-        (sum, point) => ({ x: sum.x + point.x / projected.length, y: sum.y + point.y / projected.length }),
-        { x: 0, y: 0 },
-      );
-      projected.sort(
-        (a, b) =>
-          Math.atan2(a.y - centre.y, a.x - centre.x) -
-          Math.atan2(b.y - centre.y, b.x - centre.x),
-      );
-      this.addPolygonFill(projected, color, 0.26, 0.015);
-      this.addPolygonOutline(projected, color, 0.94, 0.03);
-    }
+    collapse.edges.forEach(([a, b], index) => {
+      const bucket = near.has(a) || near.has(b) ? 0 : far.has(a) || far.has(b) ? 1 : 2;
+      buckets[bucket].edges.push(index);
+    });
+
+    return buckets
+      .filter((bucket) => bucket.edges.length > 0)
+      .map((bucket) => {
+        const line = new THREE.LineSegments(
+          dynamicSegments(bucket.edges.length),
+          new THREE.LineBasicMaterial({ color: bucket.color, transparent: true, opacity: 0.95 }),
+        );
+        line.name = bucket.name;
+        return { line, edges: bucket.edges };
+      });
   }
 
   /** The current solid's projection, scaled so the Flower's spacing is the lattice unit. */
@@ -674,12 +1045,17 @@ export class SacredGeometryLesson implements Lesson {
   }
 
   private addMarker(point: SacredPoint, color: number, radius: number): void {
-    const marker = new THREE.Mesh(
+    const marker = this.makeMarker(color, radius);
+    marker.position.set(point.x, point.y, 0.04);
+    this.group.add(marker);
+  }
+
+  /** A flat disc marker, positioned by whoever adds it. */
+  private makeMarker(color: number, radius: number): THREE.Mesh {
+    return new THREE.Mesh(
       new THREE.CircleGeometry(radius, 20),
       new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.95 }),
     );
-    marker.position.set(point.x, point.y, 0.04);
-    this.group.add(marker);
   }
 
   private currentSolid(): PlatonicSolid {
@@ -891,17 +1267,17 @@ export class SacredGeometryLesson implements Lesson {
       projection.mergedVertexCount === 0
         ? `No two vertices line up, so all ${projection.originalVertexCount} stay separate.`
         : projection.mergedVertexCount === 1
-          ? `One pair of vertices lines up along the axis and merges, so ${projection.originalVertexCount} vertices become ${projection.points.length} points.`
-          : `${projection.mergedVertexCount} vertices are hidden behind others along the axis, so ${projection.originalVertexCount} vertices become ${projection.points.length} points.`;
+          ? `One pair of vertices lines up along the axis and merges as the last of the depth goes, so ${projection.originalVertexCount} vertices become ${projection.points.length} points.`
+          : `${projection.mergedVertexCount} vertices end up hidden behind others along the axis, so ${projection.originalVertexCount} vertices become ${projection.points.length} points.`;
     const alignment =
       projection.latticeAlignedCount === projection.points.length
         ? `Every one of the ${projection.points.length} points lands on a Flower circle centre at this scale.`
         : `${projection.latticeAlignedCount} of the ${projection.points.length} points land on a Flower circle centre at this scale (green); the rest (red) miss it. This projection does not land completely on the lattice.`;
     const cube =
       solid.id === "cube"
-        ? " This particular figure — a hexagon with a centre and six spokes — is the one usually called Metatron's Cube. Geometrically it is nothing more than a cube viewed straight down its body diagonal, the line joining two opposite corners: three edges at the near corner make three spokes, three at the far corner make three further spokes, and the remaining six edges close the hexagon. The blue, green and purple rhombi are the three front square faces; the dim orange lines remain as the rear wireframe."
+        ? " The two big markers are the ends of the body diagonal, the line joining two opposite corners: the gold one is nearest you, the red one directly behind it. The three gold edges leave the near corner and the three red edges leave the far one; the six blue edges make the ring between them. Flatten the depth and the two marked corners meet in the middle, the six gold and red edges become six spokes, and the blue ring closes into a hexagon — the figure usually called Metatron's Cube, which is nothing more than this cube seen down its body diagonal."
         : "";
-    return `This is the ${name} seen as a shadow: every vertex is dropped straight onto a plane at right angles to its ${projection.axis.label}, and depth is thrown away.${cube} ${merged} Its ${projection.originalEdgeCount} edges draw ${projection.segments.length} segments${projection.equalSegments ? ", all exactly the same length" : ""}. ${alignment} The rotating translucent ${name} at the right is the 3D object casting this view. A projection is a view, not a plan and not a fold: it can merge vertices, it loses depth, and you cannot cut it out and build the solid from it — that is what the flat face plan two phases on is for.`;
+    return `Watch the ${name} become its own shadow. The viewing direction is fixed for the whole animation and the solid never turns: it is stood on its ${projection.axis.label} so that axis points straight at you, and then depth is taken away a step at a time until every vertex has dropped onto the plane along the faint rays.${cube} ${merged} Its ${projection.originalEdgeCount} edges finish as ${projection.segments.length} segments${projection.equalSegments ? ", all exactly the same length" : ""}. ${alignment} A projection is a view, not a plan and not a fold: it can merge vertices, it loses depth, and you cannot cut it out and build the solid from it — that is what the flat face plan two phases on is for.`;
   }
 
   private phaseExtras(solid: PlatonicSolid): string {
@@ -916,7 +1292,17 @@ export class SacredGeometryLesson implements Lesson {
           <div><span>On Flower centres</span><b data-sacred-projection-lattice>${projection.latticeAlignedCount} of ${projection.points.length}</b></div>
           <div><span>Segment lengths</span><b data-sacred-projection-equal>${projection.equalSegments ? "all equal" : "mixed"}</b></div>
         </div>
-        <p class="course-hint">The view is fixed: a projection only means anything along a stated direction, so this phase does not rotate.</p>`;
+        <div class="sacred-collapse" data-sacred-collapse="0">
+          <label class="course-hint" for="sacred-collapse-slider">Depth removed — drag to scrub the collapse</label>
+          <input id="sacred-collapse-slider" class="sacred-collapse-slider" type="range" min="0" max="100" step="1" value="0" data-sacred-collapse-slider aria-label="Depth removed from the projection">
+          <div class="readout">
+            <div><span>Depth removed</span><b data-sacred-collapse-percent>0%</b></div>
+            <div><span>Depth remaining</span><b data-sacred-collapse-depth>0.00</b></div>
+            <div><span>Viewing direction</span><b>fixed</b></div>
+          </div>
+          <button class="course-btn ghost" type="button" data-sacred-collapse-play>Replay collapse</button>
+        </div>
+        <p class="course-hint">The viewing direction never changes and the ${lowerName(solid)} never turns: at 0% it is the whole solid, stood on its ${projection.axis.label}, and every step after that only takes depth away. The camera eases round to sit on that direction as the depth goes, so at 100% you are looking straight down the axis at the shadow, sitting on the Flower's circle centres.</p>`;
     }
     if (this.solidPhase === "assembly") {
       return `
@@ -962,6 +1348,15 @@ function lowerName(solid: PlatonicSolid): string {
 
 function toVector3(point: { x: number; y: number; z: number }): THREE.Vector3 {
   return new THREE.Vector3(point.x, point.y, point.z);
+}
+
+/** An empty line-segment buffer of `count` segments, rewritten every frame. */
+function dynamicSegments(count: number): THREE.BufferGeometry {
+  const geometry = new THREE.BufferGeometry();
+  const attribute = new THREE.BufferAttribute(new Float32Array(count * 6), 3);
+  attribute.setUsage(THREE.DynamicDrawUsage);
+  geometry.setAttribute("position", attribute);
+  return geometry;
 }
 
 function centroidDistance(points: readonly SacredPoint[]): number {

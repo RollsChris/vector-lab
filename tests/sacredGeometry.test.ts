@@ -12,8 +12,10 @@ import {
   platonicProjection,
   platonicVertices,
   polygonCircumradius,
+  projectionFrame,
   regularPolygon,
   seedOfLife,
+  solidCollapse,
 } from "../src/math/sacredGeometry";
 
 const distance = (a: { x: number; y: number }, b: { x: number; y: number }) =>
@@ -23,6 +25,20 @@ const distance3 = (
   a: { x: number; y: number; z: number },
   b: { x: number; y: number; z: number },
 ) => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
+
+const dot3 = (
+  a: { x: number; y: number; z: number },
+  b: { x: number; y: number; z: number },
+) => a.x * b.x + a.y * b.y + a.z * b.z;
+
+const cross3 = (
+  a: { x: number; y: number; z: number },
+  b: { x: number; y: number; z: number },
+) => ({
+  x: a.y * b.z - a.z * b.y,
+  y: a.z * b.x - a.x * b.z,
+  z: a.x * b.y - a.y * b.x,
+});
 
 const key3 = (point: { x: number; y: number; z: number }) =>
   [point.x, point.y, point.z].map((value) => value.toFixed(6)).join(",");
@@ -364,5 +380,226 @@ describe("Platonic solid projections", () => {
   it("rejects a non-positive radius or lattice spacing", () => {
     expect(() => platonicProjection("cube", 0)).toThrow(RangeError);
     expect(() => platonicProjection("cube", 1, -1)).toThrow(RangeError);
+  });
+});
+
+describe("projection viewing frame", () => {
+  const radius = 1.45;
+
+  it("gives an orthonormal right-handed basis whose view direction is the stated axis", () => {
+    for (const meta of PLATONIC_SOLIDS) {
+      const frame = projectionFrame(meta.id, radius);
+      const { right, up, view } = frame;
+
+      for (const [name, vector] of [["right", right], ["up", up], ["view", view]] as const) {
+        expect(Math.hypot(vector.x, vector.y, vector.z), `${meta.id} ${name}`).toBeCloseTo(1, 12);
+      }
+      expect(dot3(right, up)).toBeCloseTo(0, 12);
+      expect(dot3(right, view)).toBeCloseTo(0, 12);
+      expect(dot3(up, view)).toBeCloseTo(0, 12);
+
+      // Right-handed: right × up = view.
+      const handed = cross3(right, up);
+      expect(distance3(handed, view)).toBeCloseTo(0, 12);
+
+      // The view direction is the solid's own symmetry axis, normalised.
+      const axis = frame.axis.axis;
+      const size = Math.hypot(axis.x, axis.y, axis.z);
+      expect(distance3(view, { x: axis.x / size, y: axis.y / size, z: axis.z / size })).toBeCloseTo(0, 12);
+      expect(frame.radius).toBe(radius);
+    }
+  });
+
+  it("scales unit-edge coordinates so the outermost projected point lands on the radius", () => {
+    for (const meta of PLATONIC_SOLIDS) {
+      const frame = projectionFrame(meta.id, radius);
+      const vertices = platonicVertices(meta.id, 1);
+      const flat = vertices.map((vertex) => ({
+        x: frame.scale * dot3(vertex, frame.right),
+        y: frame.scale * dot3(vertex, frame.up),
+      }));
+      expect(Math.max(...flat.map((point) => Math.hypot(point.x, point.y)))).toBeCloseTo(radius, 12);
+      // The anchoring puts an outermost point on +x with no y component.
+      expect(flat.some((point) => Math.abs(point.x - radius) < 1e-9 && Math.abs(point.y) < 1e-9)).toBe(true);
+    }
+  });
+
+  it("is the same frame the flat projection is built from", () => {
+    for (const meta of PLATONIC_SOLIDS) {
+      const frame = projectionFrame(meta.id, radius);
+      const projection = platonicProjection(meta.id, radius);
+      const vertices = platonicVertices(meta.id, 1);
+
+      projection.points.forEach((point) => {
+        for (const source of point.sourceVertices) {
+          expect(frame.scale * dot3(vertices[source], frame.right)).toBeCloseTo(point.x, 9);
+          expect(frame.scale * dot3(vertices[source], frame.up)).toBeCloseTo(point.y, 9);
+        }
+      });
+    }
+  });
+
+  it("rejects a non-positive radius", () => {
+    expect(() => projectionFrame("cube", 0)).toThrow(RangeError);
+    expect(() => projectionFrame("cube", Number.NaN)).toThrow(RangeError);
+  });
+});
+
+describe("solid collapse into its projection", () => {
+  const radius = 1.45;
+
+  it("starts as the rigid solid, correctly scaled, for every solid", () => {
+    for (const meta of PLATONIC_SOLIDS) {
+      const collapse = solidCollapse(meta.id, 0, radius);
+      expect(collapse.vertices).toHaveLength(meta.vertices);
+      expect(collapse.edges).toHaveLength(meta.edges);
+
+      for (const [a, b] of collapse.edges) {
+        expect(distance3(collapse.vertices[a], collapse.vertices[b])).toBeCloseTo(collapse.edgeLength, 9);
+      }
+
+      // Rigid means every pairwise distance matches the solid at that edge length, not
+      // only the edges: a flattened figure would keep the edges and lose the rest.
+      const reference = platonicVertices(meta.id, collapse.edgeLength);
+      const pairs = (points: readonly { x: number; y: number; z: number }[]) => {
+        const out: number[] = [];
+        for (let i = 0; i < points.length; i++) {
+          for (let j = i + 1; j < points.length; j++) out.push(distance3(points[i], points[j]));
+        }
+        return out.sort((a, b) => a - b);
+      };
+      const actual = pairs(collapse.vertices);
+      const expected = pairs(reference);
+      actual.forEach((value, index) => expect(value).toBeCloseTo(expected[index], 9));
+    }
+  });
+
+  it("faces the camera down the stated symmetry axis at t = 0", () => {
+    for (const meta of PLATONIC_SOLIDS) {
+      const collapse = solidCollapse(meta.id, 0, radius);
+      const vertices = platonicVertices(meta.id, 1);
+      // Depth is exactly the component along the solid's own axis: the axis points at us.
+      collapse.vertices.forEach((vertex, index) => {
+        expect(vertex.z).toBeCloseTo(collapse.frame.scale * dot3(vertices[index], collapse.frame.view), 12);
+        expect(vertex.depth).toBeCloseTo(vertex.z, 12);
+      });
+      expect(collapse.depthSpan).toBeGreaterThan(0);
+    }
+  });
+
+  it("ends exactly on the flat projection the Flower overlay draws", () => {
+    for (const meta of PLATONIC_SOLIDS) {
+      const collapse = solidCollapse(meta.id, 1, radius, radius);
+      const projection = platonicProjection(meta.id, radius, radius);
+
+      expect(collapse.projection.points).toEqual(projection.points);
+      expect(collapse.projection.segments).toEqual(projection.segments);
+      for (const vertex of collapse.vertices) {
+        expect(vertex.z).toBe(0);
+        expect(vertex.x).toBe(projection.points[vertex.point].x);
+        expect(vertex.y).toBe(projection.points[vertex.point].y);
+      }
+      expect(collapse.depthSpan).toBeCloseTo(0, 12);
+    }
+  });
+
+  it("keeps x and y fixed and shrinks depth monotonically as t rises", () => {
+    for (const meta of PLATONIC_SOLIDS) {
+      const steps = [0, 0.1, 0.25, 0.5, 0.75, 0.9, 1];
+      const frames = steps.map((t) => solidCollapse(meta.id, t, radius));
+
+      for (let index = 0; index < meta.vertices; index++) {
+        const start = frames[0].vertices[index];
+        let previous = Math.abs(start.z);
+        for (const frame of frames.slice(1)) {
+          const vertex = frame.vertices[index];
+          expect(vertex.x).toBe(start.x);
+          expect(vertex.y).toBe(start.y);
+          expect(Math.abs(vertex.z)).toBeLessThanOrEqual(previous + 1e-12);
+          // Depth strictly shrinks unless the vertex was already in the plane.
+          if (Math.abs(start.z) > 1e-9) expect(Math.abs(vertex.z)).toBeLessThan(previous);
+          previous = Math.abs(vertex.z);
+        }
+      }
+
+      frames.forEach((frame, index) => {
+        if (index === 0) return;
+        expect(frame.depthSpan).toBeLessThan(frames[index - 1].depthSpan + 1e-12);
+      });
+    }
+  });
+
+  it("collapses the cube along its body diagonal into seven points and twelve edges", () => {
+    const collapse = solidCollapse("cube", 0, radius, radius);
+
+    expect(collapse.axis.label).toBe("3-fold body diagonal");
+    expect(collapse.edgeLength).toBeCloseTo(radius * Math.sqrt(1.5), 12);
+    expect(collapse.projection.points).toHaveLength(7);
+    expect(collapse.projection.segments).toHaveLength(12);
+
+    // The body diagonal's two ends are the only vertices on the axis, one near, one far.
+    expect(collapse.axisVertices).toHaveLength(2);
+    const [first, second] = collapse.axisVertices.map((index) => collapse.vertices[index]);
+    for (const end of [first, second]) {
+      expect(Math.hypot(end.x, end.y)).toBeCloseTo(0, 12);
+    }
+    expect(Math.sign(first.depth)).toBe(-Math.sign(second.depth));
+    expect(distance3(first, second)).toBeCloseTo(collapse.edgeLength * Math.sqrt(3), 12);
+    expect(collapse.depthSpan).toBeCloseTo(collapse.edgeLength * Math.sqrt(3), 12);
+
+    // Those two vertices are the pair the projection merges; the other six stay apart.
+    expect(first.point).toBe(second.point);
+    expect(collapse.projection.points[first.point].sourceVertices).toHaveLength(2);
+    expect(new Set(collapse.vertices.map((vertex) => vertex.point)).size).toBe(7);
+  });
+
+  it("merges cube vertices only as the last of the depth between them goes", () => {
+    const [near, far] = solidCollapse("cube", 0, radius).axisVertices;
+    const gap = (t: number) => {
+      const collapse = solidCollapse("cube", t, radius);
+      return distance3(collapse.vertices[near], collapse.vertices[far]);
+    };
+
+    expect(gap(0)).toBeCloseTo(radius * Math.sqrt(1.5) * Math.sqrt(3), 12);
+    expect(gap(0.5)).toBeCloseTo(gap(0) / 2, 12);
+    expect(gap(1)).toBeCloseTo(0, 12);
+    // Every other pair of vertices stays distinct all the way to the flat projection.
+    const flat = solidCollapse("cube", 1, radius);
+    for (let i = 0; i < flat.vertices.length; i++) {
+      for (let j = i + 1; j < flat.vertices.length; j++) {
+        const apart = distance3(flat.vertices[i], flat.vertices[j]);
+        if (i === near && j === far) continue;
+        if (j === near && i === far) continue;
+        expect(apart).toBeGreaterThan(radius * 0.5);
+      }
+    }
+  });
+
+  it("merges exactly the vertices the projection says merge, for every solid", () => {
+    for (const meta of PLATONIC_SOLIDS) {
+      const collapse = solidCollapse(meta.id, 1, radius, radius);
+      const landed = new Map<number, number[]>();
+      collapse.vertices.forEach((vertex, index) => {
+        landed.set(vertex.point, [...(landed.get(vertex.point) ?? []), index]);
+      });
+      expect(landed.size).toBe(collapse.projection.points.length);
+      collapse.projection.points.forEach((point, index) => {
+        expect(landed.get(index)).toEqual([...point.sourceVertices]);
+      });
+      // Merged vertices are exactly those sharing a projected point.
+      const mergedVertices = [...landed.values()].filter((group) => group.length > 1);
+      const lost = mergedVertices.reduce((sum, group) => sum + group.length - 1, 0);
+      expect(lost).toBe(collapse.projection.mergedVertexCount);
+    }
+  });
+
+  it("rejects a t outside the unit interval, or a non-positive size", () => {
+    for (const bad of [-0.001, 1.001, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(() => solidCollapse("cube", bad, radius), `t = ${bad}`).toThrow(RangeError);
+    }
+    expect(() => solidCollapse("cube", 0, 0)).toThrow(RangeError);
+    expect(() => solidCollapse("cube", 0, radius, -1)).toThrow(RangeError);
+    expect(() => solidCollapse("cube", 0, radius, radius)).not.toThrow();
+    expect(() => solidCollapse("cube", 1, radius)).not.toThrow();
   });
 });

@@ -213,6 +213,62 @@ const sacredState = () =>
     group: { children: unknown[] };
   });
 
+/**
+ * The projection collapse scene, read by object name rather than by child index: the
+ * scene may gain or lose decoration without these assertions becoming wrong or brittle.
+ */
+const collapseState = () => {
+  const lesson = (window as any).__lab.manager.activeLesson;
+  const scene = lesson.collapseScene;
+  const root = scene.root;
+  const find = (name: string) => root.getObjectByName(name);
+  const camera = (window as any).__lab.viewport.camera;
+  const cameraLength = Math.hypot(camera.position.x, camera.position.y, camera.position.z);
+  return {
+    progress: lesson.collapseProgress as number,
+    playing: lesson.collapsePlaying as boolean,
+    rootNames: root.children.map((child: any) => child.name) as string[],
+    flowerCircles: find("flower-overlay").children.length as number,
+    shadowSegments: find("shadow-edges").geometry.attributes.position.count / 2,
+    shadowPoints: find("shadow-points").children.map((child: any) => ({
+      name: child.name as string,
+      x: child.position.x as number,
+      y: child.position.y as number,
+    })),
+    rayCount: find("projection-rays").geometry.attributes.position.count / 2,
+    axisLine: Boolean(find("viewing-axis")),
+    edgeGroups: scene.edgeGroups.map((group: any) => ({
+      name: group.line.name as string,
+      edges: group.edges.length as number,
+    })),
+    axisMarkers: scene.solid.children
+      .filter((child: any) => child.name.startsWith("axis-vertex"))
+      .map((child: any) => child.name as string),
+    vertices: scene.vertexMarkers.map((marker: any) => ({
+      x: marker.position.x as number,
+      y: marker.position.y as number,
+      z: marker.position.z as number,
+    })),
+    // Nothing in this phase may spin, so every rotation must stay at zero.
+    rotations: [root, scene.solid, scene.shadow, scene.flower].map((object: any) => [
+      object.rotation.x,
+      object.rotation.y,
+      object.rotation.z,
+    ]) as number[][],
+    cameraDirection: [
+      camera.position.x / cameraLength,
+      camera.position.y / cameraLength,
+      camera.position.z / cameraLength,
+    ] as number[],
+    cameraTarget: [
+      (window as any).__lab.viewport.controls.target.x,
+      (window as any).__lab.viewport.controls.target.y,
+      (window as any).__lab.viewport.controls.target.z,
+    ] as number[],
+    canRotate: (window as any).__lab.viewport.controls.enableRotate as boolean,
+  };
+};
+
 test("sacred geometry walks one solid through every visibly different construction phase", async ({ page }) => {
   const errors = trackErrors(page);
   await page.goto("/#sacred-geometry");
@@ -238,34 +294,45 @@ test("sacred geometry walks one solid through every visibly different constructi
   );
   expect(previewAfter).toBeGreaterThan(previewBefore);
 
-  // Phase 2 — the flat projection stays fixed while its separate 3D reference rotates.
+  // Phase 2 — the solid collapses along one fixed viewing direction onto the Flower.
   await page.locator('[data-sacred-phase="projection"]').click();
   await expect(page.locator("[data-sacred-phase-name]")).toHaveText("2D projection");
   await expect(page.locator("[data-sacred-projection-axis]")).toHaveText("3-fold vertex axis");
   await expect(page.locator("[data-sacred-projection-points]")).toHaveText("4");
   await expect(page.locator("[data-sacred-projection-segments]")).toHaveText("6");
-  await expect(page.locator("[data-sacred-phase-copy]")).toContainText("shadow");
+  await expect(page.locator("[data-sacred-phase-copy]")).toContainText("become its own shadow");
   await expect(page.locator("[data-sacred-phase-copy]")).toContainText("not a plan and not a fold");
   const projection = await page.evaluate(sacredState);
   expect(projection.solidPhase).toBe("projection");
+  // One scene, not a flat drawing beside an unrelated spinning solid.
   expect(projection.rotatingSolid).toBeUndefined();
-  expect(projection.targetPreview).toBeDefined();
-  expect(projection.group.children.length).toBe(19 + 6 + 4 + 1); // flower, overlay, target
-  const projectionBefore = await page.evaluate(
-    () => (window as any).__lab.manager.activeLesson.group.children.slice(0, -1).map((child: any) => child.rotation.y),
+  expect(projection.targetPreview).toBeUndefined();
+  expect(projection.group.children.length).toBe(1);
+
+  const collapseStart = await page.evaluate(collapseState);
+  expect(collapseStart.rootNames).toEqual(
+    expect.arrayContaining(["flower-overlay", "projection-shadow", "collapse-solid"]),
   );
-  const projectionPreviewBefore = await page.evaluate(
-    () => (window as any).__lab.manager.activeLesson.targetPreview.rotation.y,
-  );
-  await page.waitForTimeout(400);
-  const projectionAfter = await page.evaluate(
-    () => (window as any).__lab.manager.activeLesson.group.children.slice(0, -1).map((child: any) => child.rotation.y),
-  );
-  const projectionPreviewAfter = await page.evaluate(
-    () => (window as any).__lab.manager.activeLesson.targetPreview.rotation.y,
-  );
-  expect(projectionAfter).toEqual(projectionBefore);
-  expect(projectionPreviewAfter).toBeGreaterThan(projectionPreviewBefore);
+  expect(collapseStart.flowerCircles).toBe(19);
+  expect(collapseStart.shadowSegments).toBe(6);
+  expect(collapseStart.shadowPoints).toHaveLength(4);
+  expect(collapseStart.rayCount).toBe(4);
+  expect(collapseStart.axisLine).toBe(true);
+  expect(collapseStart.canRotate).toBe(false);
+
+  // Depth flattens, but nothing rotates and nothing slides across the plane.
+  await page.waitForTimeout(500);
+  const collapseLater = await page.evaluate(collapseState);
+  expect(collapseLater.progress).toBeGreaterThan(collapseStart.progress);
+  for (const rotation of [...collapseStart.rotations, ...collapseLater.rotations]) {
+    expect(rotation).toEqual([0, 0, 0]);
+  }
+  collapseLater.vertices.forEach((vertex, index) => {
+    expect(vertex.x).toBeCloseTo(collapseStart.vertices[index].x, 9);
+    expect(vertex.y).toBeCloseTo(collapseStart.vertices[index].y, 9);
+    expect(Math.abs(vertex.z)).toBeLessThanOrEqual(Math.abs(collapseStart.vertices[index].z) + 1e-9);
+  });
+  await expect(page.locator("[data-sacred-collapse-percent]")).toHaveText("100%", { timeout: 10_000 });
 
   // Phase 3 — a single equilateral triangle at true size.
   await page.locator('[data-sacred-phase="face"]').click();
@@ -347,15 +414,17 @@ test("sacred geometry projects each solid onto the Flower and reports how much o
   await page.goto("/#sacred-geometry");
   await page.locator('[data-sacred-view="solids"]').click();
 
+  const near = ["axis-vertex-near"];
+  const both = ["axis-vertex-near", "axis-vertex-far"];
   const projections = [
-    ["tetrahedron", "3-fold vertex axis", "4", "6", "0", "4 of 4", "mixed"],
-    ["cube", "3-fold body diagonal", "7", "12", "1", "7 of 7", "all equal"],
-    ["octahedron", "3-fold face axis", "6", "12", "0", "6 of 6", "mixed"],
-    ["dodecahedron", "3-fold vertex axis", "19", "30", "1", "7 of 19", "mixed"],
-    ["icosahedron", "5-fold vertex axis", "11", "30", "1", "3 of 11", "mixed"],
+    ["tetrahedron", "3-fold vertex axis", "4", "6", "0", "4 of 4", "mixed", 4, 6, near],
+    ["cube", "3-fold body diagonal", "7", "12", "1", "7 of 7", "all equal", 8, 12, both],
+    ["octahedron", "3-fold face axis", "6", "12", "0", "6 of 6", "mixed", 6, 12, []],
+    ["dodecahedron", "3-fold vertex axis", "19", "30", "1", "7 of 19", "mixed", 20, 30, both],
+    ["icosahedron", "5-fold vertex axis", "11", "30", "1", "3 of 11", "mixed", 12, 30, both],
   ] as const;
 
-  for (const [id, axis, points, segments, merged, lattice, equal] of projections) {
+  for (const [id, axis, points, segments, merged, lattice, equal, vertices, edges, axisMarkers] of projections) {
     await page.locator(`[data-sacred-solid="${id}"]`).click();
     await page.locator('[data-sacred-phase="projection"]').click();
 
@@ -368,14 +437,26 @@ test("sacred geometry projects each solid onto the Flower and reports how much o
     await expect(page.locator("[data-sacred-projection-equal]")).toHaveText(equal);
 
     const state = await page.evaluate(sacredState);
-    // Nineteen faint Flower circles, then one line per segment and one marker per point.
-    // The cube also draws three coloured face fills and their outlines, plus every flat
-    // phase has a separate 3D target preview.
-    expect(state.group.children.length).toBe(
-      19 + Number(segments) + Number(points) + (id === "cube" ? 6 : 0) + 1,
-    );
+    // One collapse scene per solid, held together rather than scattered across the group.
+    expect(state.group.children.length).toBe(1);
     expect(state.rotatingSolid).toBeUndefined();
-    expect(state.targetPreview).toBeDefined();
+    expect(state.targetPreview).toBeUndefined();
+
+    const collapse = await page.evaluate(collapseState);
+    expect(collapse.rootNames).toEqual(
+      expect.arrayContaining(["flower-overlay", "projection-shadow", "collapse-solid"]),
+    );
+    expect(collapse.flowerCircles).toBe(19);
+    expect(collapse.shadowSegments).toBe(Number(segments));
+    expect(collapse.shadowPoints).toHaveLength(Number(points));
+    expect(collapse.rayCount).toBe(vertices);
+    expect(collapse.vertices).toHaveLength(vertices);
+    // Every edge of the solid is drawn exactly once, in one of the named bundles.
+    expect(collapse.edgeGroups.reduce((sum, group) => sum + group.edges, 0)).toBe(edges);
+    expect(new Set(collapse.edgeGroups.map((group) => group.name)).size).toBe(
+      collapse.edgeGroups.length,
+    );
+    expect(collapse.axisMarkers).toEqual(axisMarkers);
 
     const copy = (await page.locator("[data-sacred-phase-copy]").textContent()) ?? "";
     expect(copy).toContain("shadow");
@@ -386,11 +467,103 @@ test("sacred geometry projects each solid onto the Flower and reports how much o
     } else if (lattice !== `${points} of ${points}`) {
       expect(copy).toContain("miss it");
     }
+
+    // Run the collapse to the end: the solid lands exactly on the flat shadow it casts.
+    await expect(page.locator("[data-sacred-collapse-percent]")).toHaveText("100%", {
+      timeout: 15_000,
+    });
+    const flat = await page.evaluate(collapseState);
+    for (const vertex of flat.vertices) expect(Math.abs(vertex.z)).toBeLessThan(1e-9);
+    for (const vertex of flat.vertices) {
+      const landed = flat.shadowPoints.some(
+        (point) => Math.hypot(point.x - vertex.x, point.y - vertex.y) < 1e-9,
+      );
+      expect(landed, `${id} vertex did not land on a projected point`).toBe(true);
+    }
+    // With the depth gone the camera looks straight down the viewing direction, so the
+    // Flower alignment on screen is the alignment the projection data reports.
+    expect(flat.cameraDirection[0]).toBeCloseTo(0, 6);
+    expect(flat.cameraDirection[1]).toBeCloseTo(0, 6);
+    expect(flat.cameraDirection[2]).toBeCloseTo(1, 6);
+    expect(flat.cameraTarget).toEqual([0, 0, 0]);
   }
 
   // The projection is a different relationship from the face-lattice teaching, which stays.
   await expect(page.locator("#info")).toContainText("three different relationships");
   await expect(page.locator("#info")).toContainText("neither polygon is a cell of this lattice");
+  expect(errors, errors.join("\n")).toEqual([]);
+});
+
+test("sacred geometry scrubs the cube from solid to Metatron's Cube and back", async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto("/#sacred-geometry");
+  await page.locator('[data-sacred-view="solids"]').click();
+  await page.locator('[data-sacred-solid="cube"]').click();
+  await page.locator('[data-sacred-phase="projection"]').click();
+
+  const slider = page.locator("[data-sacred-collapse-slider]");
+  await expect(slider).toBeVisible();
+  await expect(page.locator("[data-sacred-collapse-percent]")).toHaveText("100%", { timeout: 15_000 });
+
+  // Scrub back to the whole solid: eight separate vertices with real depth between them.
+  await slider.fill("0");
+  await expect(page.locator("[data-sacred-collapse-percent]")).toHaveText("0%");
+  const solid = await page.evaluate(collapseState);
+  expect(solid.playing).toBe(false);
+  expect(solid.progress).toBe(0);
+  expect(solid.vertices).toHaveLength(8);
+  expect(new Set(solid.vertices.map((vertex) => vertex.z.toFixed(6))).size).toBeGreaterThan(1);
+  // The cube stands on its body diagonal: the two marked ends are on the axis, one in
+  // front of the plane and one behind it, and every edge is the same length.
+  const axisEnds = solid.vertices.filter((vertex) => Math.hypot(vertex.x, vertex.y) < 1e-9);
+  expect(axisEnds).toHaveLength(2);
+  expect(Math.sign(axisEnds[0].z)).toBe(-Math.sign(axisEnds[1].z));
+  expect(solid.edgeGroups).toEqual([
+    { name: "edges-near-axis", edges: 3 },
+    { name: "edges-far-axis", edges: 3 },
+    { name: "edges-rim", edges: 6 },
+  ]);
+  const depthAtZero = Number(await page.locator("[data-sacred-collapse-depth]").textContent());
+  expect(depthAtZero).toBeGreaterThan(0);
+
+  // Halfway removes exactly half the depth and moves nothing sideways.
+  await slider.fill("50");
+  await expect(page.locator("[data-sacred-collapse-percent]")).toHaveText("50%");
+  const half = await page.evaluate(collapseState);
+  half.vertices.forEach((vertex, index) => {
+    expect(vertex.x).toBeCloseTo(solid.vertices[index].x, 9);
+    expect(vertex.y).toBeCloseTo(solid.vertices[index].y, 9);
+    expect(vertex.z).toBeCloseTo(solid.vertices[index].z / 2, 9);
+  });
+  expect(Number(await page.locator("[data-sacred-collapse-depth]").textContent())).toBeCloseTo(
+    depthAtZero / 2,
+    1,
+  );
+
+  // All the way: the eight vertices become the seven points of the flat figure, the two
+  // body-diagonal ends having met in the centre.
+  await slider.fill("100");
+  await expect(page.locator("[data-sacred-collapse-percent]")).toHaveText("100%");
+  const flat = await page.evaluate(collapseState);
+  for (const vertex of flat.vertices) expect(vertex.z).toBe(0);
+  const distinct = new Set(flat.vertices.map((vertex) => `${vertex.x.toFixed(9)},${vertex.y.toFixed(9)}`));
+  expect(distinct.size).toBe(7);
+  expect(flat.shadowPoints).toHaveLength(7);
+  expect(flat.cameraDirection[2]).toBeCloseTo(1, 6);
+  await expect(page.locator("[data-sacred-projection-points]")).toHaveText("7");
+  await expect(page.locator("[data-sacred-projection-segments]")).toHaveText("12");
+
+  // Replay runs the animation again from the solid, on its own.
+  await page.locator("[data-sacred-collapse-play]").click();
+  await expect(page.locator("[data-sacred-collapse-percent]")).not.toHaveText("100%");
+  expect((await page.evaluate(collapseState)).playing).toBe(true);
+  await expect(page.locator("[data-sacred-collapse-percent]")).toHaveText("100%", { timeout: 15_000 });
+
+  // Nothing free-spins at any point of the collapse.
+  const finished = await page.evaluate(collapseState);
+  for (const rotation of finished.rotations) expect(rotation).toEqual([0, 0, 0]);
+  expect(finished.canRotate).toBe(false);
+
   expect(errors, errors.join("\n")).toEqual([]);
 });
 
