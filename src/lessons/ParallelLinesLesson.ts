@@ -68,13 +68,13 @@ const MODES: Record<Mode, ModeCfg> = {
     claim: "Adjacent angles on a straight line sum to 180° at any crossing, parallel or not.",
   },
   "converse-corresponding": {
-    label: "Converse · corresponding",
+    label: "Converse: corresponding",
     group: "Converses",
     hint: "If corresponding angles match, the converse claims parallelism. Differing angles only mean the hypothesis is not met.",
     claim: "Converse: if corresponding angles are equal, then the lines are parallel.",
   },
   "converse-alternate-interior": {
-    label: "Converse · alt. interior",
+    label: "Converse: alt. interior",
     group: "Converses",
     hint: "If alternate interior angles match, the converse claims parallelism. Differing angles only mean the hypothesis is not met.",
     claim: "Converse: if alternate interior angles are equal, then the lines are parallel.",
@@ -123,7 +123,7 @@ export class ParallelLinesLesson implements Lesson {
   readonly blurb = "Transversal theorems, live and draggable";
   readonly category = "Shape" as const;
   readonly difficulty = "Foundation" as const;
-  readonly prerequisites = ["geometry"] as const;
+  readonly prerequisites = ["angles"] as const;
 
   private setInfo!: (html: string) => void;
   private viewport?: Viewport;
@@ -796,6 +796,7 @@ export class ParallelLinesLesson implements Lesson {
       <div class="course">
         <h3 id="pl-claim-title">Live reading</h3>
         <div class="pl-implication" id="pl-claim"></div>
+        ${this.plainExplanationHtml()}
         <div class="readout" id="pl-readout"></div>
         <div id="pl-status"></div>
         <p class="course-hint" id="pl-message"></p>
@@ -818,6 +819,27 @@ export class ParallelLinesLesson implements Lesson {
     this.updatePanel();
   }
 
+  private plainExplanationHtml(): string {
+    const alwaysTrue = this.mode === "vertically-opposite" || this.mode === "adjacent";
+    if (alwaysTrue) {
+      return `<div class="pl-plain">
+        <p class="pl-plain-row" data-pl-plain="forward">This one is true at every crossing, so there is nothing to turn round: it never tells you whether the lines are parallel.</p>
+        <p class="pl-plain-now" data-pl-plain="now"></p>
+      </div>`;
+    }
+
+    const converse = this.mode.startsWith("converse");
+    const relation = this.mode === "co-interior"
+      ? "this pair of angles adds to 180°"
+      : "this pair of angles is equal";
+    return `<div class="pl-plain">
+      <p class="pl-plain-lead">A <b>converse</b> just starts at the other end of the same rule.</p>
+      <p class="pl-plain-row" data-pl-plain="forward" data-active="${!converse}"><span class="pl-plain-tag">${!converse ? "This mode" : "Forward rule"}</span> Start from the lines: if the two lines are parallel, then ${relation}.</p>
+      <p class="pl-plain-row" data-pl-plain="converse" data-active="${converse}"><span class="pl-plain-tag">${converse ? "This mode" : "Reversed rule"}</span> Start from the angles: if ${relation}, then the two lines are parallel.</p>
+      <p class="pl-plain-now" data-pl-plain="now"></p>
+    </div>`;
+  }
+
   private updatePanel(): void {
     const result = this.figure();
     const evaluation = evaluateTheorem(result, this.mode);
@@ -836,6 +858,7 @@ export class ParallelLinesLesson implements Lesson {
     const predictCopy = document.getElementById("pl-predict-copy");
     const predictHolds = document.getElementById("pl-predict-holds");
     const predictFails = document.getElementById("pl-predict-fails");
+    const plainNow = document.querySelector<HTMLElement>('[data-pl-plain="now"]');
     const implication = implicationFor(evaluation, this.focusPairs(result)[0]);
     const converse = implication.direction === "converse";
 
@@ -868,6 +891,7 @@ export class ParallelLinesLesson implements Lesson {
     }
     if (predictHolds) predictHolds.textContent = converse ? "Angles equal → lines parallel" : "Relation holds";
     if (predictFails) predictFails.textContent = converse ? "Angles differ → no claim" : "Relation fails";
+    if (plainNow) plainNow.textContent = this.plainReading(result, evaluation);
 
     if (readout) {
       if (!result.valid) {
@@ -899,6 +923,7 @@ export class ParallelLinesLesson implements Lesson {
           pairRows,
         ].join("");
       }
+
     }
 
     if (status) {
@@ -924,6 +949,55 @@ export class ParallelLinesLesson implements Lesson {
         ? `Showing pair ${(this.adjacentPairIndex % evaluation.pairs.length) + 1} of ${evaluation.pairs.length}`
         : "No adjacent pair available";
     }
+  }
+
+  private plainReading(
+    result: ParallelAnglesResult,
+    evaluation: ReturnType<typeof evaluateTheorem>,
+  ): string {
+    if (!result.valid) return "";
+    if (this.angleReadingsHidden()) {
+      return "Right now: the angle readings are hidden. Predict first, then reveal.";
+    }
+    if (this.parallelStatusHidden()) {
+      return "Right now: you can see the angles but not the conclusion about the lines. Work forward from the angles, then reveal.";
+    }
+    if (this.mode === "vertically-opposite" || this.mode === "adjacent") {
+      return "Right now: this relation holds whether the two lines are parallel or not.";
+    }
+
+    const focusedPair = this.focusPairs(result)[0];
+    const pair = focusedPair
+      ? evaluation.pairs.find(({ pair: candidate }) =>
+        candidate.a === focusedPair.a && candidate.b === focusedPair.b,
+      )
+      : evaluation.pairs[0];
+    if (!pair) return evaluation.message;
+    const first = formatDegrees(pair.valueA);
+    const second = formatDegrees(pair.valueB);
+    const errorDegrees = pair.pair.relation === "equal"
+      ? Math.abs(pair.valueA - pair.valueB) * (180 / Math.PI)
+      : Math.abs(pair.valueA + pair.valueB - Math.PI) * (180 / Math.PI);
+    const equalPair = pair.pair.relation === "equal";
+    const relationText = equalPair ? "a match" : "a total of 180°";
+    const missingRelation = equalPair ? "they match" : "they add to 180°";
+    const forcedOutcome = equalPair ? "them to match" : "them to add to 180°";
+    const toleranceNote = pair.holds && errorDegrees > 0.05
+      ? equalPair
+        ? " (this lab treats readings under 1° apart as a match)"
+        : " (this lab treats sums within 1° of 180° as 180°)"
+      : "";
+
+    if (result.parallel && evaluation.relationHolds) {
+      return `Right now: ${first} and ${second} — ${relationText}${toleranceNote} — and the lines are parallel. Both directions are true on this figure.`;
+    }
+    if (!result.parallel && !evaluation.relationHolds) {
+      if (this.mode.startsWith("converse")) {
+        return `Right now: ${first} and ${second} — they do not ${equalPair ? "match" : "add to 180°"}. Starting from the angles gets you nowhere, because this rule only speaks when ${missingRelation}. You can still tell the lines are not parallel by starting from the lines: parallel lines would have forced ${forcedOutcome}.`;
+      }
+      return `Right now: ${first} and ${second} — they do not ${equalPair ? "match" : "add to 180°"} — and the lines are not parallel. Nothing is broken: this rule only promises ${relationText} when the lines are parallel.`;
+    }
+    return evaluation.message;
   }
 
   private statusChips(

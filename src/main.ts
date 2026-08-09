@@ -17,6 +17,7 @@ import { PascalTriangleLesson } from "./lessons/PascalTriangleLesson";
 import { PowersLesson } from "./lessons/PowersLesson";
 import { MersennePrimesLesson } from "./lessons/MersennePrimesLesson";
 import { PrimeNumbersLesson } from "./lessons/PrimeNumbersLesson";
+import { FibonacciGoldenRatioLesson } from "./lessons/FibonacciGoldenRatioLesson";
 import { ComplexNumbersLesson } from "./lessons/ComplexNumbersLesson";
 import { WaveformsLesson } from "./lessons/WaveformsLesson";
 import { FourierSeriesLesson } from "./lessons/FourierSeriesLesson";
@@ -45,14 +46,18 @@ import { MultiplicationDivisionLesson } from "./lessons/MultiplicationDivisionLe
 import { TimesTablesLesson } from "./lessons/TimesTablesLesson";
 import { AlgebraicLawsLesson } from "./lessons/AlgebraicLawsLesson";
 import { VectorsLesson } from "./lessons/VectorsLesson";
+import { AnglesLesson } from "./lessons/AnglesLesson";
 import { ParallelLinesLesson } from "./lessons/ParallelLinesLesson";
 import { TriangleTheoremsLesson } from "./lessons/TriangleTheoremsLesson";
+import { PythagorasLesson } from "./lessons/PythagorasLesson";
+import { SimilarTrianglesLesson } from "./lessons/SimilarTrianglesLesson";
 import { TriangleTransformationsLesson } from "./lessons/TriangleTransformationsLesson";
 import { CircleGlossaryLesson } from "./lessons/CircleGlossaryLesson";
 import { CircleTheoremsLesson } from "./lessons/CircleTheoremsLesson";
 import { CircleCalculationsLesson } from "./lessons/CircleCalculationsLesson";
 import { VolumeLesson } from "./lessons/VolumeLesson";
 import { ConicSectionsLesson } from "./lessons/ConicSectionsLesson";
+import { EllipseLesson } from "./lessons/EllipseLesson";
 import { QuadrilateralsLesson } from "./lessons/QuadrilateralsLesson";
 import { RadiansLesson } from "./lessons/RadiansLesson";
 import { BinomialsLesson } from "./lessons/BinomialsLesson";
@@ -96,11 +101,15 @@ const manager = new LessonManager(
     new StochasticProcessesLesson(),
     new VectorsLesson(),
     new ComplexNumbersLesson(),
+    new FibonacciGoldenRatioLesson(),
     new PrimeNumbersLesson(),
     new MersennePrimesLesson(),
     new GeometryLesson(),
+    new AnglesLesson(),
     new ParallelLinesLesson(),
     new TriangleTheoremsLesson(),
+    new PythagorasLesson(),
+    new SimilarTrianglesLesson(),
     new TriangleTransformationsLesson(),
     new QuadrilateralsLesson(),
     new CircleGlossaryLesson(),
@@ -108,6 +117,7 @@ const manager = new LessonManager(
     new CircleCalculationsLesson(),
     new VolumeLesson(),
     new ConicSectionsLesson(),
+    new EllipseLesson(),
     new SacredGeometryLesson(),
     new RadiansLesson(),
     new TrigonometricFunctionsLesson(),

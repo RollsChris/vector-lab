@@ -7,7 +7,7 @@ instead of pre-rendered video, you orbit, zoom, drag sliders, and type your own 
 
 ## How the learning path works
 
-The 56 lessons are a single ordered path, split into ten stages. Nothing assumes prior
+The 62 lessons are a single ordered path, split into ten stages. Nothing assumes prior
 knowledge: Stage 1 starts at counting and fractions, and Stage 10 ends at maths expressed as
 GPU code.
 
@@ -116,42 +116,61 @@ topic rests on.
   combinations, routes and the probability of a given number of coin-flip heads.
 - **Powers & Exponential Growth** — watch repeated multiplication grow on a logarithmic
   stage and connect powers to binary states, data storage, compounding and scientific notation.
-- **Mersenne Primes** — build `2ᵖ − 1` from its all-ones binary pattern, distinguish prime
-  exponents from prime candidates, then use Lucas-Lehmer, perfect numbers, and GIMPS to see why
-  this rare family matters.
+- **Fibonacci & the Golden Ratio** — add neighbouring terms to grow the sequence, watch the
+  consecutive ratios close in on `φ = (1 + √5)/2`, and tile Fibonacci squares into a golden
+  rectangle and spiral; includes Binet's formula and the Pascal-diagonal link.
+- **Mersenne Primes** — separate three ideas that are easy to confuse: ordinary primes,
+  Mersenne numbers `2ᵖ − 1`, and Mersenne primes (both at once). Colour-coded classification,
+  live factorisations, step-by-step Lucas-Lehmer residues, perfect numbers, and GIMPS.
 
 ### Geometry
 
 9. **Geometry** — a panel-only formula reference and live calculator tab for common
    geometry: circles (diameter/circumference/area), parallelograms, regular polygons,
    area tools (triangle/rectangle/trapezium), and volume tools (cuboid/cylinder/cone/sphere).
-10. **Parallel Lines** — two lines and a transversal with draggable handles. Eight named corner
+10. **Angles** — complementary, supplementary, adjacent-on-a-line, around-a-point and
+    vertically opposite relations with draggable rays. Highlighted arcs keep their 90° / 180° /
+    360° totals while a hide-then-predict challenge checks the live claim.
+11. **Parallel Lines** — two lines and a transversal with draggable handles. Eight named corner
     angles update live while theorem modes highlight corresponding, alternate interior/exterior,
     co-interior, vertically opposite and straight-line pairs. Converses let you tilt line 2 into
     a non-parallel counterexample; status chips and a hide-then-predict challenge report the live
     verdict rather than a hard-coded parallel claim.
-11. **Triangle Theorems** — drag the three corners (or hit Randomise) and every classic result
+12. **Triangle Theorems** — drag the three corners (or hit Randomise) and every classic result
     recomputes live on the shape you drew. Toggle overlays to *see* each theorem: the medians
     meeting at the centroid (2:1), the circumcircle through all three vertices, the incircle,
     the altitudes meeting at the orthocentre, and the Euler line that threads O, G and H. The
     panel checks angle-sum = 180°, the sine and cosine rules, and that three area formulas agree,
     with "real world" notes on where each theorem is used.
-12. **Triangle Transformations** — drag a source triangle, then translate, rotate, reflect or
+13. **Pythagoras** — drag a right triangle and watch outward squares on a, b and c update live.
+    Presets include 3-4-5 and isosceles right; Break right angle shows the equality fail; a pack
+    animation slides a² and b² together while the panel reports |a² + b² − c²|.
+14. **Similar Triangles** — blue source and green image with AA/SAS/SSS testing, dashed
+    correspondence, and a live scale factor. Locked-similar mode keeps a true copy under scale,
+    rotate and flip; free explore and break modes let you destroy the match on purpose.
+15. **Triangle Transformations** — drag a source triangle, then translate, rotate, reflect or
     enlarge it. Animated image construction, corresponding A/A′/B/B′/C/C′ vertices, live
     invariant readouts and a hide-then-predict challenge show exactly what each rule preserves.
-13. **Quadrilaterals** — drag the four corners (or pick a preset) and the shape classifies itself
+16. **Quadrilaterals** — drag the four corners (or pick a preset) and the shape classifies itself
     live: square, rectangle, parallelogram, rhombus, trapezium, kite or a plain quadrilateral.
     The angle sum is always 360° — proven even when the shape goes concave. Turn on the diagonals
     to watch which quadrilaterals have diagonals that are equal, that bisect each other, or that
     cross at right angles, and mark the parallel sides with ticks.
-14. **Circle Theorems** — a switcher through the seven classic circle rules: angle at the centre
+17. **Circle Theorems** — a switcher through the seven classic circle rules: angle at the centre
     is twice the angle at the edge, angles in the same segment, the angle in a semicircle is 90°,
     opposite angles of a cyclic quadrilateral sum to 180°, tangent ⟂ radius, two tangents from a
     point are equal, and the perpendicular from the centre bisects a chord. Drag the coloured
     points and the measured numbers update so you watch each rule hold for every position.
-15. **Conic Sections** — morph a conic through the focus–directrix definition: drag the focus
+18. **Conic Sections** — morph a conic through the focus–directrix definition: drag the focus
     and directrix, tune the eccentricity `e`, and watch the curve become a circle, ellipse,
     parabola or hyperbola while the equation updates.
+19. **Ellipses** — a six-beat story mode rather than a slider board: step (or autoplay) through
+    a circle stretching into an ellipse, the two-pin string construction with a live `r₁ + r₂ = 2a`
+    readout, the reflection property (a volley of balls from one focus all bouncing into the other,
+    arriving simultaneously because every path is `2a` long), the anatomy of `a`, `b`,
+    `c = √(a² − b²)` and `e = c/a`, the vertical/translated/rotated variations, and the
+    calculations — area `πab` plus a perimeter walked numerically and checked against Ramanujan's
+    approximation.
 
 ### Trigonometry
 
@@ -387,7 +406,7 @@ tests can drive lessons and read runtime state.
 ### The curriculum layer
 
 Lesson modules own the interactive scene. Everything a learner needs *around* the scene is
-authored centrally so all 56 lessons read consistently:
+authored centrally so all 59 lessons read consistently:
 
 - **`src/curriculum/stages.ts`** is the single source of truth for teaching order. The
   sidebar grouping, the `[` / `]` shortcuts, the "Next lesson" button and the progress

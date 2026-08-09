@@ -56,6 +56,58 @@ export const SHAPE_AND_TRIG_GUIDES: readonly LessonGuide[] = [
       "Choose Volume in the Section control and Cuboid / box in the Shape control. Change Length, Width and Height one at a time and compare how the preview, Volume and Surface area respond.",
   },
   {
+    id: "angles",
+    plainEnglish:
+      "An angle is the amount of turn between two lines that meet. Move the free arm and watch simple totals lock in: a right angle, a straight line, a full turn, or equal opposite corners.",
+    objectives: [
+      "identify complementary and supplementary angle pairs",
+      "calculate a missing angle on a straight line or around a point",
+      "explain why vertically opposite angles are equal at every crossing",
+      "use a full turn of 360 degrees to check a split into sectors",
+    ],
+    whyItMatters:
+      "These few angle facts unlock parallel-line theorems, triangle angle sums, bearings on maps, and every later argument that chases degrees around a diagram.",
+    keyIdea:
+      "Every classic angle rule is a split of a right angle, a straight line, or a full turn — once the pieces must fill that total, each missing piece is forced.",
+    workedExample: {
+      prompt:
+        "Two angles on a straight line are neighbouring. One measures 63°. Find the other.",
+      steps: [
+        "Adjacent angles on a straight line sum to 180°, because a straight line is a half turn.",
+        "Call the unknown angle x.",
+        "Then x + 63° = 180°.",
+        "So x = 180° − 63° = 117°.",
+      ],
+      answer: "The neighbouring angle is 117°.",
+    },
+    pitfalls: [
+      "Treating complementary as summing to 180° → complementary pairs fill a right angle (90°); supplementary pairs fill a straight line (180°).",
+      "Using vertically opposite equality as proof that lines are parallel → opposite corners match at every crossing, parallel or not.",
+      "Forgetting angles around a point total 360° → after listing the known sectors, subtract from 360° to find the rest.",
+      "Reading an angle from the wrong arm after a drag → name each arc from the shared vertex before solving.",
+    ],
+    checks: [
+      {
+        question: "Angles of 25° and x are complementary. What is x?",
+        answer:
+          "Complementary angles sum to 90°, so x = 90° − 25° = 65°.",
+      },
+      {
+        question: "Three angles around a point are 80°, 140° and y. Find y.",
+        answer:
+          "Angles around a point sum to 360°, so y = 360° − 80° − 140° = 140°.",
+      },
+      {
+        question:
+          "Two lines cross and one angle is 58°. What are the other three?",
+        answer:
+          "Vertically opposite the 58° angle is also 58°. Each adjacent angle on a straight line is 180° − 58° = 122°, and those two 122° angles are vertically opposite each other.",
+      },
+    ],
+    tryThis:
+      "Open Complementary and drag the yellow arm until α reads about 30°. Check that β fills to 90°. Switch to Around a point, drag both handles, and watch the three sector total stay 360°. Finish on Vertically opposite and confirm the two α arcs stay equal.",
+  },
+  {
     id: "parallel-lines",
     plainEnglish:
       "When a third line crosses two others, the eight angles it makes follow a small set of matching rules. Move the lines and watch which matches survive.",
@@ -84,8 +136,7 @@ export const SHAPE_AND_TRIG_GUIDES: readonly LessonGuide[] = [
       "Treating equal vertically opposite angles as proof of parallel lines → vertical angles are equal at every crossing, parallel or not.",
       "Mixing up co-interior with alternate interior → co-interior angles sit on the same side and sum to 180° when parallel; alternate interior sit on opposite sides and are equal.",
       "Reading screen “top-left” after rotating the figure → name angles by line and corner relative to the transversal, not by the screen.",
-      "Assuming equal corresponding angles on a sketch without measuring → drag into a non-parallel counterexample and watch the equality break.",
-      "Treating unequal corresponding angles as a disproof of the converse → the converse only speaks when its equal-angle hypothesis is met; unequal angles mean no claim.",
+      "Misreading the converse from a sketch → measure first: unequal angles do not meet its equal-angle hypothesis, while the forward rule still shows that parallel lines would have forced a match.",
     ],
     checks: [
       {
@@ -108,7 +159,7 @@ export const SHAPE_AND_TRIG_GUIDES: readonly LessonGuide[] = [
       },
     ],
     tryThis:
-      "Open Corresponding, press Reset parallel and read the equal pair. Press Make non-parallel and watch the status chips flip. Switch to Converse · corresponding, hide the angles, predict, then reveal.",
+      "Open Corresponding, press Reset parallel and read the equal pair. Press Make non-parallel and watch the status chips flip. Switch to Converse: corresponding, hide the parallel status, predict, then reveal.",
   },
   {
     id: "triangle-theorems",
@@ -168,6 +219,109 @@ export const SHAPE_AND_TRIG_GUIDES: readonly LessonGuide[] = [
     ],
     tryThis:
       "Press Right, then drag vertices A, B and C while watching the angle sum and cosine-rule readouts. Click Animate beside each centre to watch its construction build one step at a time, then drag into an obtuse shape to see which centres move outside.",
+  },
+  {
+    id: "pythagoras",
+    plainEnglish:
+      "On a right-angled triangle the squares built on the two shorter sides cover exactly the same area as the square on the longest side. Drag the corners and watch those areas agree only while the corner stays square.",
+    objectives: [
+      "calculate a missing side of a right triangle using a squared plus b squared equals c squared",
+      "identify the hypotenuse as the side opposite the right angle",
+      "explain why the equality fails when the right angle is broken",
+      "compare the areas of the three outward squares on a live figure",
+    ],
+    whyItMatters:
+      "Builders check square corners with a 3-4-5 triangle, navigators find straight-line distance from grid steps, and computer graphics compute lengths from coordinate differences with the same rule.",
+    keyIdea:
+      "A right angle forces a balance of areas: the two leg squares together match the hypotenuse square.",
+    workedExample: {
+      prompt:
+        "A right triangle has legs 5 units and 12 units. Find the hypotenuse.",
+      steps: [
+        "The right angle sits between the legs, so the unknown side is the hypotenuse c.",
+        "Write Pythagoras: a² + b² = c².",
+        "c² = 5² + 12² = 25 + 144 = 169.",
+        "c = √169 = 13 units, taking the positive root because a length is positive.",
+      ],
+      answer: "The hypotenuse is 13 units.",
+    },
+    pitfalls: [
+      "Squaring and adding a leg with the hypotenuse to find the other leg → rearrange to b² = c² − a² when the hypotenuse is known.",
+      "Using Pythagoras on a non-right triangle → the area balance holds only when one angle is 90°.",
+      "Forgetting to square-root after summing squares → a² + b² is c², not c.",
+      "Picking the wrong side as hypotenuse → it is always opposite the right angle and is the longest side.",
+    ],
+    checks: [
+      {
+        question: "Legs are 6 and 8 units. What is the hypotenuse?",
+        answer:
+          "c² = 6² + 8² = 36 + 64 = 100, so c = 10 units. This is a scaled 3-4-5 triangle.",
+      },
+      {
+        question: "Hypotenuse 15 units and one leg 9 units. Find the other leg.",
+        answer:
+          "b² = c² − a² = 225 − 81 = 144, so b = 12 units.",
+      },
+      {
+        question: "Why does dragging the right-angle corner off 90° break a² + b² = c²?",
+        answer:
+          "Pythagoras is a property of right triangles only. When angle C leaves 90°, the outward squares no longer balance, and the residual |a² + b² − c²| becomes positive.",
+      },
+    ],
+    tryThis:
+      "Press 3-4-5 and read a², b² and c². Press Pack a² + b² to watch the leg squares slide into a matching area. Then press Break right angle and watch the live claim flip to fails.",
+  },
+  {
+    id: "similar-triangles",
+    plainEnglish:
+      "Two triangles are similar when one is a scaled, rotated or flipped copy of the other. Matching angles force matching side ratios, so a single scale factor links every pair of corresponding sides.",
+    objectives: [
+      "decide whether two triangles are similar using AA, SAS or SSS",
+      "calculate a missing length from a scale factor between similar triangles",
+      "match corresponding vertices from equal angles",
+      "explain why equal angles alone are enough for similarity in the plane",
+    ],
+    whyItMatters:
+      "Surveyors measure an unreachable height with a small similar triangle, designers scale drawings without distorting angles, and computer vision recognises the same shape at different distances by matching angles.",
+    keyIdea:
+      "Same angles means same shape. Side lengths may grow or shrink, but they all share one scale factor.",
+    workedExample: {
+      prompt:
+        "Triangles ABC and DEF are similar with angle A = angle D and angle B = angle E. Side AB is 6 units, side DE is 15 units, and side AC is 8 units. Find DF.",
+      steps: [
+        "AA similarity applies because two pairs of angles match, so the third pair matches automatically.",
+        "Corresponding vertices are A↔D, B↔E and C↔F, so side AB corresponds to DE and AC corresponds to DF.",
+        "Scale factor k = DE / AB = 15 / 6 = 2.5.",
+        "DF = k × AC = 2.5 × 8 = 20 units.",
+      ],
+      answer: "DF is 20 units.",
+    },
+    pitfalls: [
+      "Matching sides by length order instead of equal angles → correspondence follows equal angles, not which side looks longest on screen.",
+      "Using only one pair of equal angles as AA → you need two pairs (the third then follows from the angle sum).",
+      "Scaling area by the same factor as length → area scales by k squared.",
+      "Assuming congruence whenever triangles are similar → congruence also needs k = 1.",
+    ],
+    checks: [
+      {
+        question: "Two triangles each have angles 40° and 65°. Are they similar?",
+        answer:
+          "Yes. The third angle in each is 180° − 40° − 65° = 75°, so all three angles match and AA applies.",
+      },
+      {
+        question:
+          "Similar triangles have scale factor 3. A source side is 4 units. What is the image side?",
+        answer:
+          "Multiply by the scale factor: image side = 3 × 4 = 12 units. Every corresponding length uses the same k.",
+      },
+      {
+        question: "Why does AA guarantee proportional sides?",
+        answer:
+          "In the plane, two equal angles force the third angle equal as well, so the triangles are the same shape. Same shape means there is a single scale factor between corresponding sides.",
+      },
+    ],
+    tryThis:
+      "Start in Locked similar, press Scale + and Rotate 15°, and watch the test chip stay on a similarity rule while k updates. Press Break similarity, hide the values, predict not similar, then reveal.",
   },
   {
     id: "triangle-transformations",
@@ -558,6 +712,64 @@ export const SHAPE_AND_TRIG_GUIDES: readonly LessonGuide[] = [
     ],
     tryThis:
       "Turn on Show directrix and Show focus, then move Eccentricity e slowly from 0.5 through 1 to 1.5. Watch the Conic type change from ellipse to parabola to hyperbola.",
+  },
+  {
+    id: "ellipses",
+    plainEnglish:
+      "An ellipse is a circle that has been stretched more one way than the other. You can draw one with a loop of string round two pins: keep the string taut and the pen traces the whole curve.",
+    objectives: [
+      "draw an ellipse from the two-pin string rule and explain why the two distances always add to the same total",
+      "calculate c, the eccentricity e and the focus coordinates from the semi-axes a and b",
+      "write the equation of an ellipse centred at the origin and at a point (h, k)",
+      "calculate the area of an ellipse with πab",
+      "estimate the perimeter with Ramanujan's formula and say why no exact elementary formula exists",
+    ],
+    whyItMatters:
+      "Every planet, moon and satellite orbit is an ellipse with the body it circles at one focus, and whispering galleries, elliptical gears and lithotripsy machines all use the two-focus property.",
+    keyIdea:
+      "Fix two points and a total distance: the set of points whose distances to the two add to that total is an ellipse, and stretching a circle produces exactly the same curve.",
+    workedExample: {
+      prompt:
+        "An ellipse has semi-major axis a = 5 and semi-minor axis b = 3. Find c, the eccentricity, the area, and the Ramanujan perimeter estimate.",
+      steps: [
+        "c = √(a² − b²) = √(25 − 9) = √16 = 4, using the right-angled triangle a² = b² + c².",
+        "e = c/a = 4/5 = 0.8, dividing the focus distance by the semi-major axis.",
+        "Area = πab = π × 5 × 3 = 15π ≈ 47.12, stretching the circle's πa² by the factor b/a.",
+        "C ≈ π[3(a+b) − √((3a+b)(a+3b))] = π[3(8) − √(18 × 14)], substituting a = 5 and b = 3.",
+        "√252 ≈ 15.875, so C ≈ π(24 − 15.875) ≈ π × 8.125 ≈ 25.53.",
+      ],
+      answer:
+        "c = 4, so the foci sit at (−4, 0) and (4, 0); e = 0.8, area = 15π ≈ 47.12 square units, and the perimeter is about 25.53 units.",
+    },
+    pitfalls: [
+      "Using c² = a² + b² → the focus distance is c = √(a² − b²); c is always smaller than a.",
+      "Putting the foci on the short axis → the foci always sit on the major (long) axis, at (±c, 0) for a wide ellipse.",
+      "Writing the perimeter as 2πab or π(a+b) → there is no exact elementary formula; use Ramanujan's approximation or numerical integration.",
+      "Assuming a is always the x-radius → if b > a the ellipse is tall, the major axis is vertical and the foci move onto the y-axis.",
+    ],
+    checks: [
+      {
+        question: "A ball is rolled from one focus of an elliptical table in any direction. Where does it end up after one bounce, and why do balls launched together arrive together?",
+        answer:
+          "It bounces off the cushion straight into the other focus, because the normal at the bounce point bisects the angle between the two focal lines, so angle in equals angle out. Every route has length r₁ + r₂ = 2a, so equal-speed balls all arrive at the same instant.",
+      },
+      {
+        question: "What happens to the foci and the eccentricity when b increases until it equals a?",
+        answer:
+          "c = √(a² − b²) drops to 0, so both foci meet at the centre and e = c/a = 0 — the ellipse has become a circle.",
+      },
+      {
+        question: "An ellipse has a = 4 and b = 2. What is its area?",
+        answer: "Area = πab = π × 4 × 2 = 8π ≈ 25.13 square units.",
+      },
+      {
+        question: "Why is the perimeter only ever quoted as an approximation?",
+        answer:
+          "The exact arc length is a complete elliptic integral of the second kind, which has no closed form in elementary functions, so we integrate it numerically or use a fitted formula such as Ramanujan's.",
+      },
+    ],
+    tryThis:
+      "Press ▶ to autoplay the six beats, or step with ◀ and ▶| and jump straight to a beat with the dots. On beat 2 watch r₁ and r₂ swing while r₁ + r₂ stays pinned to 2a. On beat 3 fire a volley of balls from F₁, then grab the blue and green vertex handles and reshape the ellipse — every ball still bounces into F₂ at the same instant. On beat 4 drag Semi-minor b up to Semi-major a and watch c and e fall to zero. On beat 6 let the pen walk the rim and compare the walked length with Ramanujan's estimate.",
   },
   {
     id: "sacred-geometry",

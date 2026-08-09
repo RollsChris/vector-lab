@@ -42,8 +42,11 @@ export const STAGES: readonly CurriculumStage[] = [
     goal: "Measure and reason about lines, angles, triangles, circles and curves.",
     lessons: [
       "geometry",
+      "angles",
       "parallel-lines",
       "triangle-theorems",
+      "pythagoras",
+      "similar-triangles",
       "triangle-transformations",
       "quadrilaterals",
       "circle-glossary",
@@ -51,6 +54,7 @@ export const STAGES: readonly CurriculumStage[] = [
       "circle-calculations",
       "volume",
       "conic-sections",
+      "ellipses",
       "sacred-geometry",
     ],
   },
@@ -89,7 +93,7 @@ export const STAGES: readonly CurriculumStage[] = [
     id: "stage-number-theory",
     title: "Stage 8 · Number theory",
     goal: "Study whole numbers for their own sake — the building blocks of arithmetic.",
-    lessons: ["prime-numbers", "mersenne-primes"],
+    lessons: ["fibonacci-golden-ratio", "prime-numbers", "mersenne-primes"],
   },
   {
     id: "stage-applied",
