@@ -7,22 +7,23 @@ instead of pre-rendered video, you orbit, zoom, drag sliders, and type your own 
 
 ## How the learning path works
 
-The 62 lessons are a single ordered path, split into ten stages. Nothing assumes prior
-knowledge: Stage 1 starts at counting and fractions, and Stage 10 ends at maths expressed as
+The 73 lessons are a single ordered path, split into eleven stages. Nothing assumes prior
+knowledge: Stage 1 starts at counting and fractions, and Stage 11 ends at maths expressed as
 GPU code.
 
 | Stage | You will be able to |
 |-------|---------------------|
 | 1 · Numbers & arithmetic | Work confidently with whole numbers, fractions and the rules that govern them |
 | 2 · Algebra | Use letters for unknown numbers, and rearrange and solve equations |
-| 3 · Shape & space | Measure and reason about lines, angles, triangles, circles and curves |
-| 4 · Trigonometry & waves | Connect angles to lengths, and describe anything that repeats |
-| 5 · Vectors & complex numbers | Handle quantities that carry a direction, and numbers that rotate |
-| 6 · Calculus | Measure how things change, and add up infinitely many small pieces |
-| 7 · Probability & randomness | Reason about uncertainty, and model systems that evolve by chance |
-| 8 · Number theory | Study whole numbers for their own sake |
-| 9 · Applied maths & physics | Turn the whole toolkit loose on the physical world |
-| 10 · Maths as code | Express mathematics as programs the GPU can run |
+| 3 · Functions & graphs | See algebra as pictures: lines, curves, systems and how graphs move |
+| 4 · Shape & space | Measure and reason about lines, angles, triangles, circles and curves |
+| 5 · Trigonometry & waves | Connect angles to lengths, and describe anything that repeats |
+| 6 · Vectors & complex numbers | Handle quantities that carry a direction, and numbers that rotate |
+| 7 · Calculus | Measure how things change, and add up infinitely many small pieces |
+| 8 · Probability & randomness | Reason about uncertainty, and model systems that evolve by chance |
+| 9 · Number theory | Study whole numbers for their own sake |
+| 10 · Applied maths & physics | Turn the whole toolkit loose on the physical world |
+| 11 · Maths as code | Express mathematics as programs the GPU can run |
 
 Every lesson is wrapped in the same structure, so you always know what you are meant to walk
 away with:
@@ -43,7 +44,7 @@ left off.
 ## Lessons
 
 Ordered as a single learning path — each part builds on the ones before it. The sidebar groups
-lessons into the ten stages above and auto-numbers them, and each lesson shows a **difficulty
+lessons into the eleven stages above and auto-numbers them, and each lesson shows a **difficulty
 badge** and a **"Builds on"** row of clickable prerequisite links so you can always see what a
 topic rests on.
 
@@ -406,7 +407,7 @@ tests can drive lessons and read runtime state.
 ### The curriculum layer
 
 Lesson modules own the interactive scene. Everything a learner needs *around* the scene is
-authored centrally so all 59 lessons read consistently:
+authored centrally so all 73 lessons read consistently:
 
 - **`src/curriculum/stages.ts`** is the single source of truth for teaching order. The
   sidebar grouping, the `[` / `]` shortcuts, the "Next lesson" button and the progress

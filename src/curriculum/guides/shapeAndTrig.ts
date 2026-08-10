@@ -942,6 +942,63 @@ export const SHAPE_AND_TRIG_GUIDES: readonly LessonGuide[] = [
       "Click sin, cos and tan in order, then use Quick angles to compare 30°, 45°, 60° and 120°. Change Radius R and watch the side lengths scale while the Live values stay unchanged; then click Why sin²φ + cos²φ = 1.",
   },
   {
+    id: "trigonometry-lab",
+    plainEnglish:
+      "Sine turns an angle into a single number, and this lab shows why that number needs only the angle. You start from a right triangle, see that size cancels, shrink the longest side to one so the opposite side becomes the answer, then meet the old circle-and-chord story that named it.",
+    objectives: [
+      "show why sine needs only the angle by scaling and normalising a right triangle, then link it to the central chord",
+      "calculate sine, cosine and tangent from a right triangle and from the unit circle",
+      "determine function signs with a reference angle and quadrant",
+      "solve SAS, SSS and ASA triangles with the laws of sines and cosines",
+      "apply the small-angle approximations and rewrite a cos θ + b sin θ as one cosine",
+    ],
+    whyItMatters:
+      "Every later use of sine — heights, waves, rotations, Fourier series — rests on the scale-free ratio, the normalised opposite side, and the unit-circle coordinate that come from it.",
+    keyIdea:
+      "sin φ is the opposite-over-hypotenuse ratio of a right triangle, so every similar triangle at φ shares it; normalising the hypotenuse to one makes that ratio the height, and the half-chord of angle 2φ over the radius is the same number.",
+    workedExample: {
+      prompt:
+        "Explain why sin 30° = 1/2 without a calculator, then confirm the same value on a circle of radius 4 using the chord of the central angle 60°.",
+      steps: [
+        "Take a right triangle with a 30° angle. Scaling every side by the same factor leaves opp/hyp unchanged, so all 30° right triangles share one ratio.",
+        "Normalise the hypotenuse to 1; the opposite side is then the number sin 30° itself.",
+        "Split an equilateral triangle of side 2 to get a 30-60-90 with opposite 1 and hypotenuse 2, so sin 30° = 1/2 exactly.",
+        "On radius 4, the central angle 60° has half-angle 30°, so half the chord = R sin 30° = 4 × 1/2 = 2 and the chord is 4 — the same ratio at work.",
+      ],
+      answer: "sin 30° = 1/2 because sine is a scale-free ratio; the radius-4 chord of 60° is 4, confirming half-chord = R sin 30°.",
+    },
+    pitfalls: [
+      "Thinking sine needs side lengths → it returns the shared opp/hyp ratio; lengths appear only in opp = hyp · sin θ.",
+      "Forgetting the angle is unchanged when you normalise the hypotenuse → scaling keeps every angle, so the ratio is fixed.",
+      "Using degrees inside small-angle approximations → convert to radians first (sin θ ≈ θ).",
+      "Forgetting quadrant signs after finding a reference angle → apply ASTC to the acute value.",
+    ],
+    checks: [
+      {
+        question: "Why does sin(30°) return a value when you only give the angle?",
+        answer:
+          "sin is opp/hyp. Scaling a right triangle multiplies both lengths by the same factor, so the ratio is unchanged. All 30° right triangles are similar, so they share one ratio (1/2). The calculator returns that common value.",
+      },
+      {
+        question: "After you normalise the hypotenuse to 1, what does the opposite side equal?",
+        answer:
+          "It equals sin φ. With hypotenuse 1, sin φ = opp/1 = opp, so the opposite length is the number itself — which is exactly the unit-circle height y.",
+      },
+      {
+        question: "Why is chord(2φ) equal to 2R sin φ?",
+        answer:
+          "Bisecting the isosceles centre triangle makes a right triangle with hypotenuse R and opposite side half the chord at angle φ, so sin φ = (chord/2)/R, giving chord(2φ) = 2R sin φ.",
+      },
+      {
+        question: "Rewrite 3 cos θ + 4 sin θ as a single cosine.",
+        answer:
+          "R = √(3² + 4²) = 5 and φ = atan2(4, 3), so 3 cos θ + 4 sin θ = 5 cos(θ − φ).",
+      },
+    ],
+    tryThis:
+      "Open Discover and step Next through the calculator mystery, then on the four cards that offer Play beat (ratio, size cancels, normalise, exact 30°) press Play beat once each. Continue to Where sine came from, drag the point to change φ, and open the Chord to sine derivation.",
+  },
+  {
     id: "waveforms",
     plainEnglish:
       "A repeating rise and fall can be described by its height, spacing and starting position. Adding several simple rises and falls can make a complicated signal.",

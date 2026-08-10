@@ -746,6 +746,24 @@ export const PRIME_DERIVATIONS: readonly FormulaDerivation[] = [
 
 export const MERSENNE_DERIVATIONS: readonly FormulaDerivation[] = [
   {
+    id: "mersenne-vs-prime",
+    title: "Why 11 is prime but not a Mersenne prime",
+    equation: "Mₚ=2ᵖ−1",
+    startingPoint: "Being prime is about divisors; being Mersenne is about shape. The two tests are independent.",
+    symbols: [
+      { symbol: "Mₚ", meaning: "A Mersenne number: one less than a power of two." },
+      { symbol: "p", meaning: "The exponent, a positive whole number." },
+    ],
+    steps: [
+      { expression: "11 has divisors 1 and 11 only", reason: "So 11 is an ordinary prime." },
+      { expression: "2³−1=7 and 2⁴−1=15", reason: "The Mersenne numbers jump straight past 11, so no exponent gives 11." },
+      { expression: "11 is prime and not Mersenne", reason: "It fails the shape test while passing the divisor test." },
+      { expression: "2⁴−1=15=3×5", reason: "15 has the Mersenne shape but fails the divisor test." },
+      { expression: "2⁵−1=31", reason: "31 passes both tests, so it is a Mersenne prime." },
+    ],
+    result: "Mersenne primes are the overlap of two separate conditions: prime, and exactly one less than a power of two.",
+  },
+  {
     id: "mersenne-binary",
     title: "Why 2ᵖ−1 is p ones in binary",
     equation: "2ᵖ−1=(111···111)₂",
@@ -784,5 +802,89 @@ export const MERSENNE_DERIVATIONS: readonly FormulaDerivation[] = [
     result: "N equals the sum of its positive proper divisors, so it is perfect.",
     assumptions: "2ᵖ−1 must be prime.",
     diagram: { description: "Prime-factor choices enumerate every divisor used in the perfect-number sum.", svg: primeSvg },
+  },
+];
+
+const goldenRectangleSvg = `
+  <svg viewBox="0 0 320 200" role="img" aria-label="A golden rectangle split into a unit square and a smaller golden rectangle">
+    <rect x="20" y="30" width="280" height="140" fill="none" stroke="#58a6ff" stroke-width="3"/>
+    <rect x="20" y="30" width="140" height="140" fill="#7ee78722" stroke="#7ee787" stroke-width="3"/>
+    <text x="72" y="106" fill="#7ee787" font-size="18">1 × 1</text>
+    <text x="186" y="106" fill="#ffd166" font-size="18">φ − 1</text>
+    <text x="132" y="192" fill="#58a6ff" font-size="18">φ</text>
+    <text x="8" y="106" fill="#8b949e" font-size="18">1</text>
+  </svg>`;
+
+const fibonacciSpiralSvg = `
+  <svg viewBox="0 0 320 200" role="img" aria-label="Fibonacci squares of side 1, 1, 2, 3 and 5 tiling a rectangle">
+    <rect x="30" y="30" width="150" height="150" fill="#1f6feb22" stroke="#1f6feb" stroke-width="3"/>
+    <rect x="180" y="30" width="90" height="90" fill="#ffa65722" stroke="#ffa657" stroke-width="3"/>
+    <rect x="180" y="120" width="60" height="60" fill="#d2a8ff22" stroke="#d2a8ff" stroke-width="3"/>
+    <rect x="240" y="120" width="30" height="30" fill="#7ee78722" stroke="#7ee787" stroke-width="3"/>
+    <rect x="240" y="150" width="30" height="30" fill="#7ee78722" stroke="#7ee787" stroke-width="3"/>
+    <text x="94" y="112" fill="#1f6feb" font-size="20">5</text>
+    <text x="218" y="82" fill="#ffa657" font-size="20">3</text>
+    <text x="203" y="156" fill="#d2a8ff" font-size="20">2</text>
+    <text x="250" y="141" fill="#7ee787" font-size="16">1</text>
+    <text x="250" y="171" fill="#7ee787" font-size="16">1</text>
+  </svg>`;
+
+export const FIBONACCI_DERIVATIONS: readonly FormulaDerivation[] = [
+  {
+    id: "golden-ratio-equation",
+    title: "Why φ solves φ = 1 + 1/φ",
+    equation: "φ=(1+√5)/2",
+    startingPoint: "A golden rectangle of width φ and height 1 leaves a rectangle of the same shape after removing a 1×1 square.",
+    symbols: [
+      { symbol: "φ", meaning: "The long side of a rectangle whose short side is 1." },
+    ],
+    steps: [
+      { expression: "φ/1 = 1/(φ−1)", reason: "The leftover rectangle, turned on its side, has the same shape as the original." },
+      { expression: "φ(φ−1) = 1", reason: "Cross-multiply." },
+      { expression: "φ² − φ − 1 = 0", reason: "Expand and collect terms." },
+      { expression: "φ = (1 ± √5)/2", reason: "Apply the quadratic formula to a=1, b=−1, c=−1." },
+      { expression: "φ = (1 + √5)/2 ≈ 1.6180339887", reason: "Keep the positive root, because a side length is positive." },
+    ],
+    result: "φ is the unique positive number satisfying φ² = φ + 1, equivalently φ = 1 + 1/φ.",
+    diagram: { description: "Removing a square from a golden rectangle leaves a smaller golden rectangle.", svg: goldenRectangleSvg },
+  },
+  {
+    id: "fibonacci-ratio-limit",
+    title: "Why consecutive Fibonacci ratios approach φ",
+    equation: "lim F(n+1)/F(n) = φ",
+    startingPoint: "Write rₙ = F(n+1)/F(n) and assume the ratios settle towards a limit L.",
+    symbols: [
+      { symbol: "rₙ", meaning: "The ratio of one Fibonacci number to the one before it." },
+      { symbol: "L", meaning: "The value the ratios settle on." },
+    ],
+    steps: [
+      { expression: "F(n+1) = F(n) + F(n−1)", reason: "The defining rule of the sequence." },
+      { expression: "rₙ = 1 + F(n−1)/F(n) = 1 + 1/rₙ₋₁", reason: "Divide the rule through by F(n)." },
+      { expression: "L = 1 + 1/L", reason: "Let n grow, so both rₙ and rₙ₋₁ tend to L." },
+      { expression: "L² − L − 1 = 0", reason: "Multiply by L and collect terms." },
+      { expression: "L = (1 + √5)/2 = φ", reason: "The ratios are positive, so the negative root is discarded." },
+    ],
+    result: "Dividing neighbouring Fibonacci numbers drives the ratio to φ, alternating above and below it.",
+    assumptions: "The limit exists; Binet's formula proves it independently.",
+  },
+  {
+    id: "binet-formula",
+    title: "Binet's closed form for F(n)",
+    equation: "F(n)=(φⁿ−ψⁿ)/√5",
+    startingPoint: "Look for solutions of F(n) = F(n−1) + F(n−2) of the pure form xⁿ.",
+    symbols: [
+      { symbol: "φ", meaning: "(1+√5)/2, about 1.618." },
+      { symbol: "ψ", meaning: "(1−√5)/2, about −0.618." },
+    ],
+    steps: [
+      { expression: "xⁿ = xⁿ⁻¹ + xⁿ⁻²", reason: "Substitute the trial solution into the recurrence." },
+      { expression: "x² = x + 1", reason: "Divide by xⁿ⁻², which is non-zero." },
+      { expression: "x = φ or x = ψ", reason: "The quadratic has exactly these two roots." },
+      { expression: "F(n) = Aφⁿ + Bψⁿ", reason: "Any combination of the two solutions also satisfies the recurrence." },
+      { expression: "A = 1/√5, B = −1/√5", reason: "Fit the starting values F(0)=0 and F(1)=1." },
+      { expression: "F(n) = φⁿ/√5 rounded to the nearest whole number", reason: "|ψⁿ|/√5 is below 1/2 for every n≥0." },
+    ],
+    result: "Whole-number Fibonacci terms come straight from powers of φ, which is why the sequence grows geometrically.",
+    diagram: { description: "Fibonacci squares tile a rectangle whose shape settles at φ.", svg: fibonacciSpiralSvg },
   },
 ];

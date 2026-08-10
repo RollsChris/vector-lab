@@ -135,6 +135,13 @@ const CONTEXTS: Record<string, LearningContext> = {
     source: { label: "Euclid, Elements IX.20", url: "https://mathcs.clarku.edu/~djoyce/elements/bookIX/propIX20.html" },
     applications: "Prime factorisation supports cryptography, error checking, hashing, and the algorithms that secure online communication.",
   },
+  "fibonacci-golden-ratio": {
+    basics: "each term is the sum of the two before it, and neighbouring terms divide to a fixed ratio",
+    advanced: "the golden ratio as a quadratic root, Binet's closed form, golden rectangles and spirals, and Pascal diagonals",
+    discovery: "Indian prosody scholars including Pingala and Hemachandra described the sequence centuries before Leonardo of Pisa (Fibonacci) introduced it to Europe in 1202 through a rabbit-population puzzle.",
+    source: { label: "MacTutor: Fibonacci", url: "https://mathshistory.st-andrews.ac.uk/Biographies/Fibonacci/" },
+    applications: "Fibonacci growth appears in seed heads, branching and leaf spacing, and the ratio underlies Fibonacci search, the worst case of the Euclidean algorithm, and proportion systems in design.",
+  },
   "mersenne-primes": {
     basics: "powers of two, binary place value, and the difference between a necessary condition and a proof",
     advanced: "the Lucas-Lehmer recurrence, the Euclid-Euler perfect-number theorem, distributed searches, and open questions",

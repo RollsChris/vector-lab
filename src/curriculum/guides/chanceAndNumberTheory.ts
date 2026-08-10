@@ -171,6 +171,60 @@ export const CHANCE_AND_NUMBER_THEORY_GUIDES: readonly LessonGuide[] = [
       "Open S.4 Random walks, set Time steps to 100 and Sample paths to 10, then move Walk P(up) from 0.50 to 0.70; change Random seed to separate the stable upward expectation from the changing individual paths.",
   },
   {
+    id: "fibonacci-golden-ratio",
+    plainEnglish:
+      "Start with zero and one, then keep adding the last two numbers to get the next one. The numbers grow quickly, and dividing each one by the number before it always settles on the same value, close to one point six one eight, which is called the golden ratio.",
+    objectives: [
+      "extend the Fibonacci sequence from any two consecutive terms",
+      "calculate consecutive ratios and show that they close in on the golden ratio",
+      "explain why the golden ratio is the positive solution of x squared equals x plus one",
+      "estimate a Fibonacci term from Binet's formula and round it to a whole number",
+      "build a golden rectangle from Fibonacci squares and describe its self-similarity",
+    ],
+    whyItMatters:
+      "Fibonacci growth shows up in seed heads, branching plants and population models, while the golden ratio explains the worst case of the Euclidean algorithm, Fibonacci search, and proportion systems used in design and typography.",
+    keyIdea:
+      "One addition rule creates a sequence whose neighbouring terms always sit in the same proportion, so a rectangle built from Fibonacci squares keeps its shape as it grows.",
+    workedExample: {
+      prompt:
+        "Extend 0, 1, 1, 2, 3, 5 by three more terms, then compare the last ratio with the golden ratio.",
+      steps: [
+        "5 + 3 = 8, adding the two previous terms to get F₆.",
+        "8 + 5 = 13, repeating the rule to get F₇.",
+        "13 + 8 = 21, giving F₈ and the sequence 0, 1, 1, 2, 3, 5, 8, 13, 21.",
+        "21 ÷ 13 = 1.615384…, dividing the last term by the one before it.",
+        "φ = 1.618033…, so the ratio is already correct to two decimal places and the error is about 0.0027.",
+      ],
+      answer:
+        "The next three terms are 8, 13 and 21, and 21 ÷ 13 ≈ 1.6154, within 0.003 of φ ≈ 1.6180.",
+    },
+    pitfalls: [
+      "Starting the sequence at 1, 1 and then using F₅ = 5 from a table that starts at 0 → fix the convention first, because the same term has different indices",
+      "Multiplying terms instead of adding them → each term is the sum, not the product, of the two before it",
+      "Reading the ratio as exactly the golden ratio → each ratio only approaches φ, alternating above and below it",
+      "Treating φ as proof that art or nature was designed around it → the mathematics is exact, but most aesthetic claims are retrofitted",
+    ],
+    checks: [
+      {
+        question: "What are the next two terms after 0, 1, 1, 2, 3, 5, 8?",
+        answer:
+          "Add the last two terms each time: 5 + 8 = 13, then 8 + 13 = 21, so the sequence continues 13, 21.",
+      },
+      {
+        question: "Why does φ satisfy φ = 1 + 1 ÷ φ?",
+        answer:
+          "Dividing Fₙ₊₁ = Fₙ + Fₙ₋₁ by Fₙ gives ratio = 1 + 1 ÷ previous ratio. In the limit both ratios equal φ, so φ = 1 + 1 ÷ φ, which rearranges to φ² − φ − 1 = 0.",
+      },
+      {
+        question: "Estimate F₁₀ using Binet's formula.",
+        answer:
+          "φ¹⁰ ÷ √5 = 122.9919… ÷ 2.2360… ≈ 55.0036, and rounding to the nearest whole number gives F₁₀ = 55, matching the sequence exactly.",
+      },
+    ],
+    tryThis:
+      "Keep the Bars visual and drag Highlight n from 1 to 10, watching the distance from φ shrink by roughly a factor of 2.6 each step, then switch Visual to Golden spiral and raise Terms shown to see the rectangle's ratio settle at φ.",
+  },
+  {
     id: "prime-numbers",
     plainEnglish:
       "Some whole numbers can be split only into one times themselves; these are the basic pieces from which every larger whole number is built. This lesson explores how to find them, use them, and separate proved facts from unsolved claims.",
@@ -233,48 +287,48 @@ export const CHANCE_AND_NUMBER_THEORY_GUIDES: readonly LessonGuide[] = [
   {
     id: "mersenne-primes",
     plainEnglish:
-      "Start with one and keep doubling, then subtract one. A few results can be divided evenly only by one and themselves, and those rare numbers connect the way computers write numbers, numbers whose smaller pieces add back to the whole, and record-breaking searches.",
+      "A prime can be divided evenly only by one and itself. Separately, some numbers are exactly one less than a doubling of two, over and over again. A Mersenne prime is one of the rare numbers that is both at once, so most primes are not Mersenne primes and most numbers of that shape are not prime.",
     objectives: [
+      "distinguish ordinary primes, Mersenne numbers, and Mersenne primes with an example of each",
       "calculate a Mersenne number from its exponent and write its binary form",
       "explain why a composite exponent always produces a composite Mersenne number",
       "test a prime-exponent candidate with the Lucas–Lehmer recurrence",
-      "give a counterexample showing that a prime exponent does not guarantee a Mersenne prime",
       "construct an even perfect number from a Mersenne prime",
     ],
     whyItMatters:
       "The Great Internet Mersenne Prime Search distributes Lucas–Lehmer tests across volunteer computers, producing record primes and stress-testing high-precision arithmetic.",
     keyIdea:
-      "A Mersenne candidate is a row of p ones in binary, but it is prime only when a prime exponent also survives the Lucas–Lehmer test.",
+      "Primality is about divisors and Mersenne is about shape; a Mersenne prime is the rare number that passes both tests, drawn as p ones in binary.",
     workedExample: {
       prompt:
-        "Use the Lucas–Lehmer test to prove that M₅ is prime, then construct the corresponding even perfect number.",
+        "Classify 11, 15, 2047 and 31, then use the Lucas–Lehmer test on M₅ and build its perfect number.",
       steps: [
-        "M₅ = 2⁵ − 1 = 32 − 1 = 31, forming the Mersenne candidate.",
-        "Start with s₀ = 4 and run p − 2 = 3 rounds because p = 5.",
-        "s₁ = 4² − 2 = 14 mod 31, applying the Lucas–Lehmer recurrence.",
-        "s₂ = 14² − 2 = 194 mod 31 = 8, because 194 = 6 × 31 + 8.",
-        "s₃ = 8² − 2 = 62 mod 31 = 0, so M₅ is prime after the required three rounds.",
-        "2⁴ × M₅ = 16 × 31 = 496, using Euclid's perfect-number construction for p = 5.",
+        "11 is prime, but 2³ − 1 = 7 and 2⁴ − 1 = 15 skip past it, so 11 is an ordinary prime and not a Mersenne number.",
+        "15 = 2⁴ − 1 has Mersenne shape but 15 = 3 × 5, so it is a Mersenne number that is not prime.",
+        "2047 = 2¹¹ − 1 has a prime exponent yet 2047 = 23 × 89, so a prime exponent alone proves nothing.",
+        "M₅ = 2⁵ − 1 = 31, and the test runs p − 2 = 3 rounds from s₀ = 4: s₁ = 14, s₂ = 8, s₃ = 0 mod 31.",
+        "The final residue is 0, so 31 is prime and is therefore a Mersenne prime.",
+        "2⁴ × M₅ = 16 × 31 = 496, using Euclid's perfect-number construction.",
       ],
       answer:
-        "M₅ = 31 is prime, and its corresponding even perfect number is 496.",
+        "11 is an ordinary prime, 15 and 2047 are composite Mersenne numbers, 31 is a Mersenne prime, and its perfect number is 496.",
     },
     pitfalls: [
-      "Assuming a prime exponent guarantees a Mersenne prime → p = 11 is prime but 2¹¹ − 1 = 2047 = 23 × 89",
-      "Running Lucas–Lehmer as stated for any exponent → first require an odd prime exponent; p = 2 is the special case M₂ = 3",
-      "Writing 2ᵖ − 1 as one followed by p zeroes in binary → it is p consecutive ones in binary",
+      "Thinking every prime is a Mersenne prime → 5, 11, 13 and 17 are prime but are not one less than any power of two",
+      "Thinking every number of the form 2ᵖ − 1 is prime → 2⁴ − 1 = 15 = 3 × 5 has the shape but factors",
+      "Thinking a prime exponent guarantees a Mersenne prime → p = 11 is prime yet 2¹¹ − 1 = 2047 = 23 × 89",
       "Using 2ᵖMₚ for the perfect number → use 2ᵖ⁻¹Mₚ when Mₚ is prime",
     ],
     checks: [
       {
-        question: "What is M₄, and why can it not be prime?",
+        question: "Is 13 a Mersenne prime?",
         answer:
-          "M₄ = 2⁴ − 1 = 16 − 1 = 15 = 3 × 5. The composite exponent 4 guarantees that the Mersenne number factors.",
+          "No. 13 is an ordinary prime, but Mersenne numbers near it are 2³ − 1 = 7 and 2⁴ − 1 = 15, so 13 never has the form 2ᵖ − 1. Note that M₁₃ = 8191 is a different number, and that one is a Mersenne prime.",
       },
       {
-        question: "Is M₇ prime?",
+        question: "What is M₄, and why can it not be prime?",
         answer:
-          "M₇ = 2⁷ − 1 = 127. Since √127 is about 11.27 and none of 2, 3, 5, 7, or 11 divides 127, it is prime.",
+          "M₄ = 2⁴ − 1 = 15 = 3 × 5. The exponent 4 = 2 × 2 is composite, and 2ʳˢ − 1 always factors as (2ʳ − 1)(2ʳ⁽ˢ⁻¹⁾ + … + 1), so the candidate is composite before any test runs.",
       },
       {
         question: "Which perfect number comes from M₃ = 7?",
@@ -283,6 +337,6 @@ export const CHANCE_AND_NUMBER_THEORY_GUIDES: readonly LessonGuide[] = [
       },
     ],
     tryThis:
-      "Move Exponent p through 4, 5, 11, and 13; compare the binary blocks and Lucas–Lehmer result to see a composite exponent fail, a proven Mersenne prime, a prime exponent fail, and M₁₃ = 8191 succeed.",
+      "Move Exponent p through 4, 5 and 11 and read the classification chip each time: grey for a composite exponent, green for a real Mersenne prime, amber for a prime exponent whose candidate still factors, then compare with the blue ordinary primes on the top strip.",
   },
 ];

@@ -11,23 +11,27 @@ const LESSONS = [
   { id: "order-of-operations", heading: "Order of Operations" },
   { id: "times-tables", heading: "Times Tables & Multiplication Strategies" },
   { id: "multiplication-division", heading: "Multiplication & Division" },
-  { id: "algebraic-laws", heading: "Algebraic Laws & Index Rules" },
-  { id: "binomials", heading: "Binomials" },
   { id: "unit-conversions", heading: "Unit Conversions" },
+  { id: "algebraic-laws", heading: "Algebraic Laws & Index Rules" },
   { id: "rearranging-equations", heading: "Rearranging Equations" },
-  { id: "vectors", heading: "Vectors" },
-  { id: "complex-numbers", heading: "Complex Numbers" },
-  { id: "probability", heading: "Probability & Distributions" },
-  { id: "markov-chains", heading: "Markov Chains" },
-  { id: "stochastic-processes", heading: "Stochastic Processes" },
-  { id: "pascal-triangle", heading: "Pascal's Triangle" },
   { id: "powers", heading: "Powers & Exponential Growth" },
-  { id: "mersenne-primes", heading: "Mersenne Primes" },
-  { id: "prime-numbers", heading: "Prime Numbers — Complete Guide" },
   { id: "logarithms", heading: "Logarithms" },
+  { id: "binomials", heading: "Binomials" },
+  { id: "pascal-triangle", heading: "Pascal's Triangle" },
+  { id: "coordinates-and-lines", heading: "Coordinates & Straight Lines" },
+  { id: "functions-and-graphs", heading: "Functions & Graphs" },
+  { id: "simultaneous-equations", heading: "Simultaneous Equations" },
+  { id: "quadratics", heading: "Quadratics" },
+  { id: "inequalities", heading: "Inequalities" },
+  { id: "graph-transformations", heading: "Graph Transformations" },
+  { id: "exponential-log-graphs", heading: "Exponential & Log Graphs" },
+  { id: "sequences-and-series", heading: "Sequences & Series" },
   { id: "geometry", heading: "Geometry" },
+  { id: "angles", heading: "Angles" },
   { id: "parallel-lines", heading: "Parallel Lines" },
   { id: "triangle-theorems", heading: "Triangle Theorems" },
+  { id: "pythagoras", heading: "Pythagoras" },
+  { id: "similar-triangles", heading: "Similar Triangles" },
   { id: "triangle-transformations", heading: "Triangle Transformations" },
   { id: "quadrilaterals", heading: "Quadrilaterals" },
   { id: "circle-glossary", heading: "Circle Glossary" },
@@ -35,24 +39,34 @@ const LESSONS = [
   { id: "circle-calculations", heading: "Circle Geometry & Calculations" },
   { id: "volume", heading: "Volume of Solids" },
   { id: "conic-sections", heading: "Conic Sections" },
+  { id: "ellipses", heading: "Ellipses" },
   { id: "sacred-geometry", heading: "Sacred Geometry" },
   { id: "radians", heading: "Radians" },
   { id: "trig-functions", heading: "Trigonometric Functions" },
+  { id: "trigonometry-lab", heading: "Trigonometry Lab" },
   { id: "waveforms", heading: "Waveforms" },
-  { id: "fourier-series", heading: "Fourier Series" },
-  { id: "physical-waves", heading: "Physical Waves" },
+  { id: "vectors", heading: "Vectors" },
+  { id: "matrices-as-maps", heading: "Matrices as Maps" },
+  { id: "complex-numbers", heading: "Complex Numbers" },
+  { id: "limits-and-continuity", heading: "Limits & Continuity" },
   { id: "differentiation", heading: "Differentiation" },
   { id: "integration", heading: "Integration" },
   { id: "optimization", heading: "Optimization" },
   { id: "taylor-series", heading: "Taylor Series" },
+  { id: "fourier-series", heading: "Fourier Series" },
   { id: "vector-field", heading: "Vector Fields (3D)" },
+  { id: "probability", heading: "Probability & Distributions" },
+  { id: "markov-chains", heading: "Markov Chains" },
+  { id: "stochastic-processes", heading: "Stochastic Processes" },
+  { id: "fibonacci-golden-ratio", heading: "Fibonacci & the Golden Ratio" },
+  { id: "prime-numbers", heading: "Prime Numbers — Complete Guide" },
+  { id: "mersenne-primes", heading: "Mersenne Primes" },
   { id: "kinematics", heading: "Kinematics" },
-  { id: "projectile-motion", heading: "Projectile Motion" },
-  { id: "moments", heading: "Moments & Torque" },
-  { id: "collisions", heading: "Collisions" },
-  { id: "electrical-circuits", heading: "Electrical Circuits" },
   { id: "newtons-laws", heading: "Newton's Laws of Motion" },
+  { id: "projectile-motion", heading: "Projectile Motion" },
   { id: "momentum-impulse", heading: "Momentum & Impulse" },
+  { id: "collisions", heading: "Collisions" },
+  { id: "moments", heading: "Moments & Torque" },
   { id: "universal-gravitation", heading: "Newton's Universal Gravitation" },
   { id: "load-paths", heading: "Forces, Angles & Load Paths" },
   { id: "miter-saw-cuts", heading: "Mitre Saw Cut Planner" },
@@ -60,6 +74,8 @@ const LESSONS = [
   { id: "atwood-machine", heading: "Atwood Machine" },
   { id: "stress-strain", heading: "Forces · Stress · Strain" },
   { id: "pendulum", heading: "The Pendulum" },
+  { id: "physical-waves", heading: "Physical Waves" },
+  { id: "electrical-circuits", heading: "Electrical Circuits" },
   { id: "shadows-earth-size", heading: "Shadows & Earth's Size" },
   { id: "shaders", heading: "Shader Playground" },
 ];
@@ -83,6 +99,7 @@ const FOUNDATION_LESSON_IDS = [
   "stochastic-processes",
   "vectors",
   "complex-numbers",
+  "fibonacci-golden-ratio",
   "prime-numbers",
   "mersenne-primes",
 ];
@@ -132,27 +149,27 @@ test("app shell supports deep links, lesson search, and keyboard lesson navigati
   const errors = trackErrors(page);
   await page.goto("/#geometry");
   await expect(page.locator("#info h2")).toHaveText("Geometry");
-  await expect(page.locator(".nav-item.active .nav-title")).toHaveText("14 · Geometry");
+  await expect(page.locator(".nav-item.active .nav-title")).toHaveText("22 · Geometry");
   await expect(page).toHaveTitle("Geometry — Vector Lab");
 
   await page.keyboard.press("/");
   await expect(page.locator("#lesson-search")).toBeFocused();
   await page.fill("#lesson-search", "shader");
-  await expect(page.locator("#lesson-count")).toHaveText("1 / 57 shown");
-  await expect(page.locator(".nav-item:visible .nav-title")).toHaveText("57 · Shader Playground");
+  await expect(page.locator("#lesson-count")).toHaveText("1 / 73 shown");
+  await expect(page.locator(".nav-item:visible .nav-title")).toHaveText("73 · Shader Playground");
 
   await page.keyboard.press("Escape");
-  await expect(page.locator("#lesson-count")).toHaveText("57 lessons");
+  await expect(page.locator("#lesson-count")).toHaveText("73 lessons");
 
   await page.keyboard.press("]");
-  await expect(page.locator("#info h2")).toHaveText("Parallel Lines");
-  await expect(page).toHaveURL(/#parallel-lines$/);
+  await expect(page.locator("#info h2")).toHaveText("Angles");
+  await expect(page).toHaveURL(/#angles$/);
   await page.keyboard.press("]");
-  await expect(page.locator("#info h2")).toHaveText("Triangle Theorems");
-  await expect(page).toHaveURL(/#triangle-theorems$/);
-  await page.goBack();
   await expect(page.locator("#info h2")).toHaveText("Parallel Lines");
   await expect(page).toHaveURL(/#parallel-lines$/);
+  await page.goBack();
+  await expect(page.locator("#info h2")).toHaveText("Angles");
+  await expect(page).toHaveURL(/#angles$/);
   await page.goBack();
   await expect(page.locator("#info h2")).toHaveText("Geometry");
   await expect(page).toHaveURL(/#geometry$/);
@@ -1110,14 +1127,15 @@ test("the sidebar presents the whole curriculum in teaching order", async ({ pag
   )).resolves.toEqual([
     "Stage 1 · Numbers & arithmetic",
     "Stage 2 · Algebra",
-    "Stage 3 · Shape & space",
-    "Stage 4 · Trigonometry & waves",
-    "Stage 5 · Vectors & complex numbers",
-    "Stage 6 · Calculus",
-    "Stage 7 · Probability & randomness",
-    "Stage 8 · Number theory",
-    "Stage 9 · Applied maths & physics",
-    "Stage 10 · Maths as code",
+    "Stage 3 · Functions & graphs",
+    "Stage 4 · Shape & space",
+    "Stage 5 · Trigonometry & waves",
+    "Stage 6 · Vectors & complex numbers",
+    "Stage 7 · Calculus",
+    "Stage 8 · Probability & randomness",
+    "Stage 9 · Number theory",
+    "Stage 10 · Applied maths & physics",
+    "Stage 11 · Maths as code",
   ]);
 
   await expect(page.locator(".nav-item .nav-title").evaluateAll((titles) =>
@@ -1138,27 +1156,25 @@ test("the sidebar presents the whole curriculum in teaching order", async ({ pag
     "Logarithms",
     "Binomials",
     "Pascal's Triangle",
-    // Stage 3 — shape and space.
+    // Stage 3 — functions and graphs.
+    "Coordinates & Straight Lines",
+    "Functions & Graphs",
+    "Simultaneous Equations",
+    "Quadratics",
+    "Inequalities",
+    "Graph Transformations",
+    "Exponential & Log Graphs",
+    "Sequences & Series",
+    // Stage 4 — shape and space.
     "Geometry",
+    "Angles",
     "Parallel Lines",
     "Triangle Theorems",
+    "Pythagoras",
+    "Similar Triangles",
     "Triangle Transformations",
     "Quadrilaterals",
     "Circle Glossary",
-    "Circle Theorems",
-    "Circle Geometry & Calculations",
-    "Volume of Solids",
-    "Conic Sections",
-    "Sacred Geometry",
-    // Stage 4 — trigonometry and waves.
-    "Radians",
-    "Trigonometric Functions",
-    "Waveforms",
-    // Stage 5 — vectors and complex numbers.
-    "Vectors",
-    "Complex Numbers",
-    // Stage 6 — calculus.
-    "Differentiation",
   ]);
 
   for (const [id, prerequisite] of [
@@ -1177,6 +1193,7 @@ test("the sidebar presents the whole curriculum in teaching order", async ({ pag
     ["stochastic-processes", "Markov Chains"],
     ["vectors", "Foundation topics"],
     ["complex-numbers", "Vectors"],
+    ["fibonacci-golden-ratio", "Foundation topics"],
     ["mersenne-primes", "Powers & Exponential Growth"],
     ["mersenne-primes", "Prime Numbers — Complete Guide"],
     ["circle-glossary", "Geometry"],
@@ -3645,11 +3662,11 @@ test("completing a lesson records progress, ticks the sidebar, and advances the 
   const errors = trackErrors(page);
   await page.goto("/#foundations");
 
-  await expect(page.locator("#path-progress")).toContainText("0 of 57 lessons (0%)");
+  await expect(page.locator("#path-progress")).toContainText("0 of 73 lessons (0%)");
 
   await page.getByTestId("mark-complete").click();
   await expect(page.getByTestId("mark-complete")).toContainText("Completed");
-  await expect(page.locator("#path-progress")).toContainText("1 of 57 lessons (2%)");
+  await expect(page.locator("#path-progress")).toContainText("1 of 73 lessons (1%)");
   await expect(page.locator(".nav-item.is-complete .nav-title")).toHaveText("1 · Foundation topics");
   await expect(page.locator('.nav-section[data-stage="stage-numbers"] .nav-section-count')).toHaveText("1/7");
 
@@ -3660,7 +3677,7 @@ test("completing a lesson records progress, ticks the sidebar, and advances the 
 
   // Progress survives a reload and the learner resumes where they left off.
   await page.goto("/");
-  await expect(page.locator("#path-progress")).toContainText("1 of 57 lessons (2%)");
+  await expect(page.locator("#path-progress")).toContainText("1 of 73 lessons (1%)");
   await expect(page.locator("#info h2")).toHaveText("Number Sense & Fractions");
 
   expect(errors, errors.join("\n")).toEqual([]);
@@ -3670,13 +3687,13 @@ test("searching hides stages that have no matching lessons", async ({ page }) =>
   const errors = trackErrors(page);
   await page.goto("/");
 
-  await expect(page.locator(".nav-section:visible")).toHaveCount(10);
+  await expect(page.locator(".nav-section:visible")).toHaveCount(11);
   await page.fill("#lesson-search", "shader");
   await expect(page.locator(".nav-section:visible")).toHaveCount(1);
-  await expect(page.locator(".nav-section:visible .nav-section-title")).toHaveText("Stage 10 · Maths as code");
+  await expect(page.locator(".nav-section:visible .nav-section-title")).toHaveText("Stage 11 · Maths as code");
 
   await page.fill("#lesson-search", "");
-  await expect(page.locator(".nav-section:visible")).toHaveCount(10);
+  await expect(page.locator(".nav-section:visible")).toHaveCount(11);
 
   expect(errors, errors.join("\n")).toEqual([]);
 });
@@ -3785,6 +3802,8 @@ test("parallel lines modes, converse hypothesis, and predict/reveal", async ({ p
   await page.locator('[data-pl="mode:alternate-interior"]').click();
   await expect(page.locator("#pl-claim-title")).toHaveText("Theorem: start with parallel lines");
   await expect(page.locator("[data-pl-conclusion]")).toContainText("∠");
+  await expect(page.locator('[data-pl-plain="forward"]')).toHaveAttribute("data-active", "true");
+  await expect(page.locator('[data-pl-plain="converse"]')).toContainText("Start from the angles");
   await expect(page.locator('[data-pl="mode:alternate-interior"]')).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator('[data-pl-chip="relation"]')).toContainText("holds");
 
@@ -3798,12 +3817,17 @@ test("parallel lines modes, converse hypothesis, and predict/reveal", async ({ p
   // Converse + non-parallel with unequal angles: hypothesis not met (not a counterexample).
   await page.locator('[data-pl="mode:converse-corresponding"]').click();
   await expect(page.locator("#pl-claim-title")).toHaveText("Converse: start with equal angles");
+  await expect(page.locator('[data-pl="mode:converse-corresponding"]')).toHaveText("Converse: corresponding");
+  await expect(page.locator('[data-pl="mode:converse-alternate-interior"]')).toHaveText("Converse: alt. interior");
   await expect(page.locator("[data-pl-given]")).toContainText("∠");
   await expect(page.locator("[data-pl-conclusion]")).toContainText("L1 ∥ L2");
+  await expect(page.locator('[data-pl-plain="converse"]')).toHaveAttribute("data-active", "true");
   await page.locator('[data-pl="skew"]').click();
   await expect(page.locator('[data-pl-chip="parallel"]')).toContainText("are not parallel");
   await expect(page.locator('[data-pl-chip="converse"]')).toContainText("hypothesis not met");
   await expect(page.locator('[data-pl-chip="converse"]')).not.toContainText("counterexample");
+  await expect(page.locator('[data-pl-plain="now"]')).toContainText("Starting from the angles gets you nowhere");
+  await expect(page.locator('[data-pl-plain="now"]')).toContainText("starting from the lines");
 
   // Converse prediction hides the conclusion, not its equal-angle hypothesis.
   await page.locator('[data-pl="hide-angles"]').click();
@@ -3812,6 +3836,7 @@ test("parallel lines modes, converse hypothesis, and predict/reveal", async ({ p
   await expect(page.locator("#pl-readout")).not.toContainText("not parallel");
   await expect(page.locator("#pl-readout")).toContainText("L2 angle? — hidden");
   await expect(page.locator("#pl-message")).not.toContainText("lines are parallel");
+  await expect(page.locator('[data-pl-plain="now"]')).not.toContainText("lines are not parallel");
   await expect(page.locator("#pl-verdict")).toContainText("Parallel status hidden");
   await page.locator('[data-pl="predict:fails"]').click();
   await expect(page.locator("#pl-verdict")).toContainText("Yes");

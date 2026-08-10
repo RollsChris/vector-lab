@@ -5,6 +5,7 @@ import { SHAPE_AND_TRIG_GUIDES } from "./guides/shapeAndTrig";
 import { VECTOR_AND_CALCULUS_GUIDES } from "./guides/vectorsAndCalculus";
 import { CHANCE_AND_NUMBER_THEORY_GUIDES } from "./guides/chanceAndNumberTheory";
 import { APPLIED_GUIDES } from "./guides/applied";
+import { FUNCTIONS_GRAPHS_GUIDES } from "./guides/functionsGraphs";
 
 /**
  * Every authored lesson guide, keyed by lesson id.
@@ -16,6 +17,7 @@ import { APPLIED_GUIDES } from "./guides/applied";
 const ALL: readonly LessonGuide[] = [
   ...NUMBER_GUIDES,
   ...ALGEBRA_GUIDES,
+  ...FUNCTIONS_GRAPHS_GUIDES,
   ...SHAPE_AND_TRIG_GUIDES,
   ...VECTOR_AND_CALCULUS_GUIDES,
   ...CHANCE_AND_NUMBER_THEORY_GUIDES,

@@ -40,6 +40,7 @@ import { ShaderPlaygroundLesson } from "./lessons/ShaderPlaygroundLesson";
 import { GeometryLesson } from "./lessons/GeometryLesson";
 import { UnitConversionsLesson } from "./lessons/UnitConversionsLesson";
 import { TrigonometricFunctionsLesson } from "./lessons/TrigonometricFunctionsLesson";
+import { TrigonometryLabLesson } from "./lessons/TrigonometryLabLesson";
 import { RearrangingEquationsLesson } from "./lessons/RearrangingEquationsLesson";
 import { OrderOfOperationsLesson } from "./lessons/OrderOfOperationsLesson";
 import { MultiplicationDivisionLesson } from "./lessons/MultiplicationDivisionLesson";
@@ -64,6 +65,16 @@ import { BinomialsLesson } from "./lessons/BinomialsLesson";
 import { NumberSenseFractionsLesson } from "./lessons/NumberSenseFractionsLesson";
 import { ArithmeticOperationsLesson } from "./lessons/ArithmeticOperationsLesson";
 import { SacredGeometryLesson } from "./lessons/SacredGeometryLesson";
+import { CoordinatesAndLinesLesson } from "./lessons/CoordinatesAndLinesLesson";
+import { FunctionsAndGraphsLesson } from "./lessons/FunctionsAndGraphsLesson";
+import { SimultaneousEquationsLesson } from "./lessons/SimultaneousEquationsLesson";
+import { QuadraticsLesson } from "./lessons/QuadraticsLesson";
+import { InequalitiesLesson } from "./lessons/InequalitiesLesson";
+import { GraphTransformationsLesson } from "./lessons/GraphTransformationsLesson";
+import { ExponentialLogGraphsLesson } from "./lessons/ExponentialLogGraphsLesson";
+import { SequencesAndSeriesLesson } from "./lessons/SequencesAndSeriesLesson";
+import { LimitsAndContinuityLesson } from "./lessons/LimitsAndContinuityLesson";
+import { MatricesAsMapsLesson } from "./lessons/MatricesAsMapsLesson";
 
 const stage = document.getElementById("stage")!;
 const nav = document.getElementById("nav")!;
@@ -96,6 +107,16 @@ const manager = new LessonManager(
     new LogarithmsLesson(),
     new BinomialsLesson(),
     new PascalTriangleLesson(),
+    new CoordinatesAndLinesLesson(),
+    new FunctionsAndGraphsLesson(),
+    new SimultaneousEquationsLesson(),
+    new QuadraticsLesson(),
+    new InequalitiesLesson(),
+    new GraphTransformationsLesson(),
+    new ExponentialLogGraphsLesson(),
+    new SequencesAndSeriesLesson(),
+    new LimitsAndContinuityLesson(),
+    new MatricesAsMapsLesson(),
     new ProbabilityLesson(),
     new MarkovChainsLesson(),
     new StochasticProcessesLesson(),
@@ -121,6 +142,7 @@ const manager = new LessonManager(
     new SacredGeometryLesson(),
     new RadiansLesson(),
     new TrigonometricFunctionsLesson(),
+    new TrigonometryLabLesson(),
     new WaveformsLesson(),
     new FourierSeriesLesson(),
     new DifferentiationLesson(),

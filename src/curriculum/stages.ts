@@ -37,8 +37,23 @@ export const STAGES: readonly CurriculumStage[] = [
     ],
   },
   {
+    id: "stage-functions",
+    title: "Stage 3 · Functions & graphs",
+    goal: "See algebra as pictures: lines, curves, systems and how graphs move.",
+    lessons: [
+      "coordinates-and-lines",
+      "functions-and-graphs",
+      "simultaneous-equations",
+      "quadratics",
+      "inequalities",
+      "graph-transformations",
+      "exponential-log-graphs",
+      "sequences-and-series",
+    ],
+  },
+  {
     id: "stage-shape",
-    title: "Stage 3 · Shape & space",
+    title: "Stage 4 · Shape & space",
     goal: "Measure and reason about lines, angles, triangles, circles and curves.",
     lessons: [
       "geometry",
@@ -60,21 +75,22 @@ export const STAGES: readonly CurriculumStage[] = [
   },
   {
     id: "stage-trigonometry",
-    title: "Stage 4 · Trigonometry & waves",
+    title: "Stage 5 · Trigonometry & waves",
     goal: "Connect angles to lengths, and describe anything that repeats.",
-    lessons: ["radians", "trig-functions", "waveforms"],
+    lessons: ["radians", "trig-functions", "trigonometry-lab", "waveforms"],
   },
   {
     id: "stage-vectors",
-    title: "Stage 5 · Vectors & complex numbers",
+    title: "Stage 6 · Vectors & complex numbers",
     goal: "Handle quantities that carry a direction, and numbers that rotate.",
-    lessons: ["vectors", "complex-numbers"],
+    lessons: ["vectors", "matrices-as-maps", "complex-numbers"],
   },
   {
     id: "stage-calculus",
-    title: "Stage 6 · Calculus",
+    title: "Stage 7 · Calculus",
     goal: "Measure how things change, and add up infinitely many small pieces.",
     lessons: [
+      "limits-and-continuity",
       "differentiation",
       "integration",
       "optimization",
@@ -85,19 +101,19 @@ export const STAGES: readonly CurriculumStage[] = [
   },
   {
     id: "stage-chance",
-    title: "Stage 7 · Probability & randomness",
+    title: "Stage 8 · Probability & randomness",
     goal: "Reason about uncertainty, and model systems that evolve by chance.",
     lessons: ["probability", "markov-chains", "stochastic-processes"],
   },
   {
     id: "stage-number-theory",
-    title: "Stage 8 · Number theory",
+    title: "Stage 9 · Number theory",
     goal: "Study whole numbers for their own sake — the building blocks of arithmetic.",
     lessons: ["fibonacci-golden-ratio", "prime-numbers", "mersenne-primes"],
   },
   {
     id: "stage-applied",
-    title: "Stage 9 · Applied maths & physics",
+    title: "Stage 10 · Applied maths & physics",
     goal: "Turn the whole toolkit loose on the physical world.",
     lessons: [
       "kinematics",
@@ -120,7 +136,7 @@ export const STAGES: readonly CurriculumStage[] = [
   },
   {
     id: "stage-computation",
-    title: "Stage 10 · Maths as code",
+    title: "Stage 11 · Maths as code",
     goal: "Express mathematics as programs the GPU can run.",
     lessons: ["shaders"],
   },

@@ -8,7 +8,14 @@ import {
   primeGaps,
   sieve,
 } from "../src/math/primes";
-import { isMersennePrime, mersenneNumber, pascalRow } from "../src/math/pascal";
+import {
+  classifyMersenne,
+  isMersennePrime,
+  lucasLehmerSteps,
+  mersenneNumber,
+  pascalRow,
+  smallBigIntFactors,
+} from "../src/math/pascal";
 
 describe("prime utilities", () => {
   it("sieves and tests primes exactly", () => {
@@ -28,6 +35,48 @@ describe("prime utilities", () => {
       expect(mersenneNumber(11)).toBe(2047n);
       expect([2, 3, 5, 7, 13, 17, 19, 31].every(isMersennePrime)).toBe(true);
       expect([4, 9, 11, 23, 29].some(isMersennePrime)).toBe(false);
+    });
+
+    it("exposes every Lucas-Lehmer residue for odd prime exponents", () => {
+      expect(lucasLehmerSteps(5)).toEqual([4n, 14n, 8n, 0n]);
+      expect(lucasLehmerSteps(7).at(-1)).toBe(0n);
+      expect(lucasLehmerSteps(11)).toEqual([4n, 14n, 194n, 788n, 701n, 119n, 1877n, 240n, 282n, 1736n]);
+      expect(lucasLehmerSteps(11).at(-1)).not.toBe(0n);
+      expect(lucasLehmerSteps(2)).toEqual([]);
+      expect(lucasLehmerSteps(9)).toEqual([]);
+    });
+
+    it("factorises small Mersenne numbers", () => {
+      expect(smallBigIntFactors(2047n)).toEqual([23n, 89n]);
+      expect(smallBigIntFactors(15n)).toEqual([3n, 5n]);
+      expect(smallBigIntFactors(31n)).toEqual([31n]);
+      expect(smallBigIntFactors(1n)).toEqual([]);
+    });
+
+    it("separates composite exponents, failed candidates and Mersenne primes", () => {
+      expect(classifyMersenne(4)).toMatchObject({
+        value: 15n,
+        primeExponent: false,
+        mersennePrime: false,
+        kind: "composite-exponent",
+        factors: [3n, 5n],
+      });
+      expect(classifyMersenne(11)).toMatchObject({
+        value: 2047n,
+        primeExponent: true,
+        mersennePrime: false,
+        kind: "prime-exponent-composite",
+        factors: [23n, 89n],
+      });
+      expect(classifyMersenne(5)).toMatchObject({
+        value: 31n,
+        primeExponent: true,
+        mersennePrime: true,
+        kind: "mersenne-prime",
+        factors: [31n],
+      });
+      expect(classifyMersenne(31).mersennePrime).toBe(true);
+      expect(() => classifyMersenne(0)).toThrow(RangeError);
     });
   });
 
