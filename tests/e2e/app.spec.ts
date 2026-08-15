@@ -77,6 +77,7 @@ const LESSONS = [
   { id: "physical-waves", heading: "Physical Waves" },
   { id: "electrical-circuits", heading: "Electrical Circuits" },
   { id: "shadows-earth-size", heading: "Shadows & Earth's Size" },
+  { id: "astronomy", heading: "Astronomy: Zero to Hero" },
   { id: "shaders", heading: "Shader Playground" },
 ];
 
@@ -145,6 +146,26 @@ test("every lesson mounts, shows its info, and renders without errors", async ({
   expect(errors, errors.join("\n")).toEqual([]);
 });
 
+test("astronomy course maps the sky and explains planetary retrograde motion", async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto("/#astronomy");
+
+  await expect(page.locator("#info h2")).toHaveText("Astronomy: Zero to Hero");
+  await expect(page.locator("#astronomy-lesson")).toContainText("Earth rotates eastward");
+  await expect(page.locator("#astronomy-readout")).toContainText("Earth's rotation");
+
+  await page.locator('[data-astro-chapter="4"]').click();
+  await expect(page.locator("#astronomy-lesson")).toContainText("retrograde motion");
+  await expect(page.locator("#astronomy-readout")).toContainText("Earth orbital position");
+  expect(await page.evaluate(() => (
+    (window as any).__lab.manager.activeLesson.trail.geometry.getAttribute("position").count
+  ))).toBe(65);
+
+  await page.locator('[data-astro-chapter="10"]').click();
+  await expect(page.locator("#astronomy-lesson")).toContainText("naked eye");
+  expect(errors, errors.join("\n")).toEqual([]);
+});
+
 test("app shell supports deep links, lesson search, and keyboard lesson navigation", async ({ page }) => {
   const errors = trackErrors(page);
   await page.goto("/#geometry");
@@ -155,11 +176,11 @@ test("app shell supports deep links, lesson search, and keyboard lesson navigati
   await page.keyboard.press("/");
   await expect(page.locator("#lesson-search")).toBeFocused();
   await page.fill("#lesson-search", "shader");
-  await expect(page.locator("#lesson-count")).toHaveText("1 / 73 shown");
-  await expect(page.locator(".nav-item:visible .nav-title")).toHaveText("73 · Shader Playground");
+  await expect(page.locator("#lesson-count")).toHaveText("1 / 74 shown");
+  await expect(page.locator(".nav-item:visible .nav-title")).toHaveText("74 · Shader Playground");
 
   await page.keyboard.press("Escape");
-  await expect(page.locator("#lesson-count")).toHaveText("73 lessons");
+  await expect(page.locator("#lesson-count")).toHaveText("74 lessons");
 
   await page.keyboard.press("]");
   await expect(page.locator("#info h2")).toHaveText("Angles");
@@ -1135,7 +1156,8 @@ test("the sidebar presents the whole curriculum in teaching order", async ({ pag
     "Stage 8 · Probability & randomness",
     "Stage 9 · Number theory",
     "Stage 10 · Applied maths & physics",
-    "Stage 11 · Maths as code",
+    "Stage 11 · Astronomy",
+    "Stage 12 · Maths as code",
   ]);
 
   await expect(page.locator(".nav-item .nav-title").evaluateAll((titles) =>
@@ -3662,11 +3684,11 @@ test("completing a lesson records progress, ticks the sidebar, and advances the 
   const errors = trackErrors(page);
   await page.goto("/#foundations");
 
-  await expect(page.locator("#path-progress")).toContainText("0 of 73 lessons (0%)");
+  await expect(page.locator("#path-progress")).toContainText("0 of 74 lessons (0%)");
 
   await page.getByTestId("mark-complete").click();
   await expect(page.getByTestId("mark-complete")).toContainText("Completed");
-  await expect(page.locator("#path-progress")).toContainText("1 of 73 lessons (1%)");
+  await expect(page.locator("#path-progress")).toContainText("1 of 74 lessons (1%)");
   await expect(page.locator(".nav-item.is-complete .nav-title")).toHaveText("1 · Foundation topics");
   await expect(page.locator('.nav-section[data-stage="stage-numbers"] .nav-section-count')).toHaveText("1/7");
 
@@ -3677,7 +3699,7 @@ test("completing a lesson records progress, ticks the sidebar, and advances the 
 
   // Progress survives a reload and the learner resumes where they left off.
   await page.goto("/");
-  await expect(page.locator("#path-progress")).toContainText("1 of 73 lessons (1%)");
+  await expect(page.locator("#path-progress")).toContainText("1 of 74 lessons (1%)");
   await expect(page.locator("#info h2")).toHaveText("Number Sense & Fractions");
 
   expect(errors, errors.join("\n")).toEqual([]);
@@ -3687,13 +3709,13 @@ test("searching hides stages that have no matching lessons", async ({ page }) =>
   const errors = trackErrors(page);
   await page.goto("/");
 
-  await expect(page.locator(".nav-section:visible")).toHaveCount(11);
+  await expect(page.locator(".nav-section:visible")).toHaveCount(12);
   await page.fill("#lesson-search", "shader");
   await expect(page.locator(".nav-section:visible")).toHaveCount(1);
-  await expect(page.locator(".nav-section:visible .nav-section-title")).toHaveText("Stage 11 · Maths as code");
+  await expect(page.locator(".nav-section:visible .nav-section-title")).toHaveText("Stage 12 · Maths as code");
 
   await page.fill("#lesson-search", "");
-  await expect(page.locator(".nav-section:visible")).toHaveCount(11);
+  await expect(page.locator(".nav-section:visible")).toHaveCount(12);
 
   expect(errors, errors.join("\n")).toEqual([]);
 });

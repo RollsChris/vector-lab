@@ -30,6 +30,7 @@ import { MomentsLesson } from "./lessons/MomentsLesson";
 import { CollisionsLesson } from "./lessons/CollisionsLesson";
 import { UniversalGravitationLesson } from "./lessons/UniversalGravitationLesson";
 import { ShadowsEarthSizeLesson } from "./lessons/ShadowsEarthSizeLesson";
+import { AstronomyLesson } from "./lessons/AstronomyLesson";
 import { StressStrainLesson } from "./lessons/StressStrainLesson";
 import { PulleysLesson } from "./lessons/PulleysLesson";
 import { AtwoodMachineLesson } from "./lessons/AtwoodMachineLesson";
@@ -166,6 +167,7 @@ const manager = new LessonManager(
     new PhysicalWavesLesson(),
     new ElectricalCircuitsLesson(),
     new ShadowsEarthSizeLesson(),
+    new AstronomyLesson(),
     new ShaderPlaygroundLesson(),
   ],
   { nav, info, guiHost, search, count, meta, brief, practice, pathProgress },

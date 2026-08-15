@@ -5,6 +5,58 @@ import type { LessonGuide } from "../types";
  */
 export const APPLIED_GUIDES: readonly LessonGuide[] = [
   {
+    id: "astronomy",
+    plainEnglish:
+      "Astronomy starts by watching the sky carefully, then uses geometry and light to discover what distant worlds and stars are really like.",
+    objectives: [
+      "explain why the sky appears to turn once each day",
+      "locate the celestial equator, poles, and ecliptic on a sky model",
+      "explain retrograde motion as a changing viewpoint from moving Earth",
+      "compare the evidence supplied by parallax, spectra, and galaxy redshift",
+      "plan a first observing session using the naked eye or binoculars",
+    ],
+    whyItMatters:
+      "Astronomy connects ordinary observation to the largest questions we can test: how planets move, how stars make elements, how galaxies form, and how the universe changes.",
+    keyIdea:
+      "The sky is a changing perspective on a physical universe: first map the apparent motion, then use geometry and light to work out the real motion and distance.",
+    workedExample: {
+      prompt:
+        "A nearby star has a measured parallax of 0.20 arcseconds. Find its distance in parsecs and light-years.",
+      steps: [
+        "Use the parallax rule: distance in parsecs equals one divided by parallax in arcseconds.",
+        "Divide one by 0.20 to get 5 parsecs.",
+        "Multiply 5 parsecs by 3.26 light-years per parsec.",
+        "The result is about 16.3 light-years.",
+      ],
+      answer: "The star is 5 parsecs away, or about 16.3 light-years.",
+    },
+    pitfalls: [
+      "Treating the celestial sphere as a physical shell around Earth → it is a useful map of directions, not a statement about star distances",
+      "Thinking retrograde motion means a planet reverses its orbit → it is an apparent reversal caused by our moving viewpoint",
+      "Assuming a bright star must be intrinsically powerful → apparent brightness also depends strongly on distance",
+      "Calling the Big Bang an explosion from one point into empty space → it describes an early hot, dense state while space expanded everywhere",
+    ],
+    checks: [
+      {
+        question: "Why does a star rise about four minutes earlier each night?",
+        answer:
+          "Earth rotates relative to distant stars in about 23 hours and 56 minutes, while it also moves along its orbit, so the solar day is slightly longer than the sidereal day.",
+      },
+      {
+        question: "Why do the planets stay near the ecliptic?",
+        answer:
+          "The planets orbit in nearly the same flat plane left by the rotating disk that formed the Solar System, so their directions on the sky remain close to the Sun's yearly path.",
+      },
+      {
+        question: "What can a spectrum reveal that a simple image cannot?",
+        answer:
+          "Spectral lines identify chemical elements and their shifts reveal motion along the line of sight; line shapes and colours also constrain temperature, density, and magnetic fields.",
+      },
+    ],
+    tryThis:
+      "Begin at Start with the sky and turn Sky time through 24 hours. At Why planets wander, turn off animation and move Earth and Mars one control at a time. Finish at Observe for yourself and use the lesson as a checklist for a month of naked-eye observations.",
+  },
+  {
     id: "kinematics",
     plainEnglish:
       "A journey can be described by where something is, how fast it is moving, and how its speed is changing. Three pictures show how those descriptions change together.",

@@ -135,8 +135,14 @@ export const STAGES: readonly CurriculumStage[] = [
     ],
   },
   {
+    id: "stage-astronomy",
+    title: "Stage 11 · Astronomy",
+    goal: "Map the sky, explain planetary motion, and read the story written in starlight.",
+    lessons: ["astronomy"],
+  },
+  {
     id: "stage-computation",
-    title: "Stage 11 · Maths as code",
+    title: "Stage 12 · Maths as code",
     goal: "Express mathematics as programs the GPU can run.",
     lessons: ["shaders"],
   },
