@@ -153,6 +153,9 @@ test("astronomy course maps the sky and explains planetary retrograde motion", a
   await expect(page.locator("#info h2")).toHaveText("Astronomy: Zero to Hero");
   await expect(page.locator("#astronomy-lesson")).toContainText("Earth rotates eastward");
   await expect(page.locator("#astronomy-readout")).toContainText("Earth's rotation");
+  expect(await page.evaluate(() => (
+    (window as any).__lab.manager.activeLesson.horizon.children.map((child: any) => child.name)
+  ))).toEqual(["local-horizon", "compass-n", "compass-e", "compass-s", "compass-w"]);
 
   await page.locator('[data-astro-chapter="4"]').click();
   await expect(page.locator("#astronomy-lesson")).toContainText("retrograde motion");

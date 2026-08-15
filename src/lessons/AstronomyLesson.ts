@@ -27,7 +27,8 @@ const CHAPTERS: readonly AstronomyChapter[] = [
       human lifetime; the Sun, Moon and planets move against them.</p>
       <p><b>Three nested clocks:</b> a day comes from Earth's rotation, a year from its orbit around the
       Sun, and the changing positions of planets come from several bodies orbiting at different speeds.
-      Start by dragging <code>Sky time</code> and watch the sky turn around Earth.</p>`,
+      Start by dragging <code>Sky time</code> and watch the sky turn around Earth. The pale compass ring
+      stays fixed to your local horizon: objects rise over east and set over west.</p>`,
   },
   {
     title: "The first sky maps",
@@ -195,6 +196,7 @@ export class AstronomyLesson implements Lesson {
 
   private group = new THREE.Group();
   private sky = new THREE.Group();
+  private horizon = new THREE.Group();
   private orbits = new THREE.Group();
   private stars = new THREE.Group();
   private cosmos = new THREE.Group();
@@ -229,8 +231,9 @@ export class AstronomyLesson implements Lesson {
   }
 
   private buildScenes(): void {
-    this.group.add(this.sky, this.orbits, this.stars, this.cosmos);
+    this.group.add(this.sky, this.horizon, this.orbits, this.stars, this.cosmos);
     this.buildSkyScene();
+    this.buildHorizon();
     this.buildOrbitScene();
     this.buildStarScene();
     this.buildCosmosScene();
@@ -263,6 +266,24 @@ export class AstronomyLesson implements Lesson {
 
     this.sky.add(sphere, earth, equator, ecliptic, axis, pole, eclipticLabel, this.skySun);
     this.addStars(this.sky, 6.72, 0.065);
+  }
+
+  private buildHorizon(): void {
+    const horizon = ring(6.92, 0xc9d1d9);
+    horizon.name = "local-horizon";
+    const labels: readonly [string, THREE.Vector3][] = [
+      ["N · North", new THREE.Vector3(0, 0.25, -7.3)],
+      ["E · East", new THREE.Vector3(7.3, 0.25, 0)],
+      ["S · South", new THREE.Vector3(0, 0.25, 7.3)],
+      ["W · West", new THREE.Vector3(-7.3, 0.25, 0)],
+    ];
+    this.horizon.add(horizon);
+    for (const [text, position] of labels) {
+      const label = textSprite(text, 0xe6edf3, 0.42);
+      label.name = `compass-${text[0].toLowerCase()}`;
+      label.position.copy(position);
+      this.horizon.add(label);
+    }
   }
 
   private buildOrbitScene(): void {
@@ -413,6 +434,7 @@ export class AstronomyLesson implements Lesson {
   private updateScene(): void {
     const mode = CHAPTERS[this.chapter].mode;
     this.sky.visible = mode === "sky";
+    this.horizon.visible = mode === "sky";
     this.orbits.visible = mode === "orbits";
     this.stars.visible = mode === "stars";
     this.cosmos.visible = mode === "cosmos";
@@ -532,6 +554,7 @@ export class AstronomyLesson implements Lesson {
     this.group.parent?.remove(this.group);
     this.group = new THREE.Group();
     this.sky = new THREE.Group();
+    this.horizon = new THREE.Group();
     this.orbits = new THREE.Group();
     this.stars = new THREE.Group();
     this.cosmos = new THREE.Group();
