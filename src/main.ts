@@ -177,6 +177,8 @@ const shell = new MobileShell(
   {
     navToggle: document.getElementById("nav-toggle") as HTMLButtonElement,
     panelToggle: document.getElementById("panel-toggle") as HTMLButtonElement,
+    controlsToggle: document.getElementById("controls-toggle") as HTMLButtonElement,
+    controlsClose: document.getElementById("controls-close") as HTMLButtonElement,
     prevLesson: document.getElementById("prev-lesson") as HTMLButtonElement,
     nextLesson: document.getElementById("next-lesson") as HTMLButtonElement,
     backdrop: document.getElementById("sheet-backdrop")!,
@@ -184,6 +186,9 @@ const shell = new MobileShell(
     hint: stage.querySelector(".hint") as HTMLElement,
     sidebar,
     panel,
+    controlDock: document.getElementById("control-dock")!,
+    controlDockContent: document.getElementById("control-dock-content")!,
+    guiHost,
   },
   {
     previous: () => manager.previous(),

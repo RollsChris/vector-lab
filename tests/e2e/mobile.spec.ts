@@ -25,6 +25,7 @@ test.describe("mobile shell", () => {
     await expect(page.locator("#stage canvas")).toBeVisible();
     await expect(page.locator("#topbar")).toBeVisible();
     await expect(page.locator("#nav-toggle")).toBeVisible();
+    await expect(page.locator("#controls-toggle")).toBeVisible();
     await expect(page.locator("#panel-toggle")).toBeVisible();
 
     // Sidebars are drawers on a phone — not permanently in the layout flow.
@@ -42,6 +43,26 @@ test.describe("mobile shell", () => {
     await expect(page.locator("body")).toHaveClass(/panel-open/);
     await expect(page.locator("#panel")).toBeVisible();
     await expect(page.locator("#info h2")).toBeVisible();
+
+    // Controls use a shallow dock over the viewport, so animation controls remain
+    // available without covering the stage in the Learn sheet.
+    const controlDock = page.locator("#control-dock");
+    await expect(controlDock).not.toBeInViewport();
+    await expect(controlDock).toHaveAttribute("aria-hidden", "true");
+    await page.locator("#controls-toggle").click();
+    await expect(page.locator("body")).toHaveClass(/controls-open/);
+    await expect(controlDock).toBeInViewport();
+    await expect(controlDock).toHaveAttribute("aria-hidden", "false");
+    await expect(page.locator("#control-dock #gui")).toBeAttached();
+    await expect(page.locator("#panel #gui")).toHaveCount(0);
+    await expect(page.locator("body")).not.toHaveClass(/panel-open/);
+    await page.locator("#controls-close").click();
+    await expect(page.locator("body")).not.toHaveClass(/controls-open/);
+    await expect(controlDock).not.toBeInViewport();
+    await expect(controlDock).toHaveAttribute("aria-hidden", "true");
+    await page.locator("#controls-toggle").click();
+    await page.keyboard.press("Escape");
+    await expect(page.locator("body")).not.toHaveClass(/controls-open/);
 
     // Switching to Lessons from an open Learn sheet must work (topbar sits above the backdrop).
     await page.locator("#nav-toggle").click();

@@ -42,7 +42,8 @@ html, body {
 /* Desktop: chrome lives in the permanent sidebars. */
 .topbar,
 .sheet-backdrop,
-.panel-handle {
+.panel-handle,
+#control-dock {
   display: none;
 }
 
@@ -2541,6 +2542,30 @@ details.course[open] > summary { margin-bottom: 10px; }
   background: rgb(1 4 9 / 58%);
   -webkit-tap-highlight-color: transparent;
 }
+.control-dock-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+}
+.control-dock-close {
+  appearance: none;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  background: #161b22;
+  color: var(--text);
+  font: 600 12px/1 system-ui, sans-serif;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.control-dock-close:hover { border-color: var(--accent); background: #1f6feb22; }
 .panel-handle {
   width: 42px;
   height: 4px;
@@ -2561,6 +2586,31 @@ details.course[open] > summary { margin-bottom: 10px; }
   .topbar { display: flex; grid-area: topbar; }
   .sheet-backdrop:not([hidden]) { display: block; }
   .panel-handle { display: block; }
+  #control-dock {
+    position: fixed;
+    right: 10px;
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    left: 10px;
+    z-index: 45;
+    display: flex;
+    max-height: min(44dvh, 400px);
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--panel);
+    box-shadow: 0 -10px 32px rgb(0 0 0 / 38%);
+    transform: translateY(calc(100% + 16px));
+    transition: transform 0.2s ease;
+  }
+  body.controls-open #control-dock { transform: translateY(0); }
+  .control-dock-content {
+    min-height: 0;
+    overflow-y: auto;
+  }
+  #control-dock #gui {
+    border-bottom: 0;
+  }
 
   #stage {
     grid-area: stage;
@@ -2644,7 +2694,7 @@ details.course[open] > summary { margin-bottom: 10px; }
 }
 
 @media (max-width: 420px) {
-  .chrome-btn:not(.icon) { padding: 0 10px; font-size: 12px; }
+  .chrome-btn:not(.icon) { padding: 0 8px; font-size: 12px; }
   .topbar-brand { display: none; }
 }
 

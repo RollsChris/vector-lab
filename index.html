@@ -30,6 +30,15 @@
           <button type="button" id="next-lesson" class="chrome-btn icon" aria-label="Next lesson">›</button>
           <button
             type="button"
+            id="controls-toggle"
+            class="chrome-btn"
+            aria-controls="control-dock"
+            aria-expanded="false"
+          >
+            Controls
+          </button>
+          <button
+            type="button"
             id="panel-toggle"
             class="chrome-btn"
             aria-controls="panel"
@@ -41,6 +50,16 @@
       </header>
 
       <div id="sheet-backdrop" class="sheet-backdrop" hidden></div>
+
+      <aside id="control-dock" aria-label="Lesson controls" aria-hidden="true">
+        <div class="control-dock-header">
+          <span>Lesson controls</span>
+          <button type="button" id="controls-close" class="control-dock-close">Hide</button>
+        </div>
+        <div id="control-dock-content" class="control-dock-content">
+          <div id="gui"></div>
+        </div>
+      </aside>
 
       <aside id="sidebar">
         <div class="brand">
@@ -68,7 +87,6 @@
 
       <aside id="panel" aria-live="polite">
         <div class="panel-handle" aria-hidden="true"></div>
-        <div id="gui"></div>
         <div id="lesson-meta"></div>
         <div id="lesson-brief"></div>
         <div id="info"></div>
