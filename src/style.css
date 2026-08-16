@@ -1047,6 +1047,58 @@ html, body {
 .course-btn.ghost:hover { background: #30363d; }
 .course-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
+.insight-loop {
+  border: 1px solid #315a9a;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #111d31, #0d1117);
+  padding: 12px;
+}
+.insight-loop-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.insight-loop-heading h3 { margin: 0; color: #79c0ff; }
+.insight-loop-progress { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.insight-loop-steps {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+  margin: 10px 0;
+  padding: 0;
+  list-style: none;
+}
+.insight-loop-steps li {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.2;
+}
+.insight-loop-steps span {
+  display: inline-grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  margin-right: 4px;
+  border: 1px solid #30363d;
+  border-radius: 50%;
+  color: #8b949e;
+  font-size: 10px;
+  font-weight: 700;
+}
+.insight-loop-steps .is-active { color: #e6edf3; }
+.insight-loop-steps .is-active span { border-color: #58a6ff; background: #1f6feb; color: #fff; }
+.insight-loop-steps .is-complete { color: #7ee787; }
+.insight-loop-steps .is-complete span { border-color: #2ea043; background: #16351f; color: #7ee787; }
+.insight-loop-body { min-height: 62px; }
+.insight-loop-prompt { margin: 0 0 9px; }
+.insight-loop-choices { margin: 0; padding: 0; border: 0; }
+.insight-loop-choices legend { margin-bottom: 9px; font-weight: 600; }
+.insight-loop-choices .course-btn { margin: 0 6px 6px 0; text-align: left; }
+.insight-loop-feedback { margin: 0; font-weight: 600; }
+.insight-loop-feedback.is-correct { color: #7ee787; }
+.insight-loop-feedback.is-wrong { color: #ffb86c; }
+
 .foundation-context,
 .foundation-chapter-context {
   border: 1px solid #315a9a;

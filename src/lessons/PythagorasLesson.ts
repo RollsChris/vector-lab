@@ -2,6 +2,13 @@ import * as THREE from "three";
 import type { Lesson, LessonContext } from "../core/Lesson";
 import type { Viewport } from "../core/Viewport";
 import {
+  initialInteractionLoopState,
+  reduceInteractionLoop,
+  renderInteractionLoop,
+  type InteractionLoopConfig,
+  type InteractionLoopState,
+} from "../core/InteractionLoop";
+import {
   axisAlignedRightTriangle,
   computePythagoras,
   formatNumber,
@@ -25,6 +32,33 @@ const COL = {
   handle: 0xffd166,
   dim: 0x6e7681,
   label: 0xe6edf3,
+};
+
+const INSIGHT_LOOP: InteractionLoopConfig = {
+  title: "Make the rule happen",
+  predictionPrompt: "Before seeing the areas, what do you expect for a right triangle?",
+  predictions: [
+    { value: "holds", label: "The two small squares match the large square" },
+    { value: "fails", label: "The areas will be different" },
+  ],
+  manipulatePrompt:
+    "Set a 3-4-5 right triangle. Its side lengths change, but the right angle stays fixed.",
+  manipulateAction: "Use the 3-4-5 triangle",
+  revealPrompt:
+    "Now pack the two leg squares into the hypotenuse square. Watch area move without being created or lost.",
+  revealAction: "Pack the areas",
+  breakPrompt:
+    "Push the right-angle corner away from 90°. Keep the side squares visible and watch the balance disappear.",
+  breakAction: "Break the right angle",
+  articulatePrompt: "Which condition makes Pythagoras true?",
+  articulations: [
+    { value: "right-angle", label: "The triangle has a 90° angle" },
+    { value: "all-triangles", label: "The triangle has any three side lengths" },
+    { value: "longest-side", label: "The longest side is drawn at the top" },
+  ],
+  correctArticulation: "right-angle",
+  completeMessage:
+    "You found the condition: the area balance is not a fact about every triangle; it is a fact about right triangles.",
 };
 
 /**
@@ -55,18 +89,23 @@ export class PythagorasLesson implements Lesson {
   private rearrangeProgress = 0;
   private rearranging = false;
   private valuesHidden = false;
-  private prediction = "";
+  private insight: InteractionLoopState = initialInteractionLoopState();
+  private insightMarkup = "";
+  private insightStatusText = "";
 
   private readonly infoClickHandler = (event: Event): void => {
     const button = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-py]");
     if (!button) return;
     const action = button.dataset.py ?? "";
+    if (action.startsWith("insight:")) {
+      this.handleInsightAction(action.slice("insight:".length));
+      return;
+    }
     if (action === "reset") {
       this.triangle = axisAlignedRightTriangle(3.2, 2.4, { x: -0.6, y: -1.1 });
       this.rearrangeProgress = 0;
       this.rearranging = false;
-      this.prediction = "";
-      this.valuesHidden = false;
+      this.resetInsightLoop();
       this.renderScene();
       this.updatePanel();
       return;
@@ -75,7 +114,7 @@ export class PythagorasLesson implements Lesson {
       this.triangle = axisAlignedRightTriangle(3, 4, { x: -1.2, y: -1.6 });
       this.rearrangeProgress = 0;
       this.rearranging = false;
-      this.prediction = "";
+      this.resetInsightLoop();
       this.renderScene();
       this.updatePanel();
       return;
@@ -84,7 +123,7 @@ export class PythagorasLesson implements Lesson {
       this.triangle = axisAlignedRightTriangle(2.8, 2.8, { x: -0.8, y: -1.2 });
       this.rearrangeProgress = 0;
       this.rearranging = false;
-      this.prediction = "";
+      this.resetInsightLoop();
       this.renderScene();
       this.updatePanel();
       return;
@@ -97,7 +136,7 @@ export class PythagorasLesson implements Lesson {
       };
       this.rearrangeProgress = 0;
       this.rearranging = false;
-      this.prediction = "";
+      this.resetInsightLoop();
       this.renderScene();
       this.updatePanel();
       return;
@@ -110,7 +149,6 @@ export class PythagorasLesson implements Lesson {
     }
     if (action === "rearrange") {
       if (!this.figure().holds) {
-        this.prediction = "";
         this.updatePanel();
         return;
       }
@@ -120,25 +158,6 @@ export class PythagorasLesson implements Lesson {
       this.renderScene();
       this.updatePanel();
       return;
-    }
-    if (action === "hide") {
-      this.valuesHidden = true;
-      this.prediction = "";
-      this.renderScene();
-      this.updatePanel();
-      return;
-    }
-    if (action === "reveal") {
-      this.valuesHidden = false;
-      this.renderScene();
-      this.updatePanel();
-      return;
-    }
-    if (action.startsWith("predict:")) {
-      this.prediction = action.slice(8);
-      this.valuesHidden = false;
-      this.renderScene();
-      this.updatePanel();
     }
   };
 
@@ -169,6 +188,9 @@ export class PythagorasLesson implements Lesson {
       else this.triangle = { ...this.triangle, B: p };
       this.rearrangeProgress = 0;
       this.rearranging = false;
+      if (this.insight.phase === "manipulate") {
+        this.insight = reduceInteractionLoop(this.insight, { type: "manipulated" });
+      }
       this.renderScene();
       this.updatePanel();
     });
@@ -196,7 +218,12 @@ export class PythagorasLesson implements Lesson {
   private tick(dt: number): void {
     if (!this.rearranging) return;
     this.rearrangeProgress = Math.min(1, this.rearrangeProgress + dt / 2.4);
-    if (this.rearrangeProgress >= 1) this.rearranging = false;
+    if (this.rearrangeProgress >= 1) {
+      this.rearranging = false;
+      if (this.insight.phase === "reveal") {
+        this.insight = reduceInteractionLoop(this.insight, { type: "revealed" });
+      }
+    }
     this.renderScene();
     this.updatePanel();
   }
@@ -371,18 +398,11 @@ export class PythagorasLesson implements Lesson {
       </div>
 
       <div class="course">
-        <h3>Predict, then reveal</h3>
-        <p>Hide the areas, change a corner, then decide whether a² + b² still equals c².</p>
-        <div class="course-chapters">
-          <button type="button" class="course-btn ghost" data-py="hide">Hide values</button>
-          <button type="button" class="course-btn ghost" data-py="reveal">Reveal values</button>
-        </div>
-        <div class="course-chapters" style="margin-top:8px">
-          <button type="button" class="course-btn ghost" data-py="predict:holds">a² + b² = c²</button>
-          <button type="button" class="course-btn ghost" data-py="predict:fails">Equality fails</button>
-        </div>
-        <p class="course-hint" id="py-verdict"></p>
+        <div id="py-insight-loop"></div>
+        <p id="py-insight-status" class="course-hint" role="status" aria-live="polite"></p>
       </div>`);
+    this.insightMarkup = "";
+    this.insightStatusText = "";
     this.updatePanel();
   }
 
@@ -391,9 +411,9 @@ export class PythagorasLesson implements Lesson {
     const claim = document.getElementById("py-claim");
     const readout = document.getElementById("py-readout");
     const message = document.getElementById("py-message");
-    const verdict = document.getElementById("py-verdict");
     const squaresBtn = document.getElementById("py-squares");
     const rearrangeBtn = document.getElementById("py-rearrange");
+    this.updateInsightLoop();
 
     if (claim) {
       const state = !result.valid ? "pending" : result.holds ? "follows" : "unmet";
@@ -436,20 +456,6 @@ export class PythagorasLesson implements Lesson {
           : `Angle at C is ${formatNumber(result.angleC, 1)}°, not 90°, so the areas disagree.`;
     }
 
-    if (verdict) {
-      if (!this.prediction) {
-        verdict.textContent = this.valuesHidden ? "Areas hidden — predict before revealing." : "";
-      } else if (this.prediction === "holds") {
-        verdict.textContent = result.holds
-          ? "Correct — right-angled at C, so a² + b² equals c²."
-          : "Not this figure — restore a right angle at C (try Reset or 3-4-5).";
-      } else if (this.prediction === "fails") {
-        verdict.textContent = !result.holds
-          ? "Correct — without a right angle the side squares no longer match."
-          : "This figure still has a right angle, so the equality holds.";
-      }
-    }
-
     if (squaresBtn) squaresBtn.textContent = this.showSquares ? "Hide squares" : "Show squares";
     if (rearrangeBtn) {
       rearrangeBtn.textContent = this.rearranging
@@ -457,6 +463,91 @@ export class PythagorasLesson implements Lesson {
         : this.rearrangeProgress >= 1
           ? "▶ Pack again"
           : "▶ Pack a² + b²";
+    }
+  }
+
+  private handleInsightAction(action: string): void {
+    if (action.startsWith("predict:")) {
+      this.insight = reduceInteractionLoop(this.insight, {
+        type: "predict",
+        value: action.slice("predict:".length),
+      });
+      this.valuesHidden = true;
+    } else if (action === "manipulate") {
+      this.triangle = axisAlignedRightTriangle(3, 4, { x: -1.2, y: -1.6 });
+      this.valuesHidden = true;
+      this.rearrangeProgress = 0;
+      this.rearranging = false;
+      this.insight = reduceInteractionLoop(this.insight, { type: "manipulated" });
+    } else if (action === "reveal") {
+      // The animation is evidence for a right-triangle rule, never a visual "proof" for
+      // an arbitrary figure. Return to the known right triangle if the learner moved it.
+      if (!this.figure().holds) {
+        this.triangle = axisAlignedRightTriangle(3, 4, { x: -1.2, y: -1.6 });
+      }
+      this.showSquares = true;
+      this.valuesHidden = false;
+      this.rearrangeProgress = 0;
+      this.rearranging = true;
+    } else if (action === "break") {
+      this.triangle = axisAlignedRightTriangle(3, 4, { x: -1.2, y: -1.6 });
+      this.triangle = {
+        ...this.triangle,
+        C: { x: this.triangle.C.x + 1.1, y: this.triangle.C.y + 0.7 },
+      };
+      this.valuesHidden = false;
+      this.rearrangeProgress = 0;
+      this.rearranging = false;
+      this.insight = reduceInteractionLoop(this.insight, { type: "condition-broken" });
+    } else if (action.startsWith("articulate:")) {
+      const value = action.slice("articulate:".length);
+      this.insight = reduceInteractionLoop(this.insight, {
+        type: "articulate",
+        value,
+        correct: value === INSIGHT_LOOP.correctArticulation,
+      });
+    }
+    this.renderScene();
+    this.updatePanel();
+  }
+
+  private resetInsightLoop(): void {
+    this.insight = initialInteractionLoopState();
+    this.valuesHidden = false;
+  }
+
+  private updateInsightLoop(): void {
+    const host = document.getElementById("py-insight-loop");
+    const markup = renderInteractionLoop(this.insight, INSIGHT_LOOP, "data-py");
+    if (host && markup !== this.insightMarkup) {
+      host.innerHTML = markup;
+      this.insightMarkup = markup;
+    }
+
+    const status = this.insightStatus();
+    const statusHost = document.getElementById("py-insight-status");
+    if (statusHost && status !== this.insightStatusText) {
+      statusHost.textContent = status;
+      this.insightStatusText = status;
+    }
+  }
+
+  private insightStatus(): string {
+    switch (this.insight.phase) {
+      case "predict":
+        return "Start by predicting what the square areas will do.";
+      case "manipulate":
+        return "Set a right triangle with the 3-4-5 control or drag a corner.";
+      case "reveal":
+        return this.rearranging
+          ? "Packing the two smaller squares into the larger square."
+          : "Reveal the area balance with the packing animation.";
+      case "break":
+        return "Now test whether the balance survives without a right angle.";
+      case "articulate":
+        return "State the condition that made the rule work.";
+      case "complete":
+        return "Discovery complete: the rule needs a right angle.";
     }
   }
 
