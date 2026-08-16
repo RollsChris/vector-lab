@@ -269,7 +269,7 @@ export const SHAPE_AND_TRIG_GUIDES: readonly LessonGuide[] = [
       },
     ],
     tryThis:
-      "Press 3-4-5 and read a², b² and c². Press Show why the areas match to see the same four triangles leave a² + b² on the left and c² on the right. Then press Break right angle and watch the live claim flip to fails.",
+      "Press 3-4-5 and read a², b² and c². Press Show why the areas match: both boxes are (a+b)² and hold four numbered copies of the triangle, so the leftover holes a² + b² and c² match. Then press Break right angle and watch the live claim flip to fails.",
   },
   {
     id: "similar-triangles",

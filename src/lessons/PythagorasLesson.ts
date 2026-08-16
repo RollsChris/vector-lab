@@ -9,13 +9,16 @@ import {
   type InteractionLoopState,
 } from "../core/InteractionLoop";
 import {
+  angleAt,
   axisAlignedRightTriangle,
   computePythagoras,
   fourTriangleDissection,
   formatNumber,
+  toDegrees,
   type Point,
   type PythagorasResult,
   type RightTriangle,
+  type Triangle,
 } from "../math/pythagoras";
 import { createDragControls, marker, textSprite } from "./helpers";
 
@@ -23,6 +26,7 @@ const BOX = { x: 6.6, y: 4.0 };
 
 const COL = {
   triangle: 0x58a6ff,
+  triangleAlt: 0x1f6feb,
   right: 0xffd166,
   sqA: 0x56d4dd,
   sqB: 0x7ee787,
@@ -32,6 +36,8 @@ const COL = {
   handle: 0xffd166,
   dim: 0x6e7681,
   label: 0xe6edf3,
+  frame: 0xe6edf3,
+  triStroke: 0x9ecbff,
 };
 
 const INSIGHT_LOOP: InteractionLoopConfig = {
@@ -320,7 +326,8 @@ export class PythagorasLesson implements Lesson {
 
   /**
    * Two complete dissections of the same outer square, shown together.
-   * The four triangles keep their area; only the leftover hole changes shape.
+   * Numbered copies and a shared frame make the four triangles and the
+   * leftover holes readable; the triangles do not slide into c².
    */
   private drawDissectionProof(result: PythagorasResult, progress: number): void {
     const fade = Math.min(1, Math.max(0.12, progress));
@@ -328,34 +335,71 @@ export class PythagorasLesson implements Lesson {
     const scale = size / (result.a + result.b);
     const a = result.a * scale;
     const b = result.b * scale;
-    const gap = 0.7;
-    const left = fourTriangleDissection(a, b, { x: -size - gap / 2, y: -size / 2 });
-    const right = fourTriangleDissection(a, b, { x: gap / 2, y: -size / 2 });
+    const gap = 0.85;
+    const left = fourTriangleDissection(a, b, { x: -size - gap / 2, y: -size / 2 + 0.15 });
+    const right = fourTriangleDissection(a, b, { x: gap / 2, y: -size / 2 + 0.15 });
 
-    this.drawPoly([...left.outer], COL.label, 0.04 * fade);
-    this.drawPoly([...right.outer], COL.label, 0.04 * fade);
-    for (const triangle of left.legs.triangles) {
-      this.drawPoly([...triangle], COL.triangle, 0.22 * fade);
-    }
-    this.drawPoly([...left.legs.aSquare], COL.sqA, 0.38 * fade);
-    this.drawPoly([...left.legs.bSquare], COL.sqB, 0.38 * fade);
-    for (const triangle of right.hypotenuse.triangles) {
-      this.drawPoly([...triangle], COL.triangle, 0.22 * fade);
-    }
-    this.drawPoly([...right.hypotenuse.cSquare], COL.sqC, 0.32 * fade);
+    this.drawPoly([...left.outer], COL.frame, 0.06 * fade, false, 0);
+    this.drawPoly([...right.outer], COL.frame, 0.06 * fade, false, 0);
+    this.strokePoly([...left.outer], COL.frame, fade, 0.12);
+    this.strokePoly([...right.outer], COL.frame, fade, 0.12);
+
+    left.legs.triangles.forEach((triangle, index) => {
+      this.drawTriangleCopy(triangle, index + 1, index % 2 === 0 ? COL.triangle : COL.triangleAlt, fade);
+    });
+    this.drawPoly([...left.legs.aSquare], COL.sqA, 0.4 * fade, false, 0.95 * fade);
+    this.drawPoly([...left.legs.bSquare], COL.sqB, 0.4 * fade, false, 0.95 * fade);
+
+    right.hypotenuse.triangles.forEach((triangle, index) => {
+      this.drawTriangleCopy(triangle, index + 1, index % 2 === 0 ? COL.triangle : COL.triangleAlt, fade);
+    });
+    this.drawPoly([...right.hypotenuse.cSquare], COL.sqC, 0.36 * fade, false, 0.95 * fade);
+
     if (fade > 0.55) {
       this.labelPolygon(left.legs.aSquare, "a²", COL.sqA);
       this.labelPolygon(left.legs.bSquare, "b²", COL.sqB);
       this.labelPolygon(right.hypotenuse.cSquare, "c²", COL.sqC);
-      this.captionBelow(left.outer, "leftover a² + b²", COL.label);
-      this.captionBelow(right.outer, "leftover c²", COL.label);
+      this.captionAbove(left.outer, "(a+b)²", COL.label);
+      this.captionAbove(right.outer, "(a+b)²", COL.label);
+      this.captionBelow(left.outer, "what's left: a² + b²", COL.label);
+      this.captionBelow(right.outer, "what's left: c²", COL.label);
     }
   }
 
-  private drawRightAngle(C: Point, A: Point, B: Point): void {
+  private drawTriangleCopy(triangle: Triangle, index: number, fill: number, fade: number): void {
+    this.drawPoly([...triangle], fill, 0.32 * fade, false, 0);
+    this.strokePoly([...triangle], COL.triStroke, fade, 0.08);
+    const corner = this.rightAngleOf(triangle);
+    this.drawRightAngle(corner.vertex, corner.p, corner.q, 0.14);
+    const centroid = {
+      x: (triangle[0].x + triangle[1].x + triangle[2].x) / 3,
+      y: (triangle[0].y + triangle[1].y + triangle[2].y) / 3,
+    };
+    const sprite = textSprite(String(index), COL.label, 0.22);
+    sprite.position.set(
+      corner.vertex.x * 0.55 + centroid.x * 0.45,
+      corner.vertex.y * 0.55 + centroid.y * 0.45,
+      0.36,
+    );
+    this.labels.add(sprite);
+  }
+
+  private rightAngleOf(triangle: Triangle): { vertex: Point; p: Point; q: Point } {
+    for (let i = 0; i < 3; i++) {
+      const vertex = triangle[i];
+      const p = triangle[(i + 1) % 3];
+      const q = triangle[(i + 2) % 3];
+      if (Math.abs(toDegrees(angleAt(vertex, p, q)) - 90) < 2) {
+        return { vertex, p, q };
+      }
+    }
+    return { vertex: triangle[0], p: triangle[1], q: triangle[2] };
+  }
+
+  private drawRightAngle(C: Point, A: Point, B: Point, size = 0.32): void {
     const u = norm({ x: A.x - C.x, y: A.y - C.y });
     const v = norm({ x: B.x - C.x, y: B.y - C.y });
-    const s = 0.32;
+    const s = size;
     const p1 = { x: C.x + u.x * s, y: C.y + u.y * s };
     const p2 = { x: C.x + u.x * s + v.x * s, y: C.y + u.y * s + v.y * s };
     const p3 = { x: C.x + v.x * s, y: C.y + v.y * s };
@@ -371,7 +415,13 @@ export class PythagorasLesson implements Lesson {
     );
   }
 
-  private drawPoly(points: Point[], color: number, opacity: number, dashed = false): void {
+  private drawPoly(
+    points: Point[],
+    color: number,
+    opacity: number,
+    dashed = false,
+    strokeOpacity = opacity,
+  ): void {
     if (points.length < 3) return;
     const shape = new THREE.Shape(points.map((p) => new THREE.Vector2(p.x, p.y)));
     this.dynamic.add(
@@ -385,8 +435,18 @@ export class PythagorasLesson implements Lesson {
         }),
       ),
     );
+    if (strokeOpacity > 0) this.strokePoly(points, color, strokeOpacity, 0.06, dashed);
+  }
+
+  private strokePoly(
+    points: Point[],
+    color: number,
+    opacity: number,
+    z = 0.08,
+    dashed = false,
+  ): void {
     const loop = new THREE.LineLoop(
-      new THREE.BufferGeometry().setFromPoints(points.map((p) => new THREE.Vector3(p.x, p.y, 0.06))),
+      new THREE.BufferGeometry().setFromPoints(points.map((p) => new THREE.Vector3(p.x, p.y, z))),
       dashed
         ? new THREE.LineDashedMaterial({ color, dashSize: 0.12, gapSize: 0.1, transparent: true, opacity })
         : new THREE.LineBasicMaterial({ color, transparent: true, opacity }),
@@ -419,6 +479,14 @@ export class PythagorasLesson implements Lesson {
     this.labels.add(sprite);
   }
 
+  private captionAbove(points: readonly Point[], text: string, color: number): void {
+    const midX = points.reduce((sum, point) => sum + point.x, 0) / points.length;
+    const maxY = Math.max(...points.map((point) => point.y));
+    const sprite = textSprite(text, color, 0.26);
+    sprite.position.set(midX, maxY + 0.32, 0.35);
+    this.labels.add(sprite);
+  }
+
   private renderPanel(): void {
     this.setInfo(`
       <h2>Pythagoras</h2>
@@ -438,7 +506,7 @@ export class PythagorasLesson implements Lesson {
           <button type="button" class="course-btn ghost" data-py="toggle-squares" id="py-squares">Toggle squares</button>
           <button type="button" class="course-btn" data-py="rearrange" id="py-rearrange">▶ Show why the areas match</button>
         </div>
-        <p class="course-hint">Same four copies of the triangle, same outer square. Left leftover is a² and b²; right leftover is c². Equal leftovers mean a² + b² = c².</p>
+        <p class="course-hint">Each box is the same size: (a+b)². The numbered pieces are four copies of your triangle. Only the hole is different, so a² + b² = c².</p>
       </div>
 
       <div class="course">
@@ -500,11 +568,13 @@ export class PythagorasLesson implements Lesson {
     }
 
     if (message) {
-      message.textContent = !result.valid
-        ? "Drag the corners farther apart to make a proper triangle."
-        : result.holds
-          ? "Right angle at C — the two leg squares match the hypotenuse square."
-          : `Angle at C is ${formatNumber(result.angleC, 1)}°, not 90°, so the areas disagree.`;
+      message.textContent = this.proof
+        ? "Same size box, same four triangles. Only the leftover hole changes: a² + b² on the left, c² on the right."
+        : !result.valid
+          ? "Drag the corners farther apart to make a proper triangle."
+          : result.holds
+            ? "Right angle at C — the two smaller squares add to the large one."
+            : `Angle at C is ${formatNumber(result.angleC, 1)}°, not 90°, so the areas disagree.`;
     }
 
     if (squaresBtn) squaresBtn.textContent = this.showSquares ? "Hide squares" : "Show squares";
