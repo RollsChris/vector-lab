@@ -144,8 +144,8 @@ topic rests on.
     panel checks angle-sum = 180°, the sine and cosine rules, and that three area formulas agree,
     with "real world" notes on where each theorem is used.
 13. **Pythagoras** — drag a right triangle and watch outward squares on a, b and c update live.
-    Presets include 3-4-5 and isosceles right; Break right angle shows the equality fail; a pack
-    animation slides a² and b² together while the panel reports |a² + b² − c²|.
+    Presets include 3-4-5 and isosceles right; Break right angle shows the equality fail; Show why
+    the areas match puts two four-triangle leftovers side by side while the panel reports |a² + b² − c²|.
 14. **Similar Triangles** — blue source and green image with AA/SAS/SSS testing, dashed
     correspondence, and a live scale factor. Locked-similar mode keeps a true copy under scale,
     rotate and flip; free explore and break modes let you destroy the match on purpose.

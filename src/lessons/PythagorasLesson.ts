@@ -35,22 +35,20 @@ const COL = {
 };
 
 const INSIGHT_LOOP: InteractionLoopConfig = {
-  title: "Make the rule happen",
-  predictionPrompt: "Before seeing the areas, what do you expect for a right triangle?",
+  title: "Test the condition",
+  predictionPrompt: "On a right triangle, what should the three square areas do?",
   predictions: [
-    { value: "holds", label: "The two small squares match the large square" },
+    { value: "holds", label: "The two small squares add to the large square" },
     { value: "fails", label: "The areas will be different" },
   ],
-  manipulatePrompt:
-    "Set a 3-4-5 right triangle. Its side lengths change, but the right angle stays fixed.",
+  manipulatePrompt: "Use a 3-4-5 right triangle so the side squares stay on a 90° corner.",
   manipulateAction: "Use the 3-4-5 triangle",
-  revealPrompt:
-    "Compare two arrangements of the same four triangles. One leaves a² + b²; the other leaves c².",
-  revealAction: "Compare the arrangements",
+  revealPrompt: "Show the three areas and check whether a² + b² matches c².",
+  revealAction: "Show the areas",
   breakPrompt:
     "Push the right-angle corner away from 90°. Keep the side squares visible and watch the balance disappear.",
   breakAction: "Break the right angle",
-  articulatePrompt: "Which condition makes Pythagoras true?",
+  articulatePrompt: "Which condition makes the areas match?",
   articulations: [
     { value: "right-angle", label: "The triangle has a 90° angle" },
     { value: "all-triangles", label: "The triangle has any three side lengths" },
@@ -58,18 +56,18 @@ const INSIGHT_LOOP: InteractionLoopConfig = {
   ],
   correctArticulation: "right-angle",
   completeMessage:
-    "You found the condition: the area balance is not a fact about every triangle; it is a fact about right triangles.",
+    "The area balance is not a fact about every triangle; it is a fact about right triangles.",
 };
 
 /**
  * Interactive Pythagoras: drag a right triangle's corners, watch outward squares
- * update, and run a simple a²+b² pack animation. Break the right angle to see
- * the equality fail.
+ * update as areas, and put two four-triangle leftovers side by side. Break the
+ * right angle to see the equality fail.
  */
 export class PythagorasLesson implements Lesson {
   readonly id = "pythagoras";
   readonly title = "Pythagoras";
-  readonly blurb = "a² + b² = c² with live squares on the sides";
+  readonly blurb = "a² + b² = c² as a balance of areas";
   readonly category = "Shape" as const;
   readonly difficulty = "Foundation" as const;
   readonly prerequisites = ["triangle-theorems"] as const;
@@ -227,13 +225,8 @@ export class PythagorasLesson implements Lesson {
 
   private tick(dt: number): void {
     if (!this.rearranging) return;
-    this.rearrangeProgress = Math.min(1, this.rearrangeProgress + dt / 2.4);
-    if (this.rearrangeProgress >= 1) {
-      this.rearranging = false;
-      if (this.insight.phase === "reveal") {
-        this.insight = reduceInteractionLoop(this.insight, { type: "revealed" });
-      }
-    }
+    this.rearrangeProgress = Math.min(1, this.rearrangeProgress + dt / 0.8);
+    if (this.rearrangeProgress >= 1) this.rearranging = false;
     this.renderScene();
     this.updatePanel();
   }
@@ -254,81 +247,71 @@ export class PythagorasLesson implements Lesson {
     this.disposeChildren(this.labels);
     const result = this.figure();
     const { A, B, C } = this.triangle;
+    const leftoversActive = Boolean(this.proof);
 
-    // Triangle fill + outline
-    const shape = new THREE.Shape([
-      new THREE.Vector2(A.x, A.y),
-      new THREE.Vector2(B.x, B.y),
-      new THREE.Vector2(C.x, C.y),
-    ]);
-    this.dynamic.add(
-      new THREE.Mesh(
-        new THREE.ShapeGeometry(shape),
-        new THREE.MeshBasicMaterial({
-          color: COL.triangle,
-          transparent: true,
-          opacity: 0.18,
-          side: THREE.DoubleSide,
-        }),
-      ),
-    );
-    this.dynamic.add(
-      new THREE.LineLoop(
-        new THREE.BufferGeometry().setFromPoints([
-          new THREE.Vector3(A.x, A.y, 0.08),
-          new THREE.Vector3(B.x, B.y, 0.08),
-          new THREE.Vector3(C.x, C.y, 0.08),
-        ]),
-        new THREE.LineBasicMaterial({ color: COL.triangle }),
-      ),
-    );
+    if (!leftoversActive) {
+      const shape = new THREE.Shape([
+        new THREE.Vector2(A.x, A.y),
+        new THREE.Vector2(B.x, B.y),
+        new THREE.Vector2(C.x, C.y),
+      ]);
+      this.dynamic.add(
+        new THREE.Mesh(
+          new THREE.ShapeGeometry(shape),
+          new THREE.MeshBasicMaterial({
+            color: COL.triangle,
+            transparent: true,
+            opacity: 0.18,
+            side: THREE.DoubleSide,
+          }),
+        ),
+      );
+      this.dynamic.add(
+        new THREE.LineLoop(
+          new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(A.x, A.y, 0.08),
+            new THREE.Vector3(B.x, B.y, 0.08),
+            new THREE.Vector3(C.x, C.y, 0.08),
+          ]),
+          new THREE.LineBasicMaterial({ color: COL.triangle }),
+        ),
+      );
 
-    // Right-angle marker when near 90°
-    if (result.valid && Math.abs(result.angleC - 90) < 2) {
-      this.drawRightAngle(C, A, B);
+      if (result.valid && Math.abs(result.angleC - 90) < 2) {
+        this.drawRightAngle(C, A, B);
+      }
     }
 
-    if (this.showSquares && result.valid) {
-      if (this.proof && this.rearrangeProgress > 0.001) {
-        const sourceOpacity = 1 - Math.min(1, this.rearrangeProgress / 0.16);
-        if (sourceOpacity > 0) {
-          for (const square of result.squares) {
-            const color = square.side === "a" ? COL.sqA : square.side === "b" ? COL.sqB : COL.sqC;
-            this.drawPoly([...square.corners], color, (square.side === "c" ? 0.22 : 0.32) * sourceOpacity);
-          }
-        }
-        this.drawDissectionProof(this.proof, this.rearrangeProgress);
-      } else {
-        for (const sq of result.squares) {
-          const color = sq.side === "a" ? COL.sqA : sq.side === "b" ? COL.sqB : COL.sqC;
-          this.drawPoly([...sq.corners], color, sq.side === "c" ? 0.22 : 0.32);
-          if (!this.valuesHidden) {
-            const mid = {
-              x: sq.corners.reduce((s, p) => s + p.x, 0) / 4,
-              y: sq.corners.reduce((s, p) => s + p.y, 0) / 4,
-            };
-            const label = textSprite(
-              `${sq.side}² = ${formatNumber(sq.area)}`,
-              color,
-              0.28,
-            );
-            label.position.set(mid.x, mid.y, 0.3);
-            this.labels.add(label);
-          }
+    if (leftoversActive) {
+      this.drawDissectionProof(this.proof!, this.rearrangeProgress);
+    } else if (this.showSquares && result.valid) {
+      for (const sq of result.squares) {
+        const color = sq.side === "a" ? COL.sqA : sq.side === "b" ? COL.sqB : COL.sqC;
+        this.drawPoly([...sq.corners], color, sq.side === "c" ? 0.22 : 0.32);
+        if (!this.valuesHidden) {
+          const mid = {
+            x: sq.corners.reduce((s, p) => s + p.x, 0) / 4,
+            y: sq.corners.reduce((s, p) => s + p.y, 0) / 4,
+          };
+          const label = textSprite(
+            `${sq.side}² = ${formatNumber(sq.area)}`,
+            color,
+            0.28,
+          );
+          label.position.set(mid.x, mid.y, 0.3);
+          this.labels.add(label);
         }
       }
     }
 
-    // Vertex labels
-    if (!this.valuesHidden) {
+    if (!leftoversActive && !this.valuesHidden) {
       this.labelAt(A, "A", COL.label);
       this.labelAt(B, "B", COL.label);
       this.labelAt(C, "C", COL.right);
     }
 
-    const proofActive = Boolean(this.proof && this.rearrangeProgress > 0.001);
     this.handles.forEach((handle) => {
-      handle.visible = !proofActive;
+      handle.visible = !leftoversActive;
     });
     this.handles[0].position.set(C.x, C.y, 0.3);
     this.handles[1].position.set(A.x, A.y, 0.3);
@@ -336,45 +319,36 @@ export class PythagorasLesson implements Lesson {
   }
 
   /**
-   * Shows two complete, valid dissections rather than pretending intact a² and b²
-   * squares can slide into c². The four blue triangles have the same area throughout.
+   * Two complete dissections of the same outer square, shown together.
+   * The four triangles keep their area; only the leftover hole changes shape.
    */
   private drawDissectionProof(result: PythagorasResult, progress: number): void {
-    const p = Math.min(1, Math.max(0, progress));
-    const { A, B, C } = result.triangle;
-    const size = result.a + result.b;
-    const centre = {
-      x: (A.x + B.x + C.x) / 3,
-      y: (A.y + B.y + C.y) / 3,
-    };
-    const dissection = fourTriangleDissection(result.a, result.b, {
-      x: centre.x - size / 2,
-      y: centre.y - size / 2,
-    });
-    const legsOpacity = Math.min(1, p / 0.16) * Math.max(0, Math.min(1, (0.48 - p) / 0.16));
-    const hypotenuseOpacity = Math.max(0, Math.min(1, (p - 0.52) / 0.16));
-    const outerOpacity = Math.max(legsOpacity, hypotenuseOpacity, p > 0.12 && p < 0.88 ? 0.45 : 0);
+    const fade = Math.min(1, Math.max(0.12, progress));
+    const size = 3.6;
+    const scale = size / (result.a + result.b);
+    const a = result.a * scale;
+    const b = result.b * scale;
+    const gap = 0.7;
+    const left = fourTriangleDissection(a, b, { x: -size - gap / 2, y: -size / 2 });
+    const right = fourTriangleDissection(a, b, { x: gap / 2, y: -size / 2 });
 
-    if (outerOpacity > 0) this.drawPoly([...dissection.outer], COL.label, 0.025 * outerOpacity);
-    if (legsOpacity > 0) {
-      for (const triangle of dissection.legs.triangles) {
-        this.drawPoly([...triangle], COL.triangle, 0.2 * legsOpacity);
-      }
-      this.drawPoly([...dissection.legs.aSquare], COL.sqA, 0.35 * legsOpacity);
-      this.drawPoly([...dissection.legs.bSquare], COL.sqB, 0.35 * legsOpacity);
-      if (legsOpacity > 0.65) {
-        this.labelPolygon(dissection.legs.aSquare, "a²", COL.sqA);
-        this.labelPolygon(dissection.legs.bSquare, "b²", COL.sqB);
-      }
+    this.drawPoly([...left.outer], COL.label, 0.04 * fade);
+    this.drawPoly([...right.outer], COL.label, 0.04 * fade);
+    for (const triangle of left.legs.triangles) {
+      this.drawPoly([...triangle], COL.triangle, 0.22 * fade);
     }
-    if (hypotenuseOpacity > 0) {
-      for (const triangle of dissection.hypotenuse.triangles) {
-        this.drawPoly([...triangle], COL.triangle, 0.2 * hypotenuseOpacity);
-      }
-      this.drawPoly([...dissection.hypotenuse.cSquare], COL.sqC, 0.3 * hypotenuseOpacity);
-      if (hypotenuseOpacity > 0.65) {
-        this.labelPolygon(dissection.hypotenuse.cSquare, "c²", COL.sqC);
-      }
+    this.drawPoly([...left.legs.aSquare], COL.sqA, 0.38 * fade);
+    this.drawPoly([...left.legs.bSquare], COL.sqB, 0.38 * fade);
+    for (const triangle of right.hypotenuse.triangles) {
+      this.drawPoly([...triangle], COL.triangle, 0.22 * fade);
+    }
+    this.drawPoly([...right.hypotenuse.cSquare], COL.sqC, 0.32 * fade);
+    if (fade > 0.55) {
+      this.labelPolygon(left.legs.aSquare, "a²", COL.sqA);
+      this.labelPolygon(left.legs.bSquare, "b²", COL.sqB);
+      this.labelPolygon(right.hypotenuse.cSquare, "c²", COL.sqC);
+      this.captionBelow(left.outer, "leftover a² + b²", COL.label);
+      this.captionBelow(right.outer, "leftover c²", COL.label);
     }
   }
 
@@ -437,12 +411,20 @@ export class PythagorasLesson implements Lesson {
     this.labels.add(sprite);
   }
 
+  private captionBelow(points: readonly Point[], text: string, color: number): void {
+    const midX = points.reduce((sum, point) => sum + point.x, 0) / points.length;
+    const minY = Math.min(...points.map((point) => point.y));
+    const sprite = textSprite(text, color, 0.26);
+    sprite.position.set(midX, minY - 0.4, 0.35);
+    this.labels.add(sprite);
+  }
+
   private renderPanel(): void {
     this.setInfo(`
       <h2>Pythagoras</h2>
-      <p>On a right triangle the squares on the two legs fill the square on the hypotenuse:
-      <b>a² + b² = c²</b>. Drag C (right angle), A or B. Outward squares update live. Break the
-      right angle and the areas stop matching.</p>
+      <p>The marks on the sides are areas. A right angle is what makes the two smaller
+      squares add to the large one: <b>a² + b² = c²</b>. Drag C (right angle), A or B.
+      Break the right angle and the areas stop matching.</p>
 
       <div class="course">
         <h3>Presets</h3>
@@ -454,9 +436,9 @@ export class PythagorasLesson implements Lesson {
         </div>
         <div class="course-chapters" style="margin-top:8px">
           <button type="button" class="course-btn ghost" data-py="toggle-squares" id="py-squares">Toggle squares</button>
-          <button type="button" class="course-btn" data-py="rearrange" id="py-rearrange">▶ Compare arrangements</button>
+          <button type="button" class="course-btn" data-py="rearrange" id="py-rearrange">▶ Show why the areas match</button>
         </div>
-        <p class="course-hint">Four matching triangles leave a² + b² in one arrangement and c² in the other.</p>
+        <p class="course-hint">Same four copies of the triangle, same outer square. Left leftover is a² and b²; right leftover is c². Equal leftovers mean a² + b² = c².</p>
       </div>
 
       <div class="course">
@@ -528,10 +510,10 @@ export class PythagorasLesson implements Lesson {
     if (squaresBtn) squaresBtn.textContent = this.showSquares ? "Hide squares" : "Show squares";
     if (rearrangeBtn) {
       rearrangeBtn.textContent = this.rearranging
-        ? "Comparing…"
-        : this.rearrangeProgress >= 1
-          ? "▶ Compare again"
-          : "▶ Compare arrangements";
+        ? "Showing leftovers…"
+        : this.proof
+          ? "▶ Show leftovers again"
+          : "▶ Show why the areas match";
     }
   }
 
@@ -550,16 +532,15 @@ export class PythagorasLesson implements Lesson {
       this.proof = undefined;
       this.insight = reduceInteractionLoop(this.insight, { type: "manipulated" });
     } else if (action === "reveal") {
-      // The animation is evidence for a right-triangle rule, never a visual "proof" for
-      // an arbitrary figure. Return to the known right triangle if the learner moved it.
       if (!this.figure().holds) {
         this.triangle = axisAlignedRightTriangle(3, 4, { x: -1.2, y: -1.6 });
       }
       this.showSquares = true;
       this.valuesHidden = false;
       this.rearrangeProgress = 0;
-      this.rearranging = true;
-      this.proof = this.figure();
+      this.rearranging = false;
+      this.proof = undefined;
+      this.insight = reduceInteractionLoop(this.insight, { type: "revealed" });
     } else if (action === "break") {
       this.triangle = axisAlignedRightTriangle(3, 4, { x: -1.2, y: -1.6 });
       this.triangle = {
@@ -611,9 +592,7 @@ export class PythagorasLesson implements Lesson {
       case "manipulate":
         return "Set a right triangle with the 3-4-5 control or drag a corner.";
       case "reveal":
-        return this.rearranging
-          ? "Comparing two arrangements of the same four triangles."
-          : "Compare the arrangements to reveal the equal leftover areas.";
+        return "Read a², b² and c². On this right triangle the two smaller areas should add to the large one.";
       case "break":
         return "Now test whether the balance survives without a right angle.";
       case "articulate":
