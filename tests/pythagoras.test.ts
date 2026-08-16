@@ -3,8 +3,8 @@ import {
   axisAlignedRightTriangle,
   computePythagoras,
   distance,
+  fourTriangleDissection,
   outwardNormal,
-  rearrangedTiles,
   squareOnSide,
 } from "../src/math/pythagoras";
 
@@ -62,13 +62,59 @@ describe("pythagoras", () => {
     expect(sq[2].y).toBeLessThan(0);
   });
 
-  it("interpolates rearrangement tiles from side squares toward a pack", () => {
-    const result = computePythagoras(axisAlignedRightTriangle(3, 4));
-    const start = rearrangedTiles(result, 0);
-    const end = rearrangedTiles(result, 1);
-    expect(start.aTile).toHaveLength(4);
-    expect(end.aTile).toHaveLength(4);
-    expect(distance(start.aTile[0], result.squares[0].corners[0])).toBeLessThan(1e-6);
-    expect(distance(end.aTile[0], start.aTile[0])).toBeGreaterThan(0.1);
+  it("builds two valid four-triangle dissections of the same outer square", () => {
+    assertDissection(3, 4);
+    assertDissection(2.8, 2.8);
+  });
+
+  it("rejects invalid dissection dimensions", () => {
+    expect(() => fourTriangleDissection(0, 4)).toThrow("finite positive");
+    expect(() => fourTriangleDissection(Number.NaN, 4)).toThrow("finite positive");
   });
 });
+
+function polygonArea(points: readonly { x: number; y: number }[]): number {
+  return Math.abs(points.reduce((total, point, index) => {
+    const next = points[(index + 1) % points.length];
+    return total + point.x * next.y - point.y * next.x;
+  }, 0) / 2);
+}
+
+function vector(from: { x: number; y: number }, to: { x: number; y: number }): { x: number; y: number } {
+  return { x: to.x - from.x, y: to.y - from.y };
+}
+
+function assertDissection(a: number, b: number): void {
+  const dissection = fourTriangleDissection(a, b, { x: 2, y: -1 });
+  const outerArea = polygonArea(dissection.outer);
+  const c = Math.hypot(a, b);
+  const expectedSides = [a, b, c].sort((left, right) => left - right);
+
+  expect(outerArea).toBeCloseTo((a + b) ** 2);
+  for (const triangle of [...dissection.legs.triangles, ...dissection.hypotenuse.triangles]) {
+    const sides = [
+      distance(triangle[0], triangle[1]),
+      distance(triangle[1], triangle[2]),
+      distance(triangle[2], triangle[0]),
+    ].sort((left, right) => left - right);
+    expect(sides).toEqual(expectedSides.map((side) => expect.closeTo(side, 8)));
+  }
+
+  const legsArea = dissection.legs.triangles.reduce(
+    (total, triangle) => total + polygonArea(triangle),
+    polygonArea(dissection.legs.aSquare) + polygonArea(dissection.legs.bSquare),
+  );
+  const hypotenuseArea = dissection.hypotenuse.triangles.reduce(
+    (total, triangle) => total + polygonArea(triangle),
+    polygonArea(dissection.hypotenuse.cSquare),
+  );
+  expect(legsArea).toBeCloseTo(outerArea);
+  expect(hypotenuseArea).toBeCloseTo(outerArea);
+
+  const cSquare = dissection.hypotenuse.cSquare;
+  const first = vector(cSquare[0], cSquare[1]);
+  const second = vector(cSquare[1], cSquare[2]);
+  expect(first.x * second.x + first.y * second.y).toBeCloseTo(0);
+  expect(Math.hypot(first.x, first.y)).toBeCloseTo(c);
+  expect(Math.hypot(second.x, second.y)).toBeCloseTo(c);
+}

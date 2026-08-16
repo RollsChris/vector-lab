@@ -11,8 +11,8 @@ import {
 import {
   axisAlignedRightTriangle,
   computePythagoras,
+  fourTriangleDissection,
   formatNumber,
-  rearrangedTiles,
   type Point,
   type PythagorasResult,
   type RightTriangle,
@@ -45,8 +45,8 @@ const INSIGHT_LOOP: InteractionLoopConfig = {
     "Set a 3-4-5 right triangle. Its side lengths change, but the right angle stays fixed.",
   manipulateAction: "Use the 3-4-5 triangle",
   revealPrompt:
-    "Now pack the two leg squares into the hypotenuse square. Watch area move without being created or lost.",
-  revealAction: "Pack the areas",
+    "Compare two arrangements of the same four triangles. One leaves a² + b²; the other leaves c².",
+  revealAction: "Compare the arrangements",
   breakPrompt:
     "Push the right-angle corner away from 90°. Keep the side squares visible and watch the balance disappear.",
   breakAction: "Break the right angle",
@@ -88,6 +88,7 @@ export class PythagorasLesson implements Lesson {
   private showSquares = true;
   private rearrangeProgress = 0;
   private rearranging = false;
+  private proof?: PythagorasResult;
   private valuesHidden = false;
   private insight: InteractionLoopState = initialInteractionLoopState();
   private insightMarkup = "";
@@ -105,6 +106,7 @@ export class PythagorasLesson implements Lesson {
       this.triangle = axisAlignedRightTriangle(3.2, 2.4, { x: -0.6, y: -1.1 });
       this.rearrangeProgress = 0;
       this.rearranging = false;
+      this.proof = undefined;
       this.resetInsightLoop();
       this.renderScene();
       this.updatePanel();
@@ -114,6 +116,7 @@ export class PythagorasLesson implements Lesson {
       this.triangle = axisAlignedRightTriangle(3, 4, { x: -1.2, y: -1.6 });
       this.rearrangeProgress = 0;
       this.rearranging = false;
+      this.proof = undefined;
       this.resetInsightLoop();
       this.renderScene();
       this.updatePanel();
@@ -123,6 +126,7 @@ export class PythagorasLesson implements Lesson {
       this.triangle = axisAlignedRightTriangle(2.8, 2.8, { x: -0.8, y: -1.2 });
       this.rearrangeProgress = 0;
       this.rearranging = false;
+      this.proof = undefined;
       this.resetInsightLoop();
       this.renderScene();
       this.updatePanel();
@@ -136,6 +140,7 @@ export class PythagorasLesson implements Lesson {
       };
       this.rearrangeProgress = 0;
       this.rearranging = false;
+      this.proof = undefined;
       this.resetInsightLoop();
       this.renderScene();
       this.updatePanel();
@@ -143,6 +148,9 @@ export class PythagorasLesson implements Lesson {
     }
     if (action === "toggle-squares") {
       this.showSquares = !this.showSquares;
+      this.rearrangeProgress = 0;
+      this.rearranging = false;
+      this.proof = undefined;
       this.renderScene();
       this.updatePanel();
       return;
@@ -155,6 +163,7 @@ export class PythagorasLesson implements Lesson {
       this.showSquares = true;
       this.rearrangeProgress = 0;
       this.rearranging = true;
+      this.proof = this.figure();
       this.renderScene();
       this.updatePanel();
       return;
@@ -188,6 +197,7 @@ export class PythagorasLesson implements Lesson {
       else this.triangle = { ...this.triangle, B: p };
       this.rearrangeProgress = 0;
       this.rearranging = false;
+      this.proof = undefined;
       if (this.insight.phase === "manipulate") {
         this.insight = reduceInteractionLoop(this.insight, { type: "manipulated" });
       }
@@ -279,13 +289,15 @@ export class PythagorasLesson implements Lesson {
     }
 
     if (this.showSquares && result.valid) {
-      if (this.rearrangeProgress > 0.001) {
-        const tiles = rearrangedTiles(result, this.rearrangeProgress);
-        this.drawPoly([...tiles.aTile], COL.sqA, 0.35);
-        this.drawPoly([...tiles.bTile], COL.sqB, 0.35);
-        // Keep c² footprint as a dashed target
-        const cSq = result.squares.find((s) => s.side === "c");
-        if (cSq) this.drawPoly([...cSq.corners], COL.sqC, 0.12, true);
+      if (this.proof && this.rearrangeProgress > 0.001) {
+        const sourceOpacity = 1 - Math.min(1, this.rearrangeProgress / 0.16);
+        if (sourceOpacity > 0) {
+          for (const square of result.squares) {
+            const color = square.side === "a" ? COL.sqA : square.side === "b" ? COL.sqB : COL.sqC;
+            this.drawPoly([...square.corners], color, (square.side === "c" ? 0.22 : 0.32) * sourceOpacity);
+          }
+        }
+        this.drawDissectionProof(this.proof, this.rearrangeProgress);
       } else {
         for (const sq of result.squares) {
           const color = sq.side === "a" ? COL.sqA : sq.side === "b" ? COL.sqB : COL.sqC;
@@ -314,9 +326,56 @@ export class PythagorasLesson implements Lesson {
       this.labelAt(C, "C", COL.right);
     }
 
+    const proofActive = Boolean(this.proof && this.rearrangeProgress > 0.001);
+    this.handles.forEach((handle) => {
+      handle.visible = !proofActive;
+    });
     this.handles[0].position.set(C.x, C.y, 0.3);
     this.handles[1].position.set(A.x, A.y, 0.3);
     this.handles[2].position.set(B.x, B.y, 0.3);
+  }
+
+  /**
+   * Shows two complete, valid dissections rather than pretending intact a² and b²
+   * squares can slide into c². The four blue triangles have the same area throughout.
+   */
+  private drawDissectionProof(result: PythagorasResult, progress: number): void {
+    const p = Math.min(1, Math.max(0, progress));
+    const { A, B, C } = result.triangle;
+    const size = result.a + result.b;
+    const centre = {
+      x: (A.x + B.x + C.x) / 3,
+      y: (A.y + B.y + C.y) / 3,
+    };
+    const dissection = fourTriangleDissection(result.a, result.b, {
+      x: centre.x - size / 2,
+      y: centre.y - size / 2,
+    });
+    const legsOpacity = Math.min(1, p / 0.16) * Math.max(0, Math.min(1, (0.48 - p) / 0.16));
+    const hypotenuseOpacity = Math.max(0, Math.min(1, (p - 0.52) / 0.16));
+    const outerOpacity = Math.max(legsOpacity, hypotenuseOpacity, p > 0.12 && p < 0.88 ? 0.45 : 0);
+
+    if (outerOpacity > 0) this.drawPoly([...dissection.outer], COL.label, 0.025 * outerOpacity);
+    if (legsOpacity > 0) {
+      for (const triangle of dissection.legs.triangles) {
+        this.drawPoly([...triangle], COL.triangle, 0.2 * legsOpacity);
+      }
+      this.drawPoly([...dissection.legs.aSquare], COL.sqA, 0.35 * legsOpacity);
+      this.drawPoly([...dissection.legs.bSquare], COL.sqB, 0.35 * legsOpacity);
+      if (legsOpacity > 0.65) {
+        this.labelPolygon(dissection.legs.aSquare, "a²", COL.sqA);
+        this.labelPolygon(dissection.legs.bSquare, "b²", COL.sqB);
+      }
+    }
+    if (hypotenuseOpacity > 0) {
+      for (const triangle of dissection.hypotenuse.triangles) {
+        this.drawPoly([...triangle], COL.triangle, 0.2 * hypotenuseOpacity);
+      }
+      this.drawPoly([...dissection.hypotenuse.cSquare], COL.sqC, 0.3 * hypotenuseOpacity);
+      if (hypotenuseOpacity > 0.65) {
+        this.labelPolygon(dissection.hypotenuse.cSquare, "c²", COL.sqC);
+      }
+    }
   }
 
   private drawRightAngle(C: Point, A: Point, B: Point): void {
@@ -355,8 +414,8 @@ export class PythagorasLesson implements Lesson {
     const loop = new THREE.LineLoop(
       new THREE.BufferGeometry().setFromPoints(points.map((p) => new THREE.Vector3(p.x, p.y, 0.06))),
       dashed
-        ? new THREE.LineDashedMaterial({ color, dashSize: 0.12, gapSize: 0.1 })
-        : new THREE.LineBasicMaterial({ color }),
+        ? new THREE.LineDashedMaterial({ color, dashSize: 0.12, gapSize: 0.1, transparent: true, opacity })
+        : new THREE.LineBasicMaterial({ color, transparent: true, opacity }),
     );
     if (dashed) loop.computeLineDistances();
     this.dynamic.add(loop);
@@ -365,6 +424,16 @@ export class PythagorasLesson implements Lesson {
   private labelAt(p: Point, text: string, color: number): void {
     const sprite = textSprite(text, color, 0.3);
     sprite.position.set(p.x + 0.28, p.y + 0.28, 0.35);
+    this.labels.add(sprite);
+  }
+
+  private labelPolygon(points: readonly Point[], text: string, color: number): void {
+    const centre = points.reduce(
+      (sum, point) => ({ x: sum.x + point.x / points.length, y: sum.y + point.y / points.length }),
+      { x: 0, y: 0 },
+    );
+    const sprite = textSprite(text, color, 0.34);
+    sprite.position.set(centre.x, centre.y, 0.35);
     this.labels.add(sprite);
   }
 
@@ -385,9 +454,9 @@ export class PythagorasLesson implements Lesson {
         </div>
         <div class="course-chapters" style="margin-top:8px">
           <button type="button" class="course-btn ghost" data-py="toggle-squares" id="py-squares">Toggle squares</button>
-          <button type="button" class="course-btn" data-py="rearrange" id="py-rearrange">▶ Pack a² + b²</button>
+          <button type="button" class="course-btn" data-py="rearrange" id="py-rearrange">▶ Compare arrangements</button>
         </div>
-        <p class="course-hint">The pack animation only runs while the triangle is right-angled.</p>
+        <p class="course-hint">Four matching triangles leave a² + b² in one arrangement and c² in the other.</p>
       </div>
 
       <div class="course">
@@ -459,10 +528,10 @@ export class PythagorasLesson implements Lesson {
     if (squaresBtn) squaresBtn.textContent = this.showSquares ? "Hide squares" : "Show squares";
     if (rearrangeBtn) {
       rearrangeBtn.textContent = this.rearranging
-        ? "Packing…"
+        ? "Comparing…"
         : this.rearrangeProgress >= 1
-          ? "▶ Pack again"
-          : "▶ Pack a² + b²";
+          ? "▶ Compare again"
+          : "▶ Compare arrangements";
     }
   }
 
@@ -478,6 +547,7 @@ export class PythagorasLesson implements Lesson {
       this.valuesHidden = true;
       this.rearrangeProgress = 0;
       this.rearranging = false;
+      this.proof = undefined;
       this.insight = reduceInteractionLoop(this.insight, { type: "manipulated" });
     } else if (action === "reveal") {
       // The animation is evidence for a right-triangle rule, never a visual "proof" for
@@ -489,6 +559,7 @@ export class PythagorasLesson implements Lesson {
       this.valuesHidden = false;
       this.rearrangeProgress = 0;
       this.rearranging = true;
+      this.proof = this.figure();
     } else if (action === "break") {
       this.triangle = axisAlignedRightTriangle(3, 4, { x: -1.2, y: -1.6 });
       this.triangle = {
@@ -498,6 +569,7 @@ export class PythagorasLesson implements Lesson {
       this.valuesHidden = false;
       this.rearrangeProgress = 0;
       this.rearranging = false;
+      this.proof = undefined;
       this.insight = reduceInteractionLoop(this.insight, { type: "condition-broken" });
     } else if (action.startsWith("articulate:")) {
       const value = action.slice("articulate:".length);
@@ -540,8 +612,8 @@ export class PythagorasLesson implements Lesson {
         return "Set a right triangle with the 3-4-5 control or drag a corner.";
       case "reveal":
         return this.rearranging
-          ? "Packing the two smaller squares into the larger square."
-          : "Reveal the area balance with the packing animation.";
+          ? "Comparing two arrangements of the same four triangles."
+          : "Compare the arrangements to reveal the equal leftover areas.";
       case "break":
         return "Now test whether the balance survives without a right angle.";
       case "articulate":

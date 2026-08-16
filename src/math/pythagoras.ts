@@ -5,6 +5,9 @@ export interface Point {
   y: number;
 }
 
+export type Triangle = readonly [Point, Point, Point];
+export type Quad = readonly [Point, Point, Point, Point];
+
 export interface RightTriangle {
   /** Right-angle vertex. */
   C: Point;
@@ -197,61 +200,54 @@ function empty(triangle: RightTriangle, reason: string): PythagorasResult {
 }
 
 /**
- * Rearrangement animation helper: return a blend factor's square corners for the
- * classic "move the two small squares into the large one" story.
- * progress ∈ [0,1]; at 0 squares sit on the sides, at 1 the a² and b² tiles
- * pack into the c² footprint (shear-free axis packing for the axis-aligned case).
+ * Two valid arrangements of four congruent right triangles in the same
+ * (a + b)² outer square. The first leaves a² and b²; the second leaves c².
+ * Comparing their equal leftovers is the classic dissection proof of Pythagoras.
  */
-export function rearrangedTiles(
-  result: PythagorasResult,
-  progress: number,
-): { aTile: readonly Point[]; bTile: readonly Point[] } {
-  const p = Math.min(1, Math.max(0, progress));
-  const { triangle, a, b } = result;
-  const { C } = triangle;
-  // Target packing inside a c×c box sitting on the hypotenuse is hard in general;
-  // for the demo we pack into an axis-aligned c×c box above the figure's bounding box.
-  const c = result.c;
-  const baseY = Math.max(triangle.A.y, triangle.B.y, triangle.C.y) + 0.8 + (1 - p) * 0;
-  // Keep a simple two-rectangle pack: a×a bottom-left, b×b beside/above as fits.
-  const targetA: Point[] = [
-    { x: C.x, y: baseY },
-    { x: C.x + a, y: baseY },
-    { x: C.x + a, y: baseY + a },
-    { x: C.x, y: baseY + a },
-  ];
-  // Place b×b to the right if a+b <= c, else above a.
-  const placeRight = a + b <= c + 1e-6;
-  const targetB: Point[] = placeRight
-    ? [
-        { x: C.x + a, y: baseY },
-        { x: C.x + a + b, y: baseY },
-        { x: C.x + a + b, y: baseY + b },
-        { x: C.x + a, y: baseY + b },
-      ]
-    : [
-        { x: C.x, y: baseY + a },
-        { x: C.x + b, y: baseY + a },
-        { x: C.x + b, y: baseY + a + b },
-        { x: C.x, y: baseY + a + b },
-      ];
-
-  const startA = result.squares.find((s) => s.side === "a")?.corners ?? targetA;
-  const startB = result.squares.find((s) => s.side === "b")?.corners ?? targetB;
-  return {
-    aTile: lerpPoly(startA, targetA, p),
-    bTile: lerpPoly(startB, targetB, p),
-  };
-}
-
-function lerpPoly(from: readonly Point[], to: readonly Point[], t: number): Point[] {
-  const n = Math.min(from.length, to.length);
-  const out: Point[] = [];
-  for (let i = 0; i < n; i++) {
-    out.push({
-      x: from[i].x + (to[i].x - from[i].x) * t,
-      y: from[i].y + (to[i].y - from[i].y) * t,
-    });
+export function fourTriangleDissection(
+  a: number,
+  b: number,
+  origin: Point = { x: 0, y: 0 },
+): {
+  outer: Quad;
+  legs: { triangles: readonly [Triangle, Triangle, Triangle, Triangle]; aSquare: Quad; bSquare: Quad };
+  hypotenuse: { triangles: readonly [Triangle, Triangle, Triangle, Triangle]; cSquare: Quad };
+} {
+  if (!Number.isFinite(a) || !Number.isFinite(b) || a <= 0 || b <= 0) {
+    throw new Error("fourTriangleDissection requires finite positive leg lengths");
   }
-  return out;
+
+  const s = a + b;
+  const point = (x: number, y: number): Point => ({ x: origin.x + x, y: origin.y + y });
+  const tri = (points: readonly [readonly [number, number], readonly [number, number], readonly [number, number]]): Triangle =>
+    [point(...points[0]), point(...points[1]), point(...points[2])];
+  const quad = (points: readonly [
+    readonly [number, number],
+    readonly [number, number],
+    readonly [number, number],
+    readonly [number, number],
+  ]): Quad => [point(...points[0]), point(...points[1]), point(...points[2]), point(...points[3])];
+
+  return {
+    outer: quad([[0, 0], [s, 0], [s, s], [0, s]]),
+    legs: {
+      triangles: [
+        tri([[0, a], [a, a], [a, s]]),
+        tri([[0, a], [a, s], [0, s]]),
+        tri([[a, 0], [s, 0], [s, a]]),
+        tri([[a, 0], [s, a], [a, a]]),
+      ],
+      aSquare: quad([[0, 0], [a, 0], [a, a], [0, a]]),
+      bSquare: quad([[a, a], [s, a], [s, s], [a, s]]),
+    },
+    hypotenuse: {
+      triangles: [
+        tri([[0, 0], [a, 0], [0, b]]),
+        tri([[a, 0], [s, 0], [s, a]]),
+        tri([[s, a], [s, s], [b, s]]),
+        tri([[0, b], [b, s], [0, s]]),
+      ],
+      cSquare: quad([[a, 0], [s, a], [b, s], [0, b]]),
+    },
+  };
 }

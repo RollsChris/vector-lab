@@ -8,10 +8,10 @@ test("Pythagoras insight loop makes the right-angle condition discoverable", asy
   await expect(page.locator("#py-insight-loop")).toContainText("Set a 3-4-5 right triangle");
 
   await page.locator('[data-py="insight:manipulate"]').click();
-  await expect(page.locator("#py-insight-loop")).toContainText("Pack the areas");
+  await expect(page.locator("#py-insight-loop")).toContainText("Compare the arrangements");
 
   await page.locator('[data-py="insight:reveal"]').click();
-  await expect(page.locator("#py-rearrange")).toHaveText("Packing…");
+  await expect(page.locator("#py-rearrange")).toHaveText("Comparing…");
   await expect(page.locator("#py-insight-loop")).toContainText("Break the right angle", { timeout: 4_000 });
 
   await page.locator('[data-py="insight:break"]').click();

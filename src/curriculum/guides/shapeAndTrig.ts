@@ -269,7 +269,7 @@ export const SHAPE_AND_TRIG_GUIDES: readonly LessonGuide[] = [
       },
     ],
     tryThis:
-      "Press 3-4-5 and read a², b² and c². Press Pack a² + b² to watch the leg squares slide into a matching area. Then press Break right angle and watch the live claim flip to fails.",
+      "Press 3-4-5 and read a², b² and c². Compare the two four-triangle arrangements: one leaves a² + b² and the other leaves c². Then press Break right angle and watch the live claim flip to fails.",
   },
   {
     id: "similar-triangles",
