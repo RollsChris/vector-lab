@@ -1,6 +1,6 @@
 import { derivationButton } from "../core/FormulaDerivations";
 
-export type PrimeVisual = "Sieve" | "Ulam spiral" | "Prime gaps" | "Integer energy";
+export type PrimeVisual = "Sieve" | "Ulam spiral" | "Prime gaps";
 
 export interface PrimeChapter {
   title: string;
@@ -312,39 +312,6 @@ export const PRIME_CHAPTERS: readonly PrimeChapter[] = [
       Luke Durant through GIMPS and confirmed in October 2024. There cannot be a largest prime.</p>
       <p class="example"><b>Scientific wording:</b> say “largest known,” distinguish probable
       primes from certified primes, and never turn extensive computation into a universal proof.</p>`,
-  },
-  {
-    title: "Integer Energy Lab",
-    objective: "Test the idea that an integer earns “survival energy” by passing small-prime divisibility checks, with primes as the numbers that survive through √n.",
-    visual: "Integer energy",
-    limit: 120,
-    selected: 97,
-    content: `
-      <p>Trial division is a gauntlet. For each prime <code>p ≤ √n</code>, either <code>p</code>
-      divides <code>n</code> and <code>n</code> is composite, or <code>n</code> <b>survives</b>
-      that test. The lab treats each survival as one unit of modular
-      <b>energy</b> — a bookkeeping score, not a physical quantity.</p>
-      <div class="formula" data-derivation-exempt="Pedagogical scoring model, not a classical formula">
-        <div class="formula-label">Survival energy</div>
-        <div class="formula-body">E(n) = #{ p prime : p ≤ √n and p ∤ n }, stopping at the first dividing p</div>
-        <div class="formula-note">The full budget F(n) counts every prime p ≤ √n. E(n) = F(n) if and
-        only if n is prime (for n ≥ 2).</div>
-      </div>
-      <ul>
-        <li>Plot any integer-valued expression of <code>n</code> over a bounded range.</li>
-        <li>Presets include <code>n % 6</code>, <code>isprime(n)</code>, <code>phi(n)/n</code>,
-        <code>mu(n)</code>, <code>omega(n)</code>, <code>gcd(n, 30)</code>, and
-        <code>energy(n)</code>.</li>
-        <li>Raise the <b>threshold</b> to turn a score into a primality <i>candidate</i> rule.
-        The readout reports candidate count, prime hits, precision and recall so the hypothesis
-        is testable, not just decorative.</li>
-        <li>Custom expressions use a strict allowlisted language (arithmetic, comparisons as
-        0/1, safe math, and the number-theory helpers above) — not arbitrary JavaScript.</li>
-      </ul>
-      <p class="example"><b>Try it:</b> load <code>survival energy</code>, set the threshold to
-      match full budgets near the right edge of the range, and check that precision climbs toward
-      1. Then switch to <code>n % 6</code> and watch precision collapse — residue classes alone
-      do not certify primes.</p>`,
   },
 ] as const;
 

@@ -19,6 +19,7 @@ export class Viewport {
   private readonly grid: THREE.GridHelper;
   private readonly axes: THREE.Group;
   private raf = 0;
+  private running = false;
 
   constructor(private readonly container: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -51,7 +52,7 @@ export class Viewport {
     window.addEventListener("resize", this.resize);
     // iOS URL-bar show/hide changes layout without always firing window.resize.
     window.visualViewport?.addEventListener("resize", this.resize);
-    this.loop();
+    this.resume();
   }
 
   onTick(fn: TickFn): () => void {
@@ -69,6 +70,36 @@ export class Viewport {
     this.camera.position.set(pos.x, pos.y, pos.z);
     this.controls.target.set(target.x, target.y, target.z);
     this.controls.update();
+  }
+
+  /** Whether the rAF render loop is currently scheduled. */
+  get isRunning(): boolean {
+    return this.running;
+  }
+
+  /**
+   * Cancel the animation frame loop. Safe when already paused.
+   * Freezes the clock so a later resume() does not apply a huge dt/elapsed jump.
+   */
+  pause(): void {
+    if (!this.running) return;
+    this.running = false;
+    cancelAnimationFrame(this.raf);
+    this.raf = 0;
+    this.clock.stop();
+  }
+
+  /**
+   * Restart the animation frame loop after pause(). No-op when already running.
+   * Preserves elapsed time accumulated before the pause.
+   */
+  resume(): void {
+    if (this.running) return;
+    this.running = true;
+    const elapsed = this.clock.elapsedTime;
+    this.clock.start();
+    this.clock.elapsedTime = elapsed;
+    this.loop();
   }
 
   private resize = (): void => {
@@ -89,7 +120,7 @@ export class Viewport {
   };
 
   dispose(): void {
-    cancelAnimationFrame(this.raf);
+    this.pause();
     window.removeEventListener("resize", this.resize);
     window.visualViewport?.removeEventListener("resize", this.resize);
     this.renderer.dispose();

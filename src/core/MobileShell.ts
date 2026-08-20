@@ -42,6 +42,13 @@ export class MobileShell {
     if (this.mq.matches) this.closeAll();
   }
 
+  /** Disable the lesson-only control dock while another app section owns the stage. */
+  setControlsEnabled(enabled: boolean): void {
+    this.els.controlsToggle.disabled = !enabled;
+    this.els.controlsToggle.setAttribute("aria-disabled", enabled ? "false" : "true");
+    if (!enabled) this.closeControls();
+  }
+
   private bind(): void {
     this.els.navToggle.addEventListener("click", () => {
       if (this.navOpen) this.closeNav();
@@ -137,7 +144,8 @@ export class MobileShell {
       this.els.controlDockContent.append(this.els.guiHost);
       return;
     }
-    this.els.panel.insertBefore(this.els.guiHost, this.els.panel.querySelector("#lesson-meta"));
+    const anchor = this.els.panel.querySelector<HTMLElement>("#lesson-meta");
+    anchor?.parentElement?.insertBefore(this.els.guiHost, anchor);
   }
 
   private syncChrome(): void {

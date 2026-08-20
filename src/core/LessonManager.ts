@@ -17,6 +17,7 @@ import { mathHtml, typesetMath } from "./MathText";
 export class LessonManager {
   private active: Lesson | null = null;
   private gui: GUI | null = null;
+  private navigationEnabled = true;
   private readonly buttons = new Map<string, HTMLButtonElement>();
   private readonly byId = new Map<string, Lesson>();
   private readonly order = new Map<string, number>();
@@ -59,7 +60,9 @@ export class LessonManager {
     this.derivationDialog.setAttribute("aria-modal", "true");
     document.body.appendChild(this.derivationDialog);
     this.derivationObserver = new MutationObserver(() => {
-      if (this.active) this.labelDerivationControls(this.active.id);
+      // Only decorate genuine lesson info output — never Investigations content.
+      if (!this.active || !this.navigationEnabled) return;
+      this.labelDerivationControls(this.active.id);
       typesetMath(this.dom.info);
     });
     this.derivationObserver.observe(this.dom.info, { childList: true, subtree: true });
@@ -102,11 +105,46 @@ export class LessonManager {
     this.select(id);
   }
 
+  /**
+   * Exit the active lesson and clear selection so the same lesson can be re-entered.
+   * Used when switching app sections (e.g. to Investigations).
+   */
+  suspend(): void {
+    if (this.derivationDialog.open) this.derivationDialog.close();
+    if (this.active) this.active.exit();
+    this.disposeWorld();
+    this.gui?.destroy();
+    this.gui = null;
+    this.active = null;
+    this.frame.clear();
+    this.dom.meta.replaceChildren();
+    this.dom.info.replaceChildren();
+    this.dom.guiHost.replaceChildren();
+    for (const btn of this.buttons.values()) {
+      btn.classList.remove("active");
+      btn.setAttribute("aria-current", "false");
+    }
+  }
+
+  /**
+   * When false, hash and keyboard lesson navigation are ignored so another app
+   * section (Investigations) can own routing without being hijacked.
+   */
+  setNavigationEnabled(enabled: boolean): void {
+    this.navigationEnabled = enabled;
+  }
+
+  get isNavigationEnabled(): boolean {
+    return this.navigationEnabled;
+  }
+
   next(): void {
+    if (!this.navigationEnabled) return;
     this.selectRelative(1);
   }
 
   previous(): void {
+    if (!this.navigationEnabled) return;
     this.selectRelative(-1);
   }
 
@@ -236,11 +274,14 @@ export class LessonManager {
     });
 
     window.addEventListener("hashchange", () => {
+      if (!this.navigationEnabled) return;
       const id = location.hash.slice(1);
-      if (id) this.select(id, false);
+      if (!id || isForeignHash(id)) return;
+      this.select(id, false);
     });
 
     window.addEventListener("keydown", (event) => {
+      if (!this.navigationEnabled) return;
       if (this.isEditing(event.target)) return;
       if (event.key === "/") {
         event.preventDefault();
@@ -514,4 +555,9 @@ export class LessonManager {
     });
     world.clear();
   }
+}
+
+/** Hashes owned by other top-level app sections — LessonManager must not claim them. */
+function isForeignHash(id: string): boolean {
+  return id === "investigations" || id.startsWith("investigations/");
 }

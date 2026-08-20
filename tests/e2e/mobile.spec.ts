@@ -85,4 +85,32 @@ test.describe("mobile shell", () => {
     await page.goto("/");
     await expect(page.locator(".hint")).toContainText(/Lessons \/ Learn|pinch to zoom/);
   });
+
+  test("investigations disables visible topbar prev/next lesson controls", async ({ page }) => {
+    const errors = trackErrors(page);
+    await page.goto("/#geometry");
+    await expect(page.locator("#topbar")).toBeVisible();
+    await expect(page.locator("#prev-lesson")).toBeVisible();
+    await expect(page.locator("#next-lesson")).toBeVisible();
+    await expect(page.locator("#next-lesson")).toBeEnabled();
+
+    // Hash route (avoids drawer/topbar hit-testing flakiness on narrow chrome).
+    await page.goto("/#investigations");
+    await expect(page.locator("#investigations-chrome")).toBeVisible();
+    await expect(page.locator("#prev-lesson")).toBeVisible();
+    await expect(page.locator("#next-lesson")).toBeVisible();
+    await expect(page.locator("#prev-lesson")).toBeDisabled();
+    await expect(page.locator("#next-lesson")).toBeDisabled();
+    await expect(page.locator("#prev-lesson")).toHaveAttribute("aria-disabled", "true");
+    await expect(page.locator("#next-lesson")).toHaveAttribute("aria-disabled", "true");
+
+    await page.goto("/#geometry");
+    await expect(page.locator("#info h2")).toHaveText("Geometry");
+    await expect(page.locator("#prev-lesson")).toBeEnabled();
+    await expect(page.locator("#next-lesson")).toBeEnabled();
+    await expect(page.locator("#prev-lesson")).toHaveAttribute("aria-disabled", "false");
+    await expect(page.locator("#next-lesson")).toHaveAttribute("aria-disabled", "false");
+
+    expect(errors, errors.join("\n")).toEqual([]);
+  });
 });

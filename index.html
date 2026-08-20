@@ -66,13 +66,46 @@
           Vector Lab
           <small>Zero to elite — a guided maths path</small>
         </div>
-        <div id="path-progress" class="path-progress"></div>
-        <div class="nav-tools">
-          <label for="lesson-search">Find a lesson</label>
-          <input id="lesson-search" type="search" placeholder="Search lessons…  /" autocomplete="off" enterkeyhint="search" />
-          <div id="lesson-count" class="nav-count"></div>
+        <div id="section-switcher" class="section-switcher" role="tablist" aria-label="App section">
+          <button
+            type="button"
+            role="tab"
+            id="section-tab-lessons"
+            class="section-tab active"
+            data-section="lessons"
+            aria-selected="true"
+            aria-controls="lessons-chrome"
+          >
+            Lessons
+          </button>
+          <button
+            type="button"
+            role="tab"
+            id="section-tab-investigations"
+            class="section-tab"
+            data-section="investigations"
+            aria-selected="false"
+            aria-controls="investigations-chrome"
+          >
+            Investigations
+          </button>
         </div>
-        <nav id="nav" aria-label="Lessons"></nav>
+        <div id="lessons-chrome" role="tabpanel" aria-labelledby="section-tab-lessons">
+          <div id="path-progress" class="path-progress"></div>
+          <div class="nav-tools">
+            <label for="lesson-search">Find a lesson</label>
+            <input id="lesson-search" type="search" placeholder="Search lessons…  /" autocomplete="off" enterkeyhint="search" />
+            <div id="lesson-count" class="nav-count"></div>
+          </div>
+          <nav id="nav" aria-label="Lessons"></nav>
+        </div>
+        <div
+          id="investigations-chrome"
+          class="inv-chrome-host"
+          role="tabpanel"
+          aria-labelledby="section-tab-investigations"
+          hidden
+        ></div>
       </aside>
 
       <main id="stage" aria-label="Interactive 3D lesson viewport">
@@ -83,14 +116,18 @@
         >
           Drag to orbit · scroll to zoom · right-drag to pan · / search · [ ] lessons
         </div>
+        <div id="investigations-stage" class="inv-stage-host" hidden></div>
       </main>
 
       <aside id="panel" aria-live="polite">
         <div class="panel-handle" aria-hidden="true"></div>
-        <div id="lesson-meta"></div>
-        <div id="lesson-brief"></div>
-        <div id="info"></div>
-        <div id="lesson-practice"></div>
+        <div id="lessons-panel">
+          <div id="lesson-meta"></div>
+          <div id="lesson-brief"></div>
+          <div id="info"></div>
+          <div id="lesson-practice"></div>
+        </div>
+        <div id="investigations-panel" class="inv-panel-host" hidden></div>
       </aside>
     </div>
     <script type="module" src="/src/main.ts"></script>

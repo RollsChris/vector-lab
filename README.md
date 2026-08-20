@@ -7,6 +7,13 @@ instead of pre-rendered video, you orbit, zoom, drag sliders, and type your own 
 
 ## How the learning path works
 
+The app has two top-level sections:
+
+- **Lessons** — the 73-lesson zero-to-elite path (interactive Three.js scenes).
+- **Investigations** — a separate 100-item Riemann Hypothesis mastery roadmap plus a bounded
+  Hardy `Z(t)` experiments bench. It is for serious personal study; it does **not** claim to
+  prove RH. Deep links: `/#investigations`, `/#investigations/experiments`.
+
 The 73 lessons are a single ordered path, split into eleven stages. Nothing assumes prior
 knowledge: Stage 1 starts at counting and fractions, and Stage 11 ends at maths expressed as
 GPU code.
@@ -390,9 +397,10 @@ tests can drive lessons and read runtime state.
 |------|------|
 | `src/core/Viewport.ts` | renderer, camera, OrbitControls, axes/grid, render loop |
 | `src/core/Lesson.ts` | `Lesson` interface + `LessonContext` |
-| `src/core/LessonManager.ts` | sidebar nav, enter/exit lifecycle, per-lesson GUI |
+| `src/core/LessonManager.ts` | sidebar nav, enter/exit/suspend lifecycle, per-lesson GUI |
 | `src/core/LessonFrame.ts` | renders the static teaching frame (brief + practice) around each lesson |
 | `src/core/Progress.ts` | learner progress, persisted to `localStorage` |
+| `src/investigations/` | RH mastery roadmap (100), separate progress, Experiments workbench |
 | `src/curriculum/stages.ts` | the zero-to-elite path: stages, teaching order, next/previous |
 | `src/curriculum/types.ts` | `LessonGuide` contract — objectives, worked example, pitfalls, checks |
 | `src/curriculum/guides/*` | authored guide content, one file per stage group |

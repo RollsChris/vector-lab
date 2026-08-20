@@ -2,6 +2,10 @@ import "./style.css";
 import { Viewport } from "./core/Viewport";
 import { LessonManager } from "./core/LessonManager";
 import { MobileShell } from "./core/MobileShell";
+import {
+  InvestigationApp,
+  isInvestigationHash,
+} from "./investigations/InvestigationApp";
 import { VectorFieldLesson } from "./lessons/VectorFieldLesson";
 import { DifferentiationLesson } from "./lessons/DifferentiationLesson";
 import { IntegrationLesson } from "./lessons/IntegrationLesson";
@@ -89,6 +93,14 @@ const practice = document.getElementById("lesson-practice")!;
 const pathProgress = document.getElementById("path-progress")!;
 const sidebar = document.getElementById("sidebar")!;
 const panel = document.getElementById("panel")!;
+const lessonsChrome = document.getElementById("lessons-chrome")!;
+const lessonsPanel = document.getElementById("lessons-panel")!;
+const investigationsChrome = document.getElementById("investigations-chrome")!;
+const investigationsStage = document.getElementById("investigations-stage")!;
+const investigationsPanel = document.getElementById("investigations-panel")!;
+const sectionSwitcher = document.getElementById("section-switcher")!;
+const prevLessonBtn = document.getElementById("prev-lesson") as HTMLButtonElement;
+const nextLessonBtn = document.getElementById("next-lesson") as HTMLButtonElement;
 
 const viewport = new Viewport(stage);
 
@@ -179,8 +191,8 @@ const shell = new MobileShell(
     panelToggle: document.getElementById("panel-toggle") as HTMLButtonElement,
     controlsToggle: document.getElementById("controls-toggle") as HTMLButtonElement,
     controlsClose: document.getElementById("controls-close") as HTMLButtonElement,
-    prevLesson: document.getElementById("prev-lesson") as HTMLButtonElement,
-    nextLesson: document.getElementById("next-lesson") as HTMLButtonElement,
+    prevLesson: prevLessonBtn,
+    nextLesson: nextLessonBtn,
     backdrop: document.getElementById("sheet-backdrop")!,
     topbarLesson: document.getElementById("topbar-lesson")!,
     hint: stage.querySelector(".hint") as HTMLElement,
@@ -196,14 +208,132 @@ const shell = new MobileShell(
   },
 );
 
+const investigations = new InvestigationApp(
+  {
+    chrome: investigationsChrome,
+    stage: investigationsStage,
+    panel: investigationsPanel,
+  },
+  {
+    setHash: (hash, replace = false) => {
+      const url = `#${hash}`;
+      if (location.hash === url) return;
+      if (replace) history.replaceState(null, "", url);
+      else history.pushState(null, "", url);
+    },
+    onTitle: (title) => {
+      shell.onLessonSelected(title);
+      document.title = `${title} — Vector Lab`;
+    },
+  },
+);
+
+type AppSection = "lessons" | "investigations";
+let section: AppSection = "lessons";
+
+function setSectionTab(next: AppSection): void {
+  for (const btn of sectionSwitcher.querySelectorAll<HTMLButtonElement>(".section-tab")) {
+    const active = btn.dataset.section === next;
+    btn.classList.toggle("active", active);
+    btn.setAttribute("aria-selected", active ? "true" : "false");
+  }
+  lessonsChrome.hidden = next !== "lessons";
+  investigationsChrome.hidden = next !== "investigations";
+}
+
+/** Topbar lesson prev/next are lesson-only; disable them in Investigations. */
+function setLessonStepControlsEnabled(enabled: boolean): void {
+  prevLessonBtn.disabled = !enabled;
+  nextLessonBtn.disabled = !enabled;
+  prevLessonBtn.setAttribute("aria-disabled", enabled ? "false" : "true");
+  nextLessonBtn.setAttribute("aria-disabled", enabled ? "false" : "true");
+  shell.setControlsEnabled(enabled);
+}
+
+function showLessonsSection(hash: string | undefined, replaceHash = false): void {
+  section = "lessons";
+  setSectionTab("lessons");
+  investigations.hide();
+  lessonsPanel.hidden = false;
+  stage.querySelector<HTMLElement>(".hint")!.hidden = false;
+  viewport.renderer.domElement.hidden = false;
+  viewport.resume();
+  setLessonStepControlsEnabled(true);
+
+  manager.setNavigationEnabled(true);
+  const lessonHash = hash && !isInvestigationHash(hash) ? hash : undefined;
+  if (manager.activeLesson) {
+    if (lessonHash && manager.activeLesson.id !== lessonHash) {
+      manager.selectById(lessonHash);
+    }
+  } else {
+    manager.start(lessonHash);
+  }
+
+  if (replaceHash && manager.activeLesson && location.hash.slice(1) !== manager.activeLesson.id) {
+    history.replaceState(null, "", `#${manager.activeLesson.id}`);
+  }
+}
+
+function showInvestigationsSection(hash: string, replaceHash = false): void {
+  section = "investigations";
+  setSectionTab("investigations");
+  manager.setNavigationEnabled(false);
+  manager.suspend();
+  setLessonStepControlsEnabled(false);
+  viewport.pause();
+  lessonsPanel.hidden = true;
+  stage.querySelector<HTMLElement>(".hint")!.hidden = true;
+  viewport.renderer.domElement.hidden = true;
+  investigations.show(hash, replaceHash);
+}
+
+function routeFromHash(replaceHash = false): void {
+  const hash = location.hash.slice(1);
+  if (isInvestigationHash(hash)) {
+    showInvestigationsSection(hash, replaceHash);
+  } else {
+    showLessonsSection(hash || undefined, replaceHash);
+  }
+}
+
+for (const btn of sectionSwitcher.querySelectorAll<HTMLButtonElement>(".section-tab")) {
+  btn.addEventListener("click", () => {
+    const next = btn.dataset.section as AppSection;
+    if (next === section) return;
+    if (next === "investigations") {
+      history.pushState(null, "", "#investigations");
+      showInvestigationsSection("investigations", true);
+    } else {
+      const resume = manager.progressStore.lastVisited;
+      const target = resume ?? "foundations";
+      history.pushState(null, "", `#${target}`);
+      showLessonsSection(target, true);
+    }
+  });
+}
+
 manager.onSelect((lesson) => {
+  if (section !== "lessons") return;
   shell.onLessonSelected(lesson.title.replace(/^\d+\s*·\s*/, ""));
 });
 
-manager.start(location.hash.slice(1) || undefined);
+// Investigations hashes must be claimed before LessonManager start, so a cold
+// load of #investigations never mounts a normal lesson first.
+routeFromHash(true);
+
+window.addEventListener("hashchange", () => {
+  routeFromHash(false);
+});
 
 // Test/debug hook: expose internals so the automated browser tests can introspect
 // runtime state (active lesson, viewport). Only attached during dev/test builds.
 if (import.meta.env.DEV) {
-  (window as unknown as { __lab: unknown }).__lab = { viewport, manager, shell };
+  (window as unknown as { __lab: unknown }).__lab = {
+    viewport,
+    manager,
+    shell,
+    investigations,
+    section: () => section,
+  };
 }
