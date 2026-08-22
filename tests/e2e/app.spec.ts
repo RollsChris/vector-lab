@@ -2601,7 +2601,7 @@ test("logarithms: log_b(x) undoes exponentiation", async ({ page }) => {
     lesson["params"].value = 8;
     lesson["rebuild"]();
     return {
-      pointY: lesson["point"].position.y,
+      pointY: lesson["logPoint"].position.y,
       text: document.getElementById("info")?.textContent ?? "",
     };
   });
