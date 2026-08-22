@@ -2,6 +2,7 @@ import "./style.css";
 import { Viewport } from "./core/Viewport";
 import { LessonManager } from "./core/LessonManager";
 import { MobileShell } from "./core/MobileShell";
+import { TopicWorkspace } from "./core/TopicWorkspace";
 import {
   InvestigationApp,
   isInvestigationHash,
@@ -185,11 +186,24 @@ const manager = new LessonManager(
   { nav, info, guiHost, search, count, meta, brief, practice, pathProgress },
 );
 
+const workspace = new TopicWorkspace({
+  panelLesson: document.getElementById("panel-tab-lesson") as HTMLButtonElement,
+  panelAnimate: document.getElementById("panel-tab-animate") as HTMLButtonElement,
+  tabbarLesson: document.getElementById("tabbar-lesson") as HTMLButtonElement,
+  tabbarAnimate: document.getElementById("tabbar-animate") as HTMLButtonElement,
+  pageLearn: document.getElementById("page-learn") as HTMLButtonElement,
+  pagePractice: document.getElementById("page-practice") as HTMLButtonElement,
+  lessonPanel: document.getElementById("topic-lesson")!,
+  animatePanel: document.getElementById("topic-animate")!,
+  learnPage: document.getElementById("lesson-learn")!,
+  practicePage: document.getElementById("lesson-practice-page")!,
+  tabbar: document.getElementById("topic-tabbar")!,
+  desktopTabs: document.getElementById("topic-tabs-desktop")!,
+});
+
 const shell = new MobileShell(
   {
     navToggle: document.getElementById("nav-toggle") as HTMLButtonElement,
-    panelToggle: document.getElementById("panel-toggle") as HTMLButtonElement,
-    controlsToggle: document.getElementById("controls-toggle") as HTMLButtonElement,
     controlsClose: document.getElementById("controls-close") as HTMLButtonElement,
     prevLesson: prevLessonBtn,
     nextLesson: nextLessonBtn,
@@ -198,14 +212,19 @@ const shell = new MobileShell(
     hint: stage.querySelector(".hint") as HTMLElement,
     sidebar,
     panel,
+    panelHandle: document.getElementById("panel-handle")!,
     controlDock: document.getElementById("control-dock")!,
     controlDockContent: document.getElementById("control-dock-content")!,
     guiHost,
+    animatePanel: document.getElementById("topic-animate")!,
+    info,
+    tabbarLesson: document.getElementById("tabbar-lesson") as HTMLButtonElement,
   },
   {
     previous: () => manager.previous(),
     next: () => manager.next(),
   },
+  workspace,
 );
 
 const investigations = new InvestigationApp(
@@ -315,6 +334,7 @@ for (const btn of sectionSwitcher.querySelectorAll<HTMLButtonElement>(".section-
 
 manager.onSelect((lesson) => {
   if (section !== "lessons") return;
+  workspace.landOnLesson();
   shell.onLessonSelected(lesson.title.replace(/^\d+\s*·\s*/, ""));
 });
 
@@ -333,6 +353,7 @@ if (import.meta.env.DEV) {
     viewport,
     manager,
     shell,
+    workspace,
     investigations,
     section: () => section,
   };

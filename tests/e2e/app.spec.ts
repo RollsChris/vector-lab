@@ -3590,6 +3590,7 @@ test("every lesson is framed by a brief, a worked example, mistakes and self-che
     await expect(brief, `${lesson.id} is missing a viewport instruction`).toContainText("Try this:");
     await expect(brief).not.toContainText("still being written");
 
+    await page.locator("#page-practice").click();
     await expect(practice, `${lesson.id} is missing a worked example`).toContainText("Worked example");
     await expect(practice, `${lesson.id} is missing common mistakes`).toContainText("Common mistakes");
     await expect(practice, `${lesson.id} is missing self-checks`).toContainText("Check yourself");
@@ -3602,6 +3603,7 @@ test("every lesson is framed by a brief, a worked example, mistakes and self-che
 test("self-check answers stay hidden until revealed", async ({ page }) => {
   const errors = trackErrors(page);
   await page.goto("/#foundations");
+  await page.locator("#page-practice").click();
 
   const first = page.locator(".check-item").first();
   await expect(first.locator(".check-answer")).toBeHidden();
@@ -3617,6 +3619,7 @@ test("completing a lesson records progress, ticks the sidebar, and advances the 
 
   await expect(page.locator("#path-progress")).toContainText("0 of 74 lessons (0%)");
 
+  await page.locator("#page-practice").click();
   await page.getByTestId("mark-complete").click();
   await expect(page.getByTestId("mark-complete")).toContainText("Completed");
   await expect(page.locator("#path-progress")).toContainText("1 of 74 lessons (1%)");
@@ -3626,12 +3629,34 @@ test("completing a lesson records progress, ticks the sidebar, and advances the 
   await page.getByTestId("next-lesson").click();
   await expect(page).toHaveURL(/#number-sense-fractions$/);
   await expect(page.locator("#info h2")).toHaveText("Number Sense & Fractions");
+  await page.locator("#page-practice").click();
   await expect(page.getByTestId("next-lesson")).toContainText("Arithmetic Operations Lab");
 
   // Progress survives a reload and the learner resumes where they left off.
   await page.goto("/");
   await expect(page.locator("#path-progress")).toContainText("1 of 74 lessons (1%)");
   await expect(page.locator("#info h2")).toHaveText("Number Sense & Fractions");
+
+  expect(errors, errors.join("\n")).toEqual([]);
+});
+
+test("topic workspace splits lesson pages from animation controls", async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto("/#foundations");
+
+  await expect(page.locator("#panel-tab-lesson")).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator("#info h2")).toBeVisible();
+  await expect(page.locator("#gui")).toBeHidden();
+
+  await page.locator("#panel-tab-animate").click();
+  await expect(page.locator("#panel-tab-animate")).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator("#gui")).toBeVisible();
+  await expect(page.locator("#info h2")).toBeHidden();
+
+  await page.locator("#panel-tab-lesson").click();
+  await page.locator("#page-practice").click();
+  await expect(page.locator("#lesson-practice")).toBeVisible();
+  await expect(page.locator("#info h2")).toBeHidden();
 
   expect(errors, errors.join("\n")).toEqual([]);
 });

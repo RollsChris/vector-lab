@@ -527,7 +527,7 @@ export class LessonManager {
 
   private resetReadingContext(lesson: Lesson): void {
     document.title = `${lesson.title.replace(/^\d+\s*·\s*/, "")} — Vector Lab`;
-    this.dom.info.parentElement?.scrollTo({ top: 0 });
+    document.getElementById("lesson-learn")?.scrollTo({ top: 0 });
     queueMicrotask(() => {
       this.dom.info.querySelector<HTMLElement>("h2")?.focus({ preventScroll: true });
     });

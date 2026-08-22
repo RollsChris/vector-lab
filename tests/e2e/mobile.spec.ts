@@ -25,8 +25,8 @@ test.describe("mobile shell", () => {
     await expect(page.locator("#stage canvas")).toBeVisible();
     await expect(page.locator("#topbar")).toBeVisible();
     await expect(page.locator("#nav-toggle")).toBeVisible();
-    await expect(page.locator("#controls-toggle")).toBeVisible();
-    await expect(page.locator("#panel-toggle")).toBeVisible();
+    await expect(page.locator("#tabbar-lesson")).toBeVisible();
+    await expect(page.locator("#tabbar-animate")).toBeVisible();
 
     // Sidebars are drawers on a phone — not permanently in the layout flow.
     await expect(page.locator("body")).not.toHaveClass(/nav-open|panel-open/);
@@ -39,37 +39,45 @@ test.describe("mobile shell", () => {
     await page.locator("#sheet-backdrop").click({ force: true, position: { x: 370, y: 400 } });
     await expect(page.locator("body")).not.toHaveClass(/nav-open/);
 
-    await page.locator("#panel-toggle").click();
+    await page.locator("#tabbar-lesson").click();
     await expect(page.locator("body")).toHaveClass(/panel-open/);
     await expect(page.locator("#panel")).toBeVisible();
     await expect(page.locator("#info h2")).toBeVisible();
+    await expect(page.locator("#page-learn")).toHaveAttribute("aria-selected", "true");
+    await page.locator("#page-practice").click();
+    await expect(page.locator("body")).toHaveClass(/panel-open/);
+    await expect(page.locator("#lesson-practice")).toBeVisible();
+    await page.locator("#page-learn").click();
+    await expect(page.locator("body")).toHaveClass(/panel-open/);
 
-    // Controls use a shallow dock over the viewport, so animation controls remain
-    // available without covering the stage in the Learn sheet.
+    // Animate uses a shallow dock; the lesson sheet drops to peek so the stage stays visible.
     const controlDock = page.locator("#control-dock");
     await expect(controlDock).not.toBeInViewport();
     await expect(controlDock).toHaveAttribute("aria-hidden", "true");
-    await page.locator("#controls-toggle").click();
+    await page.locator("#tabbar-animate").click();
     await expect(page.locator("body")).toHaveClass(/controls-open/);
+    await expect(page.locator("body")).toHaveClass(/panel-peek/);
+    await expect(page.locator("body")).not.toHaveClass(/panel-open/);
     await expect(controlDock).toBeInViewport();
     await expect(controlDock).toHaveAttribute("aria-hidden", "false");
     await expect(page.locator("#control-dock #gui")).toBeAttached();
     await expect(page.locator("#panel #gui")).toHaveCount(0);
-    await expect(page.locator("body")).not.toHaveClass(/panel-open/);
     await page.locator("#controls-close").click();
     await expect(page.locator("body")).not.toHaveClass(/controls-open/);
     await expect(controlDock).not.toBeInViewport();
     await expect(controlDock).toHaveAttribute("aria-hidden", "true");
-    await page.locator("#controls-toggle").click();
+    await page.locator("#tabbar-animate").click();
     await page.keyboard.press("Escape");
     await expect(page.locator("body")).not.toHaveClass(/controls-open/);
+    await expect(page.locator("#tabbar-lesson")).toHaveAttribute("aria-selected", "true");
 
-    // Switching to Lessons from an open Learn sheet must work (topbar sits above the backdrop).
+    // Picking a lesson from the library opens the Lesson sheet on Learn.
     await page.locator("#nav-toggle").click();
     await expect(page.locator("body")).toHaveClass(/nav-open/);
     await expect(page.locator("body")).not.toHaveClass(/panel-open/);
     await page.locator(".nav-item:not(.hidden)").nth(1).click();
-    await expect(page.locator("body")).not.toHaveClass(/nav-open|panel-open/);
+    await expect(page.locator("body")).not.toHaveClass(/nav-open/);
+    await expect(page.locator("body")).toHaveClass(/panel-open/);
     await expect(page.locator("#topbar-lesson")).not.toHaveText("");
 
     // Prev/next chrome advances lessons.
@@ -83,7 +91,7 @@ test.describe("mobile shell", () => {
 
   test("touch hint copy is used on coarse pointers", async ({ page }) => {
     await page.goto("/");
-    await expect(page.locator(".hint")).toContainText(/Lessons \/ Learn|pinch to zoom/);
+    await expect(page.locator(".hint")).toContainText(/Lessons \/ Lesson \/ Animate|pinch to zoom/);
   });
 
   test("investigations disables visible topbar prev/next lesson controls", async ({ page }) => {
@@ -97,6 +105,9 @@ test.describe("mobile shell", () => {
     // Hash route (avoids drawer/topbar hit-testing flakiness on narrow chrome).
     await page.goto("/#investigations");
     await expect(page.locator("#investigations-chrome")).toBeVisible();
+    await expect(page.locator("#tabbar-lesson")).toHaveText("Notes");
+    await expect(page.locator("#tabbar-animate")).toBeHidden();
+    await expect(page.locator("body")).toHaveClass(/panel-open/);
     await expect(page.locator("#prev-lesson")).toBeVisible();
     await expect(page.locator("#next-lesson")).toBeVisible();
     await expect(page.locator("#prev-lesson")).toBeDisabled();

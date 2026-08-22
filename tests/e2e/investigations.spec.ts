@@ -391,7 +391,7 @@ test("investigations disables lesson step controls, exposes tab semantics, and p
   await expect(next).toBeDisabled();
   await expect(prev).toHaveAttribute("aria-disabled", "true");
   await expect(next).toHaveAttribute("aria-disabled", "true");
-  await expect(page.locator("#controls-toggle")).toBeDisabled();
+  await expect(page.locator("#panel-tab-animate")).toBeDisabled();
 
   // Nested Investigations tabs.
   const invLessonsTab = page.locator('.inv-tab[data-route="lessons"]');
@@ -443,7 +443,7 @@ test("investigations disables lesson step controls, exposes tab semantics, and p
   await expect(next).toBeEnabled();
   await expect(prev).toHaveAttribute("aria-disabled", "false");
   await expect(next).toHaveAttribute("aria-disabled", "false");
-  await expect(page.locator("#controls-toggle")).toBeEnabled();
+  await expect(page.locator("#panel-tab-animate")).toBeEnabled();
   await expect(lessonsTab).toHaveAttribute("aria-selected", "true");
 
   const resumed = await page.evaluate(async () => {

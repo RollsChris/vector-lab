@@ -32,6 +32,11 @@ GPU code.
 | 10 · Applied maths & physics | Turn the whole toolkit loose on the physical world |
 | 11 · Maths as code | Express mathematics as programs the GPU can run |
 
+Each topic is a two-tab workspace. **Lesson** holds the teaching (Learn and Practice pages).
+**Animate** holds the sliders and playback controls so they are not buried under a long scroll.
+On a phone the stage stays visible: Lesson is a sheet, Animate is a shallow dock, and a scene
+button drops the sheet to a peek so you can see what you just triggered.
+
 Every lesson is wrapped in the same structure, so you always know what you are meant to walk
 away with:
 

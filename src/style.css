@@ -170,8 +170,67 @@ html, body {
   border-left: 1px solid var(--border);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+#lessons-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+#investigations-panel {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
 }
+.topic-tabs,
+.lesson-pages {
+  display: flex;
+  flex-shrink: 0;
+  gap: 6px;
+  padding: 10px 12px 0;
+}
+.lesson-pages { padding-top: 8px; }
+.topic-tab,
+.lesson-page-tab {
+  appearance: none;
+  flex: 1;
+  min-height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #0d1117;
+  color: var(--muted);
+  font: 600 13px/1 system-ui, sans-serif;
+  cursor: pointer;
+}
+.topic-tab.is-active,
+.lesson-page-tab.is-active {
+  background: #1f6feb22;
+  border-color: var(--accent);
+  color: var(--text);
+}
+.topic-tab:disabled,
+.lesson-page-tab:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.topic-pane {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.topic-pane[hidden] { display: none; }
+.lesson-page {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+.lesson-page[hidden] { display: none; }
+#topic-tabbar { display: none; }
 #gui {
   width: 100%;
   border-bottom: 1px solid var(--border);
@@ -2645,22 +2704,35 @@ details.course[open] > summary { margin-bottom: 10px; }
 @media (max-width: 900px) {
   #app {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
     grid-template-areas:
       "topbar"
-      "stage";
+      "stage"
+      "tabbar";
   }
   .topbar { display: flex; grid-area: topbar; }
   .sheet-backdrop:not([hidden]) { display: block; }
   .panel-handle { display: block; }
+  #topic-tabs-desktop { display: none; }
+  #topic-tabbar {
+    display: none;
+    grid-area: tabbar;
+    z-index: 60;
+    gap: 8px;
+    padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+    background: #0f141c;
+    border-top: 1px solid var(--border);
+  }
+  body.has-topic-tabbar #topic-tabbar { display: flex; }
+  #topic-tabbar .topic-tab { min-height: 44px; }
   #control-dock {
     position: fixed;
     right: 10px;
     bottom: calc(10px + env(safe-area-inset-bottom, 0px));
     left: 10px;
-    z-index: 45;
+    z-index: 55;
     display: flex;
-    max-height: min(44dvh, 400px);
+    max-height: min(40dvh, 360px);
     flex-direction: column;
     overflow: hidden;
     border: 1px solid var(--border);
@@ -2669,6 +2741,10 @@ details.course[open] > summary { margin-bottom: 10px; }
     box-shadow: 0 -10px 32px rgb(0 0 0 / 38%);
     transform: translateY(calc(100% + 16px));
     transition: transform 0.2s ease;
+  }
+  body.has-topic-tabbar #control-dock {
+    bottom: calc(66px + env(safe-area-inset-bottom, 0px));
+    transform: translateY(calc(100% + 80px));
   }
   body.controls-open #control-dock { transform: translateY(0); }
   .control-dock-content {
@@ -2708,17 +2784,26 @@ details.course[open] > summary { margin-bottom: 10px; }
     bottom: 0;
     z-index: 50;
     width: 100%;
-    height: min(74dvh, 720px);
-    max-height: min(74dvh, 720px);
+    height: min(62dvh, 640px);
+    max-height: min(62dvh, 640px);
     border-left: 0;
     border-top: 1px solid var(--border);
     border-radius: 16px 16px 0 0;
     transform: translateY(108%);
-    transition: transform 0.22s ease;
+    transition: transform 0.22s ease, height 0.22s ease, max-height 0.22s ease;
     padding-bottom: env(safe-area-inset-bottom, 0px);
     box-shadow: 0 -12px 40px rgb(0 0 0 / 35%);
   }
-  body.panel-open #panel { transform: translateY(0); }
+  body.has-topic-tabbar #panel {
+    bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: 0;
+  }
+  body.panel-open #panel,
+  body.panel-peek #panel { transform: translateY(0); }
+  body.panel-peek #panel {
+    height: 156px;
+    max-height: 156px;
+  }
 
   /* Hide the duplicate brand block inside the drawer — topbar already brands the app. */
   #sidebar .brand { display: none; }

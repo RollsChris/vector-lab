@@ -28,24 +28,6 @@
         <div class="topbar-actions">
           <button type="button" id="prev-lesson" class="chrome-btn icon" aria-label="Previous lesson">‹</button>
           <button type="button" id="next-lesson" class="chrome-btn icon" aria-label="Next lesson">›</button>
-          <button
-            type="button"
-            id="controls-toggle"
-            class="chrome-btn"
-            aria-controls="control-dock"
-            aria-expanded="false"
-          >
-            Controls
-          </button>
-          <button
-            type="button"
-            id="panel-toggle"
-            class="chrome-btn"
-            aria-controls="panel"
-            aria-expanded="false"
-          >
-            Learn
-          </button>
         </div>
       </header>
 
@@ -56,9 +38,7 @@
           <span>Lesson controls</span>
           <button type="button" id="controls-close" class="control-dock-close">Hide</button>
         </div>
-        <div id="control-dock-content" class="control-dock-content">
-          <div id="gui"></div>
-        </div>
+        <div id="control-dock-content" class="control-dock-content"></div>
       </aside>
 
       <aside id="sidebar">
@@ -112,7 +92,7 @@
         <div
           class="hint"
           data-hint-desktop="Drag to orbit · scroll to zoom · right-drag to pan · / search · [ ] lessons"
-          data-hint-touch="Drag to orbit · pinch to zoom · two-finger pan · use Lessons / Learn"
+          data-hint-touch="Drag to orbit · pinch to zoom · two-finger pan · use Lessons / Lesson / Animate"
         >
           Drag to orbit · scroll to zoom · right-drag to pan · / search · [ ] lessons
         </div>
@@ -120,15 +100,91 @@
       </main>
 
       <aside id="panel" aria-live="polite">
-        <div class="panel-handle" aria-hidden="true"></div>
+        <div class="panel-handle" id="panel-handle" aria-hidden="true"></div>
         <div id="lessons-panel">
-          <div id="lesson-meta"></div>
-          <div id="lesson-brief"></div>
-          <div id="info"></div>
-          <div id="lesson-practice"></div>
+          <div id="topic-tabs-desktop" class="topic-tabs" role="tablist" aria-label="Topic workspace">
+            <button
+              type="button"
+              role="tab"
+              id="panel-tab-lesson"
+              class="topic-tab is-active"
+              aria-selected="true"
+              aria-controls="topic-lesson"
+            >
+              Lesson
+            </button>
+            <button
+              type="button"
+              role="tab"
+              id="panel-tab-animate"
+              class="topic-tab"
+              aria-selected="false"
+              aria-controls="topic-animate"
+            >
+              Animate
+            </button>
+          </div>
+          <div id="topic-lesson" class="topic-pane is-active" role="tabpanel" aria-labelledby="panel-tab-lesson">
+            <div id="lesson-meta"></div>
+            <div class="lesson-pages" role="tablist" aria-label="Lesson pages">
+              <button
+                type="button"
+                role="tab"
+                id="page-learn"
+                class="lesson-page-tab is-active"
+                aria-selected="true"
+                aria-controls="lesson-learn"
+              >
+                Learn
+              </button>
+              <button
+                type="button"
+                role="tab"
+                id="page-practice"
+                class="lesson-page-tab"
+                aria-selected="false"
+                aria-controls="lesson-practice-page"
+              >
+                Practice
+              </button>
+            </div>
+            <div id="lesson-learn" class="lesson-page" role="tabpanel" aria-labelledby="page-learn">
+              <div id="lesson-brief"></div>
+              <div id="info"></div>
+            </div>
+            <div id="lesson-practice-page" class="lesson-page" role="tabpanel" aria-labelledby="page-practice" hidden>
+              <div id="lesson-practice"></div>
+            </div>
+          </div>
+          <div id="topic-animate" class="topic-pane" role="tabpanel" aria-labelledby="panel-tab-animate" hidden>
+            <div id="gui"></div>
+          </div>
         </div>
         <div id="investigations-panel" class="inv-panel-host" hidden></div>
       </aside>
+
+      <nav id="topic-tabbar" class="topic-tabbar" aria-label="Topic workspace">
+        <button
+          type="button"
+          role="tab"
+          id="tabbar-lesson"
+          class="topic-tab is-active"
+          aria-selected="true"
+          aria-controls="panel"
+        >
+          Lesson
+        </button>
+        <button
+          type="button"
+          role="tab"
+          id="tabbar-animate"
+          class="topic-tab"
+          aria-selected="false"
+          aria-controls="control-dock"
+        >
+          Animate
+        </button>
+      </nav>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
