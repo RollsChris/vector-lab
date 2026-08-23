@@ -9,6 +9,7 @@ const LESSONS = [
   { id: "number-sense-fractions", heading: "Number Sense & Fractions" },
   { id: "arithmetic-operations", heading: "Arithmetic Operations Lab" },
   { id: "factors-multiples", heading: "Factors, Multiples & Number Language" },
+  { id: "decimals-scientific-notation", heading: "Decimals, Percentages & Scientific Notation" },
   { id: "order-of-operations", heading: "Order of Operations" },
   { id: "times-tables", heading: "Times Tables & Multiplication Strategies" },
   { id: "multiplication-division", heading: "Multiplication & Division" },
@@ -87,6 +88,7 @@ const FOUNDATION_LESSON_IDS = [
   "number-sense-fractions",
   "arithmetic-operations",
   "factors-multiples",
+  "decimals-scientific-notation",
   "order-of-operations",
   "times-tables",
   "multiplication-division",
@@ -175,17 +177,17 @@ test("app shell supports deep links, lesson search, and keyboard lesson navigati
   const errors = trackErrors(page);
   await page.goto("/#geometry");
   await expect(page.locator("#info h2")).toHaveText("Geometry");
-  await expect(page.locator(".nav-item.active .nav-title")).toHaveText("23 · Geometry");
+  await expect(page.locator(".nav-item.active .nav-title")).toHaveText("24 · Geometry");
   await expect(page).toHaveTitle("Geometry — Vector Lab");
 
   await page.keyboard.press("/");
   await expect(page.locator("#lesson-search")).toBeFocused();
   await page.fill("#lesson-search", "shader");
-  await expect(page.locator("#lesson-count")).toHaveText("1 / 75 shown");
-  await expect(page.locator(".nav-item:visible .nav-title")).toHaveText("75 · Shader Playground");
+  await expect(page.locator("#lesson-count")).toHaveText("1 / 76 shown");
+  await expect(page.locator(".nav-item:visible .nav-title")).toHaveText("76 · Shader Playground");
 
   await page.keyboard.press("Escape");
-  await expect(page.locator("#lesson-count")).toHaveText("75 lessons");
+  await expect(page.locator("#lesson-count")).toHaveText("76 lessons");
 
   await page.keyboard.press("]");
   await expect(page.locator("#info h2")).toHaveText("Angles");

@@ -138,14 +138,14 @@ export const NUMBER_GUIDES: readonly LessonGuide[] = [
   },
   {
     id: "factors-multiples",
-    plainEnglish: "Some numbers fit evenly inside others, and some amounts are just the same value written another way. This lesson names the pieces of a share, finds shared building blocks and shared repeats, and rewrites an amount as a decimal, a percentage, or a compact power of ten.",
+    plainEnglish: "Some numbers fit evenly inside others. This lesson names the pieces of a share, finds shared building blocks and shared repeats, and compares two parts as a ratio.",
     objectives: [
       "list the factors of a whole number and the first multiples of that number",
       "calculate the greatest common factor and the least common multiple of two whole numbers",
       "explain why a sum is factored by the greatest shared factor rather than by one or by a shared multiple",
-      "name the top and bottom of a fraction and the two parts of a division, then rewrite a ratio as a decimal, a percentage, and scientific notation",
+      "name the top and bottom of a fraction and the two parts of a division, then rewrite a part-to-part ratio as a part-to-whole fraction",
     ],
-    whyItMatters: "These names and tools appear when you simplify a fraction, add fractions, scale a recipe, compare a test score with a percentage, or write a very large or very small measurement without a trail of zeros.",
+    whyItMatters: "These names and tools appear when you simplify a fraction, add fractions, scale a recipe, or share a mixture in a given ratio.",
     keyIdea: "A factor is a block already inside a number; a multiple is a larger number you can grow to. Pull out the biggest shared block, and use the first shared repeat when you need things to line up.",
     workedExample: {
       prompt: "Find the greatest common factor and least common multiple of 12 and 18, then factor 12x + 18.",
@@ -174,11 +174,55 @@ export const NUMBER_GUIDES: readonly LessonGuide[] = [
         answer: "15 is the dividend in the division and the numerator of the fraction. 4 is the divisor in the division and the denominator of the fraction. The quotient is 3 remainder 3.",
       },
       {
-        question: "Rewrite 0.35 as a percentage and in scientific notation.",
-        answer: "Per hundred means multiply the decimal by 100, so 0.35 = 35%. Moving the decimal point one place to the right gives 3.5 × 10^−1.",
+        question: "A paint mix is 2 parts blue to 3 parts green. What fraction of the mix is blue?",
+        answer: "The ratio 2:3 is part to part. Blue is 2 out of 2 + 3, so the fraction of the mix is 2/5.",
       },
     ],
-    tryThis: "Choose GCF & LCM, keep the numbers at 12 and 18, and compare the shared-factor tiles with the first meeting of the two multiple tracks. Then open Names of parts, set Dividend to 15 and Divisor to 4, and read the four job labels. Finish on Decimals & scientific notation and press 0.0034.",
+    tryThis: "Choose GCF & LCM, keep the numbers at 12 and 18, and compare the shared-factor tiles with the first meeting of the two multiple tracks. Then open Names of parts, set Dividend to 15 and Divisor to 4, and read the four job labels. Finish on Ratios with 2 and 3 and check that blue is 2/5 of the whole.",
+  },
+  {
+    id: "decimals-scientific-notation",
+    plainEnglish: "The same amount can be written as a decimal, as a count out of a hundred, or as a short number times a power of ten. This lesson keeps those three writings lined up so the amount itself does not change.",
+    objectives: [
+      "name the place value of a digit after the ones place",
+      "convert a decimal to a percentage and convert a percentage back to a decimal",
+      "write an ordinary number in scientific notation and recover the ordinary form",
+      "explain why the coefficient in scientific notation stays at least one and below ten",
+    ],
+    whyItMatters: "Percentages appear on test scores, discounts, and statistics. Scientific notation keeps huge and tiny measurements readable without a trail of zeros.",
+    keyIdea: "Each place is ten times the place on its right. A percentage counts hundredths. Scientific notation counts how many places the point moved.",
+    workedExample: {
+      prompt: "Rewrite 0.0034 as a percentage and in scientific notation.",
+      steps: [
+        "0.0034 is 34 ten-thousandths, already written as a decimal.",
+        "Percent means per hundred, so multiply the decimal by 100: 0.0034 × 100 = 0.34%.",
+        "For scientific notation, move the point until the remaining coefficient sits between 1 and 10. Three places to the right leaves 3.4.",
+        "Moving the point right makes a small number, so the power of ten is negative: 3.4 × 10^−3.",
+        "The check multiplies back: 3.4 × 0.001 = 0.0034.",
+      ],
+      answer: "0.0034 = 0.34% = 3.4 × 10^−3.",
+    },
+    pitfalls: [
+      "0.35 = 0.35% → percent means per hundred, so multiply by 100: 0.35 = 35%.",
+      "34000 = 34 × 10^3 → the coefficient must stay below 10, so write 3.4 × 10^4.",
+      "0.0034 = 3.4 × 10^3 → moving the point right is a negative exponent: 3.4 × 10^−3.",
+      "35% = 35 → a percentage is already a count out of 100, so 35% = 35/100 = 0.35.",
+    ],
+    checks: [
+      {
+        question: "Rewrite 0.35 as a percentage and in scientific notation.",
+        answer: "Per hundred means multiply the decimal by 100, so 0.35 = 35%. Moving the point one place to the right leaves 3.5, which is 3.5 × 10^−1.",
+      },
+      {
+        question: "Why is 34000 written 3.4 × 10^4 rather than 34 × 10^3?",
+        answer: "Scientific notation keeps the coefficient at least 1 and below 10. 34 is already two digits, so the extra place becomes one more power of ten: 3.4 × 10^4.",
+      },
+      {
+        question: "Write 150% as a decimal.",
+        answer: "Percent means per hundred, so divide by 100: 150% = 1.5. A percentage larger than 100 is an amount larger than one whole.",
+      },
+    ],
+    tryThis: "Keep the amount at 0.35 and switch Decimals, Percentages, and Scientific notation. Then press 0.0034 and 34000 and watch which place-value house lights up.",
   },
   {
     id: "order-of-operations",

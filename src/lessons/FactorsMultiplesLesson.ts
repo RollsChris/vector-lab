@@ -5,27 +5,23 @@ import {
   divideWhole,
   factors,
   formatDecimal,
-  formatScientific,
   gcd,
   lcm,
   multiples,
   percentFromDecimal,
   simplifyRatio,
-  toScientific,
 } from "../math/numberLanguage";
 import { segment, textSprite } from "./helpers";
 
-type Topic = "factors" | "gcf-lcm" | "names" | "ratios" | "notation";
+type Topic = "factors" | "gcf-lcm" | "names" | "ratios";
 
 const TOPICS: readonly { id: Topic; label: string }[] = [
   { id: "factors", label: "Factors & multiples" },
   { id: "gcf-lcm", label: "GCF & LCM" },
   { id: "names", label: "Names of parts" },
   { id: "ratios", label: "Ratios" },
-  { id: "notation", label: "Decimals & scientific notation" },
 ] as const;
 
-const NOTATION_PRESETS = [0.35, 0.0034, 34000, 1.5, 0.07] as const;
 const COLORS = [0x58a6ff, 0x7ee787, 0xffd166, 0xd2a8ff, 0xff7b72];
 
 function wholeNumber(value: string, min: number, max: number): number | undefined {
@@ -34,17 +30,10 @@ function wholeNumber(value: string, min: number, max: number): number | undefine
   return parsed;
 }
 
-function finiteNumber(value: string): number | undefined {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed === 0) return undefined;
-  if (Math.abs(parsed) > 1e12 || Math.abs(parsed) < 1e-12) return undefined;
-  return parsed;
-}
-
 export class FactorsMultiplesLesson implements Lesson {
   readonly id = "factors-multiples";
   readonly title = "Factors, Multiples & Number Language";
-  readonly blurb = "GCF, LCM, division names, ratios, decimals, and scientific notation";
+  readonly blurb = "GCF, LCM, division names, and ratios";
   readonly category = "Foundations" as const;
   readonly difficulty = "Foundation" as const;
   readonly prerequisites = ["arithmetic-operations"] as const;
@@ -60,7 +49,6 @@ export class FactorsMultiplesLesson implements Lesson {
   private divisor = 5;
   private ratioA = 2;
   private ratioB = 3;
-  private notationValue = 0.35;
   private inputError = "";
 
   private readonly onInfoClick = (event: Event): void => {
@@ -72,17 +60,6 @@ export class FactorsMultiplesLesson implements Lesson {
       this.inputError = "";
       this.refresh();
       this.focusAfterRender(`[data-number-topic="${topic}"]`);
-      return;
-    }
-
-    const presetButton = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-notation-preset]");
-    if (presetButton) {
-      const value = Number(presetButton.dataset.notationPreset);
-      if (!Number.isFinite(value)) return;
-      this.notationValue = value;
-      this.inputError = "";
-      this.refresh();
-      this.focusAfterRender(`[data-notation-preset="${value}"]`);
     }
   };
 
@@ -90,21 +67,6 @@ export class FactorsMultiplesLesson implements Lesson {
     const input = (event.target as HTMLElement).closest<HTMLInputElement>("[data-number-input]");
     if (!input) return;
     const key = input.dataset.numberInput ?? "";
-    if (key === "notation") {
-      const value = finiteNumber(input.value);
-      if (value === undefined) {
-        this.inputError = "Enter a non-zero number whose size sits between 10^−12 and 10^12.";
-        this.renderPanel();
-        this.focusAfterRender('[data-number-input="notation"]');
-        return;
-      }
-      this.notationValue = value;
-      this.inputError = "";
-      this.refresh();
-      this.focusAfterRender('[data-number-input="notation"]');
-      return;
-    }
-
     const bounds: Record<string, { min: number; max: number; assign: (value: number) => void }> = {
       factor: { min: 1, max: 24, assign: (value) => { this.factorNumber = value; } },
       pairA: { min: 1, max: 36, assign: (value) => { this.pairA = value; } },
@@ -169,8 +131,7 @@ export class FactorsMultiplesLesson implements Lesson {
       <h2>Factors, Multiples & Number Language</h2>
       <p>A factor sits inside a number. A multiple is a number you can grow to. The same two
       amounts also need names: the top and bottom of a fraction, the two parts of a division,
-      and the two parts of a ratio. Decimals, percentages, and scientific notation are just
-      other ways to write the same amount.</p>
+      and the two parts of a ratio.</p>
 
       <section class="course">
         <h3>Choose a view</h3>
@@ -213,17 +174,6 @@ export class FactorsMultiplesLesson implements Lesson {
             ${this.labeledField("ratioA", "First part", this.ratioA, 1, 12)}
             ${this.labeledField("ratioB", "Second part", this.ratioB, 1, 12)}
           </div>`;
-      case "notation": {
-        const presets = NOTATION_PRESETS.map((value) => `
-          <button class="course-btn${value === this.notationValue ? "" : " ghost"}"
-            data-notation-preset="${value}"
-            aria-pressed="${value === this.notationValue}">${formatDecimal(value)}</button>`).join("");
-        return `
-          <div class="operation-lab-inputs">
-            ${this.labeledField("notation", "Amount", this.notationValue, undefined, undefined, "decimal")}
-          </div>
-          <div class="operation-lab-tabs" role="group" aria-label="Example amounts">${presets}</div>`;
-      }
     }
   }
 
@@ -235,13 +185,11 @@ export class FactorsMultiplesLesson implements Lesson {
     key: string,
     label: string,
     value: number,
-    min?: number,
-    max?: number,
-    mode: "numeric" | "decimal" = "numeric",
+    min: number,
+    max: number,
   ): string {
-    const bounds = min !== undefined && max !== undefined ? `min="${min}" max="${max}"` : "";
     return `<label>${label}
-      <input type="number" ${bounds} inputmode="${mode}" step="${mode === "decimal" ? "any" : "1"}"
+      <input type="number" min="${min}" max="${max}" inputmode="numeric" step="1"
         value="${value}" data-number-input="${key}" /></label>`;
   }
 
@@ -328,26 +276,6 @@ export class FactorsMultiplesLesson implements Lesson {
           Scaling both parts by the same whole number keeps the ratio the same:
           <code>${simpleA}:${simpleB} = ${simpleA * 2}:${simpleB * 2}</code>.</p>`;
       }
-      case "notation": {
-        const { coefficient, exponent } = toScientific(this.notationValue);
-        const percent = percentFromDecimal(this.notationValue);
-        return `
-          <p>A <b>decimal</b> extends place value through the ones place: tenths, hundredths,
-          thousandths. <code>${formatDecimal(this.notationValue)}</code> is already in that
-          form.</p>
-          <p>A <b>percentage</b> means “per hundred.” Multiply the decimal by 100:
-          <code>${formatDecimal(this.notationValue)} = ${formatDecimal(percent)}%</code>.
-          Going the other way, divide by 100.</p>
-          <p><b>Scientific notation</b> writes a number as a coefficient between 1 and 10,
-          times a power of ten:
-          <code>${formatScientific(this.notationValue)}</code>.
-          The exponent counts how many places the decimal point moved —
-          ${Math.abs(exponent)} place${Math.abs(exponent) === 1 ? "" : "s"}
-          ${exponent >= 0 ? "left" : "right"} to leave
-          <code>${formatDecimal(coefficient)}</code>.</p>
-          <p>Use it for very large or very small amounts, and for keeping place value honest
-          when a calculator dumps a long string of zeros.</p>`;
-      }
     }
   }
 
@@ -398,17 +326,6 @@ export class FactorsMultiplesLesson implements Lesson {
             a mixture is 2 blue to 3 green, blue is <code>2/5</code> of the mixture, not
             <code>2/3</code>.</p>
           </section>`;
-      case "notation":
-        return `
-          <section class="course">
-            <h3>Three writings of one amount</h3>
-            <ul>
-              <li><code>0.35 = 35/100 = 35%</code></li>
-              <li><code>0.35 = 3.5 × 10^−1</code></li>
-              <li><code>0.0034 = 3.4 × 10^−3 = 0.34%</code></li>
-              <li>A coefficient in scientific notation stays at least 1 and below 10, except for 0 itself.</li>
-            </ul>
-          </section>`;
     }
   }
 
@@ -429,8 +346,6 @@ export class FactorsMultiplesLesson implements Lesson {
         const [simpleA, simpleB] = simplifyRatio(this.ratioA, this.ratioB);
         return `${this.ratioA}:${this.ratioB} = ${simpleA}:${simpleB}`;
       }
-      case "notation":
-        return `${formatDecimal(this.notationValue)} = ${formatDecimal(percentFromDecimal(this.notationValue))}% = ${formatScientific(this.notationValue)}`;
     }
   }
 
@@ -444,8 +359,6 @@ export class FactorsMultiplesLesson implements Lesson {
         return "The same two numbers are a dividend and divisor in a share, and a numerator and denominator in a fraction.";
       case "ratios":
         return "Coloured counters show the two parts. The grey whole is their sum.";
-      case "notation":
-        return "Each place-value house is ten times the house on its right. Scientific notation counts how many houses the point moved.";
     }
   }
 
@@ -463,9 +376,6 @@ export class FactorsMultiplesLesson implements Lesson {
         break;
       case "ratios":
         this.drawRatios();
-        break;
-      case "notation":
-        this.drawNotation();
         break;
     }
   }
@@ -655,52 +565,6 @@ export class FactorsMultiplesLesson implements Lesson {
       counter.position.set((index - (count - 1) / 2) * spacing, y, 0);
       this.group.add(counter);
     }
-  }
-
-  private drawNotation(): void {
-    const { coefficient, exponent } = toScientific(this.notationValue);
-    const places = ["ten thousands", "thousands", "hundreds", "tens", "ones", "tenths", "hundredths", "thousandths", "ten-thousandths"];
-    const exponents = [4, 3, 2, 1, 0, -1, -2, -3, -4];
-    const width = 9.2;
-    const startX = -width / 2;
-    const step = width / (places.length - 1);
-
-    places.forEach((place, index) => {
-      const x = startX + index * step;
-      const active = exponents[index] === exponent;
-      const house = new THREE.Mesh(
-        new THREE.BoxGeometry(0.88, active ? 1.55 : 1.05, 0.18),
-        new THREE.MeshBasicMaterial({ color: active ? 0x58a6ff : 0x30363d }),
-      );
-      house.position.set(x, active ? 0.35 : 0.1, 0);
-      this.group.add(house);
-      const power = textSprite(`10^${exponents[index]}`, active ? 0xffd166 : 0xc9d1d9, 0.2);
-      power.position.set(x, active ? 1.35 : 0.85, 0);
-      this.group.add(power);
-      const name = textSprite(place, active ? 0x7ee787 : 0x8b949e, 0.18);
-      name.position.set(x, -0.7, 0);
-      this.group.add(name);
-    });
-
-    const onStrip = exponents.includes(exponent);
-    const point = textSprite(
-      !onStrip
-        ? `10^${exponent} sits off this strip; the coefficient is still ${formatDecimal(coefficient)}`
-        : exponent >= 0
-          ? `move the point ${exponent} place${exponent === 1 ? "" : "s"} left`
-          : `move the point ${-exponent} place${exponent === -1 ? "" : "s"} right`,
-      0xffffff,
-      0.3,
-    );
-    point.position.set(0, 2.35, 0);
-    this.group.add(point);
-    const result = textSprite(
-      `${formatDecimal(this.notationValue)} = ${formatDecimal(coefficient)} × 10^${exponent} = ${formatDecimal(percentFromDecimal(this.notationValue))}%`,
-      0xd2a8ff,
-      0.28,
-    );
-    result.position.set(0, -1.45, 0);
-    this.group.add(result);
   }
 
   private focusAfterRender(selector: string): void {

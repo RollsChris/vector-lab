@@ -71,6 +71,7 @@ import { BinomialsLesson } from "./lessons/BinomialsLesson";
 import { NumberSenseFractionsLesson } from "./lessons/NumberSenseFractionsLesson";
 import { ArithmeticOperationsLesson } from "./lessons/ArithmeticOperationsLesson";
 import { FactorsMultiplesLesson } from "./lessons/FactorsMultiplesLesson";
+import { DecimalsScientificNotationLesson } from "./lessons/DecimalsScientificNotationLesson";
 import { SacredGeometryLesson } from "./lessons/SacredGeometryLesson";
 import { CoordinatesAndLinesLesson } from "./lessons/CoordinatesAndLinesLesson";
 import { FunctionsAndGraphsLesson } from "./lessons/FunctionsAndGraphsLesson";
@@ -113,6 +114,7 @@ const manager = new LessonManager(
     new NumberSenseFractionsLesson(),
     new ArithmeticOperationsLesson(),
     new FactorsMultiplesLesson(),
+    new DecimalsScientificNotationLesson(),
     new OrderOfOperationsLesson(),
     new TimesTablesLesson(),
     new MultiplicationDivisionLesson(),
