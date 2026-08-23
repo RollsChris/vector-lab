@@ -17,6 +17,7 @@ export const STAGES: readonly CurriculumStage[] = [
       "foundations",
       "number-sense-fractions",
       "arithmetic-operations",
+      "factors-multiples",
       "order-of-operations",
       "times-tables",
       "multiplication-division",

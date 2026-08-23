@@ -9,13 +9,13 @@ instead of pre-rendered video, you orbit, zoom, drag sliders, and type your own 
 
 The app has two top-level sections:
 
-- **Lessons** — the 73-lesson zero-to-elite path (interactive Three.js scenes).
+- **Lessons** — the 75-lesson zero-to-elite path (interactive Three.js scenes).
 - **Investigations** — a separate 100-item Riemann Hypothesis mastery roadmap plus a bounded
   Hardy `Z(t)` experiments bench. It is for serious personal study; it does **not** claim to
   prove RH. Deep links: `/#investigations`, `/#investigations/experiments`.
 
-The 73 lessons are a single ordered path, split into eleven stages. Nothing assumes prior
-knowledge: Stage 1 starts at counting and fractions, and Stage 11 ends at maths expressed as
+The 75 lessons are a single ordered path, split into twelve stages. Nothing assumes prior
+knowledge: Stage 1 starts at counting and fractions, and Stage 12 ends at maths expressed as
 GPU code.
 
 | Stage | You will be able to |
@@ -75,24 +75,27 @@ topic rests on.
    percentages on a number line and into visible equal-part bars. It explains why a fraction is
    division, why denominators must match before addition, and how exact values lead into ratios,
    probability, and algebra.
-3. **Order of Operations** — BODMAS / PEMDAS made visible. An expression is reduced **one
+3. **Factors, Multiples & Number Language** — factors versus multiples, GCF versus LCM, and why
+   we pull out the greatest common factor rather than the least. It names dividend, divisor,
+   numerator and denominator, then connects ratios to decimals, percentages, and scientific notation.
+4. **Order of Operations** — BODMAS / PEMDAS made visible. An expression is reduced **one
    operation at a time**, always taking the highest-rung, left-most move the rules allow.
    The active operation lights up and collapses to its result, while a ladder (Brackets →
    Orders → Divide/Multiply → Add/Subtract) shows which rule is firing and why. A running
    "blindly left → right" answer is shown alongside the BODMAS answer so you see exactly
    where the classic mistake creeps in. Step through it, auto-play it, pick a preset, or
    type your own sum (including brackets and powers).
-4. **Times Tables & Multiplication Strategies** — visual equal groups, high-value facts,
+5. **Times Tables & Multiplication Strategies** — visual equal groups, high-value facts,
    decomposition strategies, and quick feedback build fact fluency before written methods.
-5. **Multiplication & Division** — a switchable long-multiplication and long-division
+6. **Multiplication & Division** — a switchable long-multiplication and long-division
     workspace. Enter your own integers, see each partial product or
     divide–multiply–subtract–bring-down step, and use estimates and inverse-operation checks
     to catch errors.
-6. **Binomials** — a staged, first-principles path from distributing two binomials to general
+7. **Binomials** — a staged, first-principles path from distributing two binomials to general
    powers and binomial probability. A four-region area model explains every product in
    `(x + p)(x + q)`; aligned Pascal coefficients build `(a + b)ⁿ`; then the same coefficient
    counts exact-head coin-flip arrangements and is multiplied by `(1/2)ⁿ`.
-7. **Unit Conversions** — an interactive lesson that teaches the single rule behind every
+8. **Unit Conversions** — an interactive lesson that teaches the single rule behind every
    conversion: multiply by a unit-fraction equal to 1 so the unwanted unit cancels
    (**dimensional analysis** / the factor-label method), with worked examples. A live
    **converter** spans common SI prefixes plus length, mass, time, temperature, area,
@@ -101,7 +104,7 @@ topic rests on.
    cancelling unit-fraction (or the scale-and-shift for temperature). Units map affinely
    to a base unit (`base = value·factor + offset`), so temperature's shifted zero is
    handled by the same path as everything else.
-8. **Rearranging Equations** — solve for `x` on a **balance scale**. A linear equation sits
+9. **Rearranging Equations** — solve for `x` on a **balance scale**. A linear equation sits
    on a level beam (left side on one pan, right side on the other); the `=` sign means the
    two pans weigh the same. Every guided move applies the *same* operation to both sides —
    an identical token drops onto each pan and the beam dips **equally** (never tilts) to

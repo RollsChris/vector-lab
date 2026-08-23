@@ -137,6 +137,50 @@ export const NUMBER_GUIDES: readonly LessonGuide[] = [
     tryThis: "Choose ÷ Division, set Dividend to 17 and Divisor to 5, then press Check with the inverse. Compare the five visible groups, the two leftover counters, and the rebuilding calculation.",
   },
   {
+    id: "factors-multiples",
+    plainEnglish: "Some numbers fit evenly inside others, and some amounts are just the same value written another way. This lesson names the pieces of a share, finds shared building blocks and shared repeats, and rewrites an amount as a decimal, a percentage, or a compact power of ten.",
+    objectives: [
+      "list the factors of a whole number and the first multiples of that number",
+      "calculate the greatest common factor and the least common multiple of two whole numbers",
+      "explain why a sum is factored by the greatest shared factor rather than by one or by a shared multiple",
+      "name the top and bottom of a fraction and the two parts of a division, then rewrite a ratio as a decimal, a percentage, and scientific notation",
+    ],
+    whyItMatters: "These names and tools appear when you simplify a fraction, add fractions, scale a recipe, compare a test score with a percentage, or write a very large or very small measurement without a trail of zeros.",
+    keyIdea: "A factor is a block already inside a number; a multiple is a larger number you can grow to. Pull out the biggest shared block, and use the first shared repeat when you need things to line up.",
+    workedExample: {
+      prompt: "Find the greatest common factor and least common multiple of 12 and 18, then factor 12x + 18.",
+      steps: [
+        "The factors of 12 are 1, 2, 3, 4, 6, 12. The factors of 18 are 1, 2, 3, 6, 9, 18. The shared list is 1, 2, 3, 6, so the greatest common factor is 6.",
+        "The multiples of 12 begin 12, 24, 36. The multiples of 18 begin 18, 36. The first shared multiple is 36, so that is the least common multiple.",
+        "Factoring a sum needs a factor of every term. 6 divides both 12 and 18, so 12x + 18 = 6(2x + 3).",
+        "1 also divides both terms, but pulling out 1 leaves the expression unchanged. 36 is a multiple larger than both terms, so it cannot be pulled out of 12x + 18.",
+        "The check is the distributive law: 6 × 2x + 6 × 3 = 12x + 18.",
+      ],
+      answer: "The greatest common factor is 6, the least common multiple is 36, and 12x + 18 = 6(2x + 3).",
+    },
+    pitfalls: [
+      "The least common factor of 12 and 18 is 6 → 1 divides every whole number, so the least common factor is 1. 6 is the greatest common factor.",
+      "The LCM of 12 and 18 is 216 because 12 × 18 = 216 → cancel the shared factor first: 12 × 18 ÷ 6 = 36.",
+      "Factor 12x + 18 by 36 because 36 is the least common multiple → 36 is larger than both terms, so it is not a factor of both. Use 6: 6(2x + 3).",
+      "A 2:3 mixture means 2/3 of it is the first part → 2:3 is part-to-part. The first part is 2 out of 2 + 3, which is 2/5.",
+    ],
+    checks: [
+      {
+        question: "Why do we factor 12x + 18 by 6 rather than by 1 or by 36?",
+        answer: "6 is the greatest common factor, so both terms divide by it and the brackets become as simple as whole numbers allow. 1 always works but changes nothing. 36 is a common multiple, not a common factor of both terms.",
+      },
+      {
+        question: "In 15 ÷ 4 and in 15/4, what are the names of 15 and 4?",
+        answer: "15 is the dividend in the division and the numerator of the fraction. 4 is the divisor in the division and the denominator of the fraction. The quotient is 3 remainder 3.",
+      },
+      {
+        question: "Rewrite 0.35 as a percentage and in scientific notation.",
+        answer: "Per hundred means multiply the decimal by 100, so 0.35 = 35%. Moving the decimal point one place to the right gives 3.5 × 10^−1.",
+      },
+    ],
+    tryThis: "Choose GCF & LCM, keep the numbers at 12 and 18, and compare the shared-factor tiles with the first meeting of the two multiple tracks. Then open Names of parts, set Dividend to 15 and Divisor to 4, and read the four job labels. Finish on Decimals & scientific notation and press 0.0034.",
+  },
+  {
     id: "order-of-operations",
     plainEnglish: "One written calculation can contain several jobs, so people need an agreed rule for which job happens first. Following that rule makes everyone reach the same answer.",
     objectives: [
