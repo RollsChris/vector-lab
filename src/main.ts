@@ -70,6 +70,7 @@ import { RadiansLesson } from "./lessons/RadiansLesson";
 import { BinomialsLesson } from "./lessons/BinomialsLesson";
 import { NumberSenseFractionsLesson } from "./lessons/NumberSenseFractionsLesson";
 import { ArithmeticOperationsLesson } from "./lessons/ArithmeticOperationsLesson";
+import { SignsAndOrderLesson } from "./lessons/SignsAndOrderLesson";
 import { FactorsMultiplesLesson } from "./lessons/FactorsMultiplesLesson";
 import { DecimalsScientificNotationLesson } from "./lessons/DecimalsScientificNotationLesson";
 import { SacredGeometryLesson } from "./lessons/SacredGeometryLesson";
@@ -113,6 +114,7 @@ const manager = new LessonManager(
     new FoundationsLesson(),
     new NumberSenseFractionsLesson(),
     new ArithmeticOperationsLesson(),
+    new SignsAndOrderLesson(),
     new FactorsMultiplesLesson(),
     new DecimalsScientificNotationLesson(),
     new OrderOfOperationsLesson(),

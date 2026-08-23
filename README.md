@@ -9,12 +9,12 @@ instead of pre-rendered video, you orbit, zoom, drag sliders, and type your own 
 
 The app has two top-level sections:
 
-- **Lessons** — the 76-lesson zero-to-elite path (interactive Three.js scenes).
+- **Lessons** — the 77-lesson zero-to-elite path (interactive Three.js scenes).
 - **Investigations** — a separate 100-item Riemann Hypothesis mastery roadmap plus a bounded
   Hardy `Z(t)` experiments bench. It is for serious personal study; it does **not** claim to
   prove RH. Deep links: `/#investigations`, `/#investigations/experiments`.
 
-The 76 lessons are a single ordered path, split into twelve stages. Nothing assumes prior
+The 77 lessons are a single ordered path, split into twelve stages. Nothing assumes prior
 knowledge: Stage 1 starts at counting and fractions, and Stage 12 ends at maths expressed as
 GPU code.
 
@@ -75,21 +75,25 @@ topic rests on.
    percentages on a number line and into visible equal-part bars. It explains why a fraction is
    division, why denominators must match before addition, and how exact values lead into ratios,
    probability, and algebra.
-3. **Factors, Multiples & Number Language** — factors versus multiples, GCF versus LCM, and why
+3. **Signs, Opposites & Order** — why −3 + 10 is the same as 10 − 3. A minus mark can be the
+   sign of a number or a take-away between two numbers. Replayable chips swap an addition,
+   then write a trailing negative as take-away. Later views slide brackets (associative) and
+   show why a raw take-away or share cannot swap.
+4. **Factors, Multiples & Number Language** — factors versus multiples, GCF versus LCM, and why
    we pull out the greatest common factor rather than the least. It names dividend, divisor,
    numerator and denominator, then treats ratios as a part-to-part comparison.
-4. **Decimals, Percentages & Scientific Notation** — the same amount written three ways: a
+5. **Decimals, Percentages & Scientific Notation** — the same amount written three ways: a
    decimal on the place-value houses, a count per hundred, and a coefficient times a power of ten.
-5. **Order of Operations** — BODMAS / PEMDAS made visible. An expression is reduced **one
+6. **Order of Operations** — BODMAS / PEMDAS made visible. An expression is reduced **one
    operation at a time**, always taking the highest-rung, left-most move the rules allow.
    The active operation lights up and collapses to its result, while a ladder (Brackets →
    Orders → Divide/Multiply → Add/Subtract) shows which rule is firing and why. A running
    "blindly left → right" answer is shown alongside the BODMAS answer so you see exactly
    where the classic mistake creeps in. Step through it, auto-play it, pick a preset, or
    type your own sum (including brackets and powers).
-6. **Times Tables & Multiplication Strategies** — visual equal groups, high-value facts,
+7. **Times Tables & Multiplication Strategies** — visual equal groups, high-value facts,
    decomposition strategies, and quick feedback build fact fluency before written methods.
-7. **Multiplication & Division** — a switchable long-multiplication and long-division
+8. **Multiplication & Division** — a switchable long-multiplication and long-division
     workspace. Enter your own integers, see each partial product or
     divide–multiply–subtract–bring-down step, and use estimates and inverse-operation checks
     to catch errors.

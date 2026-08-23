@@ -8,6 +8,7 @@ const LESSONS = [
   { id: "foundations", heading: "Foundation topics" },
   { id: "number-sense-fractions", heading: "Number Sense & Fractions" },
   { id: "arithmetic-operations", heading: "Arithmetic Operations Lab" },
+  { id: "signs-and-order", heading: "Signs, Opposites & Order" },
   { id: "factors-multiples", heading: "Factors, Multiples & Number Language" },
   { id: "decimals-scientific-notation", heading: "Decimals, Percentages & Scientific Notation" },
   { id: "order-of-operations", heading: "Order of Operations" },
@@ -183,11 +184,11 @@ test("app shell supports deep links, lesson search, and keyboard lesson navigati
   await page.keyboard.press("/");
   await expect(page.locator("#lesson-search")).toBeFocused();
   await page.fill("#lesson-search", "shader");
-  await expect(page.locator("#lesson-count")).toHaveText("1 / 76 shown");
-  await expect(page.locator(".nav-item:visible .nav-title")).toHaveText("76 · Shader Playground");
+  await expect(page.locator("#lesson-count")).toHaveText("1 / 77 shown");
+  await expect(page.locator(".nav-item:visible .nav-title")).toHaveText("77 · Shader Playground");
 
   await page.keyboard.press("Escape");
-  await expect(page.locator("#lesson-count")).toHaveText("76 lessons");
+  await expect(page.locator("#lesson-count")).toHaveText("77 lessons");
 
   await page.keyboard.press("]");
   await expect(page.locator("#info h2")).toHaveText("Angles");
@@ -1174,6 +1175,9 @@ test("the sidebar presents the whole curriculum in teaching order", async ({ pag
     "Foundation topics",
     "Number Sense & Fractions",
     "Arithmetic Operations Lab",
+    "Signs, Opposites & Order",
+    "Factors, Multiples & Number Language",
+    "Decimals, Percentages & Scientific Notation",
     "Order of Operations",
     "Times Tables & Multiplication Strategies",
     "Multiplication & Division",
@@ -1201,14 +1205,12 @@ test("the sidebar presents the whole curriculum in teaching order", async ({ pag
     "Triangle Theorems",
     "Pythagoras",
     "Similar Triangles",
-    "Triangle Transformations",
-    "Quadrilaterals",
-    "Circle Glossary",
   ]);
 
   for (const [id, prerequisite] of [
     ["number-sense-fractions", "Foundation topics"],
     ["arithmetic-operations", "Number Sense & Fractions"],
+    ["signs-and-order", "Arithmetic Operations Lab"],
     ["order-of-operations", "Arithmetic Operations Lab"],
     ["times-tables", "Arithmetic Operations Lab"],
     ["multiplication-division", "Times Tables & Multiplication Strategies"],
@@ -3621,14 +3623,14 @@ test("completing a lesson records progress, ticks the sidebar, and advances the 
   const errors = trackErrors(page);
   await page.goto("/#foundations");
 
-  await expect(page.locator("#path-progress")).toContainText("0 of 74 lessons (0%)");
+  await expect(page.locator("#path-progress")).toContainText("0 of 77 lessons (0%)");
 
   await page.locator("#page-practice").click();
   await page.getByTestId("mark-complete").click();
   await expect(page.getByTestId("mark-complete")).toContainText("Completed");
-  await expect(page.locator("#path-progress")).toContainText("1 of 74 lessons (1%)");
+  await expect(page.locator("#path-progress")).toContainText("1 of 77 lessons (1%)");
   await expect(page.locator(".nav-item.is-complete .nav-title")).toHaveText("1 · Foundation topics");
-  await expect(page.locator('.nav-section[data-stage="stage-numbers"] .nav-section-count')).toHaveText("1/7");
+  await expect(page.locator('.nav-section[data-stage="stage-numbers"] .nav-section-count')).toHaveText("1/10");
 
   await page.getByTestId("next-lesson").click();
   await expect(page).toHaveURL(/#number-sense-fractions$/);
@@ -3638,7 +3640,7 @@ test("completing a lesson records progress, ticks the sidebar, and advances the 
 
   // Progress survives a reload and the learner resumes where they left off.
   await page.goto("/");
-  await expect(page.locator("#path-progress")).toContainText("1 of 74 lessons (1%)");
+  await expect(page.locator("#path-progress")).toContainText("1 of 77 lessons (1%)");
   await expect(page.locator("#info h2")).toHaveText("Number Sense & Fractions");
 
   expect(errors, errors.join("\n")).toEqual([]);

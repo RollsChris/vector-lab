@@ -137,6 +137,49 @@ export const NUMBER_GUIDES: readonly LessonGuide[] = [
     tryThis: "Choose ÷ Division, set Dividend to 17 and Divisor to 5, then press Check with the inverse. Compare the five visible groups, the two leftover counters, and the rebuilding calculation.",
   },
   {
+    id: "signs-and-order",
+    plainEnglish: "A minus mark can name a number or name a take-away. This lesson shows that taking away is the same move as adding the opposite, so you can swap an addition and then write it as a take-away.",
+    objectives: [
+      "identify whether a minus mark is the sign of a number or a take-away between two numbers",
+      "rewrite a take-away as adding the opposite, and the other way around",
+      "swap the order of an addition and keep the same total",
+      "regroup an addition with brackets and keep the same total",
+      "show that a raw take-away or share changes if the two numbers swap places",
+    ],
+    whyItMatters: "Signed amounts appear in bank balances, temperature, direction, and algebra. Reading the minus mark correctly stops a swap from turning a rise into a fall.",
+    keyIdea: "Taking away a number is adding its opposite, so the swap rule for addition still applies after that rewrite.",
+    workedExample: {
+      prompt: "Show why −3 + 10 is the same as 10 − 3.",
+      steps: [
+        "−3 + 10 is an addition. The minus belongs to the 3; the operation between the two numbers is plus.",
+        "Addition may swap its two addends, so −3 + 10 becomes 10 + (−3). The total is still 7.",
+        "Adding the opposite of 3 is the same action as taking away 3, so 10 + (−3) writes as 10 − 3.",
+        "The plus did not vanish. It joined the sign and became the take-away mark.",
+      ],
+      answer: "−3 + 10 = 10 + (−3) = 10 − 3 = 7.",
+    },
+    pitfalls: [
+      "The plus vanished, so the rule must be broken → the plus was rewritten as take-away of the opposite. Both writings total 7.",
+      "10 − 3 equals 3 − 10 because any two numbers may swap → a raw take-away keeps its order. 10 − 3 is 7 and 3 − 10 is −7.",
+      "−3 + 10 means take 10 away from 3 → the operation is plus. The 3 is already negative, so the walk is three steps below zero then ten steps up.",
+    ],
+    checks: [
+      {
+        question: "In −3 + 10, is the minus a sign or a take-away?",
+        answer: "It is the sign of 3. The mark sits on one number, not between two numbers, so the operation is plus.",
+      },
+      {
+        question: "Why may we write 10 − 3 after swapping −3 + 10?",
+        answer: "The swap gives 10 + (−3). Adding the opposite of 3 is the same move as taking 3 away, so the compact writing is 10 − 3.",
+      },
+      {
+        question: "Does (2 + 3) + 4 equal 2 + (3 + 4)?",
+        answer: "Yes. Both piles total 9. Associative means the brackets may slide; they do not change an addition.",
+      },
+    ],
+    tryThis: "Open Swap, leave the pair at −3 and 10, and press Replay the motion. Watch the chips change places, then watch the plus and the sign join into a take-away.",
+  },
+  {
     id: "factors-multiples",
     plainEnglish: "Some numbers fit evenly inside others. This lesson names the pieces of a share, finds shared building blocks and shared repeats, and compares two parts as a ratio.",
     objectives: [
