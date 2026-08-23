@@ -2,12 +2,14 @@ import * as THREE from "three";
 import type { Lesson, LessonContext } from "../core/Lesson";
 import {
   decimalFromPercent,
+  digitAtPlace,
   formatDecimal,
   formatScientific,
   percentFromDecimal,
   toScientific,
+  writtenPlaceSpan,
 } from "../math/numberLanguage";
-import { textSprite } from "./helpers";
+import { setSpriteText, textSprite } from "./helpers";
 
 type View = "decimal" | "percent" | "scientific";
 
@@ -18,6 +20,9 @@ const VIEWS: readonly { id: View; label: string }[] = [
 ] as const;
 
 const PRESETS = [0.35, 0.0034, 34000, 1.5, 0.07] as const;
+const DIGIT_STEP = 0.28;
+const HOP_STEP = 0.42;
+const FILL_RATE = 64;
 const PLACES = [
   { name: "ten thousands", exponent: 4 },
   { name: "thousands", exponent: 3 },
@@ -51,6 +56,20 @@ export class DecimalsScientificNotationLesson implements Lesson {
   private view: View = "decimal";
   private amount = 0.35;
   private inputError = "";
+  private stopTick?: () => void;
+  private playElapsed = 0;
+  private animating = false;
+  private stripXs: number[] = [];
+  private startPoint = 0;
+  private endPoint = 0;
+  private digitSprites: THREE.Sprite[] = [];
+  private placeLabels: THREE.Sprite[] = [];
+  private pointMarker?: THREE.Mesh;
+  private captionSprite?: THREE.Sprite;
+  private cells: THREE.Mesh[] = [];
+  private cellFilled = new THREE.MeshBasicMaterial({ color: 0x7ee787 });
+  private cellEmpty = new THREE.MeshBasicMaterial({ color: 0x30363d });
+  private cellPartial = new THREE.MeshBasicMaterial({ color: 0xffd166 });
 
   private readonly onInfoClick = (event: Event): void => {
     const viewButton = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-notation-view]");
@@ -72,6 +91,13 @@ export class DecimalsScientificNotationLesson implements Lesson {
       this.inputError = "";
       this.refresh();
       this.focusAfterRender(`[data-notation-preset="${value}"]`);
+      return;
+    }
+
+    const actionButton = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-notation-action]");
+    if (actionButton?.dataset.notationAction === "replay") {
+      this.restartAnimation();
+      this.focusAfterRender('[data-notation-action="replay"]');
     }
   };
 
@@ -101,10 +127,13 @@ export class DecimalsScientificNotationLesson implements Lesson {
     ctx.viewport.frameCamera(new THREE.Vector3(0, 0.25, 12), new THREE.Vector3(0, 0.05, 0));
     document.getElementById("info")?.addEventListener("click", this.onInfoClick);
     document.getElementById("info")?.addEventListener("change", this.onInfoChange);
+    this.stopTick = ctx.viewport.onTick((dt) => this.tick(dt));
     this.refresh();
   }
 
   exit(): void {
+    this.stopTick?.();
+    this.stopTick = undefined;
     document.getElementById("info")?.removeEventListener("click", this.onInfoClick);
     document.getElementById("info")?.removeEventListener("change", this.onInfoChange);
     this.canvas.removeAttribute("role");
@@ -154,6 +183,7 @@ export class DecimalsScientificNotationLesson implements Lesson {
           <span>${this.stageExplanation()}</span>
         </div>
         ${this.inputError ? `<p class="operation-lab-feedback error" role="alert">${this.inputError}</p>` : ""}
+        <button class="course-btn" data-notation-action="replay">Replay the motion</button>
         ${this.viewBody()}
         <p class="course-hint">The canvas is a visual model; every result also appears here as
         text. All controls work with Tab, Shift+Tab, Enter, and Space.</p>
@@ -163,33 +193,32 @@ export class DecimalsScientificNotationLesson implements Lesson {
   }
 
   private viewBody(): string {
-    const { coefficient, exponent } = toScientific(this.amount);
+    const { exponent } = toScientific(this.amount);
     const percent = percentFromDecimal(this.amount);
     switch (this.view) {
       case "decimal":
         return `
           <p>Each place is ten times the place on its right. After the ones come tenths,
-          hundredths, thousandths. <code>${formatDecimal(this.amount)}</code> already sits
-          in that grid.</p>
-          <p>The highlighted house is the leading place of this amount. Moving one house
-          left multiplies by ten. Moving one house right divides by ten.</p>`;
+          hundredths, thousandths. Watch the digits of
+          <code>${formatDecimal(this.amount)}</code> drop into those columns, largest
+          place first.</p>
+          <p>Moving one house left multiplies by ten. Moving one house right divides by ten.</p>`;
       case "percent":
         return `
-          <p><b>Percent</b> means per hundred. Multiply the decimal by 100, or move the
-          point two places left-to-right:
+          <p><b>Percent</b> means per hundred. That is the same as moving the decimal point
+          two places to the right:
           <code>${formatDecimal(this.amount)} = ${formatDecimal(percent)}%</code>.</p>
-          <p>Going back, divide by 100:
-          <code>${formatDecimal(percent)}% = ${formatDecimal(decimalFromPercent(percent))}</code>.
-          A percentage larger than 100, such as 150%, is just an amount larger than one whole.</p>`;
+          <p>When the result sits between 0 and 200, the hundred-grid fills to match —
+          35% lights 35 of 100 squares. Going back, divide by 100:
+          <code>${formatDecimal(percent)}% = ${formatDecimal(decimalFromPercent(percent))}</code>.</p>`;
       case "scientific":
         return `
           <p>Scientific notation writes a number as a coefficient between 1 and 10, times a
           power of ten: <code>${formatScientific(this.amount)}</code>.</p>
-          <p>The exponent counts how many places the point moved —
-          ${Math.abs(exponent)} place${Math.abs(exponent) === 1 ? "" : "s"}
-          ${exponent >= 0 ? "left" : "right"} to leave
-          <code>${formatDecimal(coefficient)}</code>.
-          A positive exponent is a large number. A negative exponent is a small number.</p>`;
+          <p>Watch the point hop until one non-zero digit sits on its left. That took
+          ${Math.abs(exponent)} hop${Math.abs(exponent) === 1 ? "" : "s"}
+          ${exponent >= 0 ? "left" : "right"}, so the power is
+          <code>10^${exponent}</code>.</p>`;
     }
   }
 
@@ -237,56 +266,288 @@ export class DecimalsScientificNotationLesson implements Lesson {
   private stageExplanation(): string {
     switch (this.view) {
       case "decimal":
-        return "Each house is ten times the house on its right. The highlight marks the leading place.";
+        return "Digits drop into their place-value columns. Press Replay to watch again.";
       case "percent":
-        return "Percent means per hundred, so the same amount is counted in hundredths.";
+        return "The point hops two places to multiply by 100, then the hundred-grid fills when the size fits.";
       case "scientific":
-        return "Scientific notation counts how many houses the point moved to leave a coefficient between 1 and 10.";
+        return "The point hops until the coefficient sits between 1 and 10. Each hop is one power of ten.";
     }
   }
 
   private drawStage(): void {
     this.disposeGroup();
-    const { coefficient, exponent } = toScientific(this.amount);
-    const width = 9.2;
-    const startX = -width / 2;
-    const step = width / (PLACES.length - 1);
+    this.digitSprites = [];
+    this.placeLabels = [];
+    this.cells = [];
+    this.pointMarker = undefined;
+    this.captionSprite = undefined;
+    switch (this.view) {
+      case "decimal":
+        this.buildDecimalStage();
+        break;
+      case "percent":
+        this.buildPercentStage();
+        break;
+      case "scientific":
+        this.buildScientificStage();
+        break;
+    }
+    this.restartAnimation();
+  }
 
-    PLACES.forEach((place, index) => {
-      const x = startX + index * step;
-      const active = place.exponent === exponent;
-      const house = new THREE.Mesh(
-        new THREE.BoxGeometry(0.88, active ? 1.55 : 1.05, 0.18),
-        new THREE.MeshBasicMaterial({ color: active ? 0x58a6ff : 0x30363d }),
-      );
-      house.position.set(x, active ? 0.35 : 0.1, 0);
-      this.group.add(house);
-      const power = textSprite(`10^${place.exponent}`, active ? 0xffd166 : 0xc9d1d9, 0.2);
-      power.position.set(x, active ? 1.35 : 0.85, 0);
-      this.group.add(power);
-      const name = textSprite(place.name, active ? 0x7ee787 : 0x8b949e, 0.18);
-      name.position.set(x, -0.7, 0);
-      this.group.add(name);
+  private restartAnimation(): void {
+    this.playElapsed = 0;
+    this.animating = true;
+    this.updateAnimation();
+  }
+
+  private tick(dt: number): void {
+    if (!this.animating) return;
+    this.playElapsed += dt;
+    this.updateAnimation();
+  }
+
+  private updateAnimation(): void {
+    switch (this.view) {
+      case "decimal":
+        this.updateDecimalAnimation();
+        break;
+      case "percent":
+        this.updatePercentAnimation();
+        break;
+      case "scientific":
+        this.updateScientificAnimation();
+        break;
+    }
+  }
+
+  private buildDecimalStage(): void {
+    const span = writtenPlaceSpan(this.amount);
+    const exponents = this.exponentsBetween(span.maxExp, span.minExp);
+    this.layoutStrip(exponents, 0.35);
+    this.startPoint = exponents.indexOf(0) + 1;
+    this.endPoint = this.startPoint;
+    exponents.forEach((exponent, index) => {
+      this.addPlaceColumn(this.stripXs[index], exponent, digitAtPlace(this.amount, exponent));
     });
+    this.addPointMarker();
+    this.setPointAfter(this.startPoint);
+    this.captionSprite = this.addCaption("digits drop into their columns", 2.35);
+    this.addCaption(this.stageSummary(), -2.15, 0xd2a8ff, 0.28);
+  }
 
-    const onStrip = PLACES.some((place) => place.exponent === exponent);
-    const headline = this.view === "percent"
-      ? `${formatDecimal(this.amount)} is ${formatDecimal(percentFromDecimal(this.amount))} per hundred`
-      : !onStrip
-        ? `10^${exponent} sits off this strip; the coefficient is still ${formatDecimal(coefficient)}`
-        : exponent >= 0
-          ? `move the point ${exponent} place${exponent === 1 ? "" : "s"} left`
-          : `move the point ${-exponent} place${exponent === -1 ? "" : "s"} right`;
-    const point = textSprite(headline, 0xffffff, 0.3);
-    point.position.set(0, 2.35, 0);
-    this.group.add(point);
-    const result = textSprite(
-      `${formatDecimal(this.amount)} = ${formatDecimal(coefficient)} × 10^${exponent} = ${formatDecimal(percentFromDecimal(this.amount))}%`,
+  private buildPercentStage(): void {
+    const span = writtenPlaceSpan(this.amount);
+    const exponents = this.exponentsBetween(span.maxExp, span.minExp - 2);
+    this.layoutStrip(exponents, 1.35);
+    const onesIndex = exponents.indexOf(0);
+    this.startPoint = onesIndex + 1;
+    this.endPoint = this.startPoint + 2;
+    exponents.forEach((exponent, index) => {
+      this.addPlaceColumn(this.stripXs[index], exponent, digitAtPlace(this.amount, exponent));
+    });
+    this.addPointMarker();
+    this.setPointAfter(this.startPoint);
+    const percent = percentFromDecimal(this.amount);
+    if (percent > 0 && percent <= 200) {
+      const wholes = Math.floor(percent / 100);
+      for (let grid = 0; grid <= wholes && grid < 2; grid++) {
+        this.addHundredGrid((wholes === 0 ? 0 : grid === 0 ? -2.15 : 2.15), -1.35);
+      }
+    }
+    this.captionSprite = this.addCaption("hop two places to count per hundred", 2.55);
+    this.addCaption(
+      `${formatDecimal(this.amount)} → ${formatDecimal(percent)}%`,
+      -2.55,
       0xd2a8ff,
       0.28,
     );
-    result.position.set(0, -1.45, 0);
-    this.group.add(result);
+  }
+
+  private buildScientificStage(): void {
+    const { exponent } = toScientific(this.amount);
+    const span = writtenPlaceSpan(this.amount);
+    const exponents = this.exponentsBetween(span.maxExp, span.minExp);
+    this.layoutStrip(exponents, 0.25);
+    const onesIndex = Math.max(0, exponents.indexOf(0));
+    const leadIndex = Math.max(0, exponents.indexOf(exponent));
+    this.startPoint = onesIndex + 1;
+    this.endPoint = leadIndex + 1;
+    exponents.forEach((place, index) => {
+      this.addPlaceColumn(this.stripXs[index], place, digitAtPlace(this.amount, place));
+    });
+    this.addPointMarker();
+    this.setPointAfter(this.startPoint);
+    this.captionSprite = this.addCaption("the point hops until one non-zero digit sits on its left", 2.35);
+    this.addCaption(formatScientific(this.amount), -2.15, 0xd2a8ff, 0.3);
+  }
+
+  private updateDecimalAnimation(): void {
+    const shown = Math.min(this.digitSprites.length, Math.floor(this.playElapsed / DIGIT_STEP) + 1);
+    this.digitSprites.forEach((sprite, index) => {
+      sprite.visible = index < shown;
+    });
+    if (shown >= this.digitSprites.length) this.animating = false;
+  }
+
+  private updatePercentAnimation(): void {
+    const hops = this.endPoint - this.startPoint;
+    const hopProgress = Math.min(Math.abs(hops), this.playElapsed / HOP_STEP);
+    const current = this.startPoint + Math.sign(hops || 1) * hopProgress;
+    this.setPointAfter(current);
+    const hopDone = hopProgress >= Math.abs(hops);
+    const hopsText = hopDone
+      ? `point moved two places: ${formatDecimal(percentFromDecimal(this.amount))}%`
+      : `hop ${Math.min(Math.floor(hopProgress) + 1, 2)} of 2 — multiply by ten`;
+    this.setCaption(hopsText);
+
+    if (!this.cells.length) {
+      if (hopDone) this.animating = false;
+      return;
+    }
+
+    const fillElapsed = Math.max(0, this.playElapsed - Math.abs(hops) * HOP_STEP);
+    const percent = Math.min(percentFromDecimal(this.amount), 200);
+    const target = percent;
+    const shown = hopDone ? Math.min(target, fillElapsed * FILL_RATE) : 0;
+    this.paintCells(shown);
+    if (hopDone && shown >= target) this.animating = false;
+  }
+
+  private updateScientificAnimation(): void {
+    const hops = this.endPoint - this.startPoint;
+    const total = Math.abs(hops);
+    const hopProgress = Math.min(total, this.playElapsed / HOP_STEP);
+    const current = this.startPoint + Math.sign(hops || 1) * hopProgress;
+    this.setPointAfter(current);
+    const finished = hopProgress >= total;
+    const { exponent } = toScientific(this.amount);
+    const direction = exponent >= 0 ? "left" : "right";
+    this.setCaption(
+      finished
+        ? `${total} hop${total === 1 ? "" : "s"} ${direction} → ${formatScientific(this.amount)}`
+        : `hop ${Math.min(Math.floor(hopProgress) + 1, total || 1)} of ${total || 0} ${direction}`,
+    );
+    if (finished) {
+      this.fadePaddingDigits();
+      this.animating = false;
+    }
+  }
+
+  private fadePaddingDigits(): void {
+    this.digitSprites.forEach((sprite) => {
+      const digit = sprite.userData.digit as number;
+      sprite.material.opacity = digit === 0 ? 0.25 : 1;
+    });
+  }
+
+  private paintCells(shown: number): void {
+    const full = Math.floor(shown);
+    const part = shown - full;
+    this.cells.forEach((cell, index) => {
+      const baseY = cell.userData.baseY as number;
+      if (index < full) {
+        cell.material = this.cellFilled;
+        cell.scale.y = 1;
+        cell.position.y = baseY;
+      } else if (index === full && part > 0.001) {
+        cell.material = this.cellPartial;
+        cell.scale.y = Math.max(part, 0.12);
+        cell.position.y = baseY - 0.12 * (1 - cell.scale.y);
+      } else {
+        cell.material = this.cellEmpty;
+        cell.scale.y = 1;
+        cell.position.y = baseY;
+      }
+    });
+  }
+
+  private columnY = 0.15;
+
+  private layoutStrip(exponents: number[], y: number): void {
+    const spacing = Math.min(0.95, 8.8 / Math.max(exponents.length, 1));
+    this.stripXs = exponents.map((_, index) => (index - (exponents.length - 1) / 2) * spacing);
+    this.columnY = y;
+  }
+
+  private addPlaceColumn(x: number, exponent: number, digit: number): void {
+    const house = new THREE.Mesh(
+      new THREE.BoxGeometry(0.72, 0.9, 0.14),
+      new THREE.MeshBasicMaterial({ color: 0x21262d }),
+    );
+    house.position.set(x, this.columnY, 0);
+    this.group.add(house);
+    const sprite = textSprite(String(digit), 0x58a6ff, 0.42);
+    sprite.position.set(x, this.columnY + 0.05, 0.08);
+    sprite.userData.digit = digit;
+    sprite.visible = this.view !== "decimal";
+    this.group.add(sprite);
+    this.digitSprites.push(sprite);
+    const label = textSprite(this.placeName(exponent), exponent === 0 ? 0xffd166 : 0x8b949e, 0.16);
+    label.position.set(x, this.columnY - 0.77, 0);
+    this.group.add(label);
+    this.placeLabels.push(label);
+  }
+
+  private addPointMarker(): void {
+    const marker = new THREE.Mesh(
+      new THREE.SphereGeometry(0.11, 16, 12),
+      new THREE.MeshBasicMaterial({ color: 0xffd166 }),
+    );
+    marker.position.set(0, this.columnY + 0.7, 0.12);
+    this.group.add(marker);
+    this.pointMarker = marker;
+  }
+
+  private setPointAfter(afterIndex: number): void {
+    if (!this.pointMarker || this.stripXs.length === 0) return;
+    const spacing = this.stripXs.length > 1 ? this.stripXs[1] - this.stripXs[0] : 0.9;
+    const left = this.stripXs[0] - spacing / 2;
+    const right = this.stripXs[this.stripXs.length - 1] + spacing / 2;
+    const whole = Math.floor(afterIndex);
+    const frac = afterIndex - whole;
+    const xAt = (index: number): number => {
+      if (index <= 0) return left;
+      if (index >= this.stripXs.length) return right;
+      return (this.stripXs[index - 1] + this.stripXs[index]) / 2;
+    };
+    this.pointMarker.position.x = THREE.MathUtils.lerp(xAt(whole), xAt(whole + 1), frac);
+  }
+
+  private addHundredGrid(originX: number, originY: number): void {
+    const gap = 0.3;
+    for (let row = 0; row < 10; row++) {
+      for (let col = 0; col < 10; col++) {
+        const cell = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.24, 0.08), this.cellEmpty);
+        const y = originY + (4.5 - row) * gap;
+        cell.userData.baseY = y;
+        cell.position.set(originX + (col - 4.5) * gap, y, 0);
+        this.group.add(cell);
+        this.cells.push(cell);
+      }
+    }
+  }
+
+  private addCaption(text: string, y: number, color = 0xffffff, scale = 0.3): THREE.Sprite {
+    const sprite = textSprite(text, color, scale);
+    sprite.position.set(0, y, 0);
+    this.group.add(sprite);
+    return sprite;
+  }
+
+  private setCaption(text: string): void {
+    if (!this.captionSprite) return;
+    setSpriteText(this.captionSprite, text, 0xffffff);
+  }
+
+  private exponentsBetween(maxExp: number, minExp: number): number[] {
+    const list: number[] = [];
+    for (let exponent = maxExp; exponent >= minExp; exponent--) list.push(exponent);
+    return list;
+  }
+
+  private placeName(exponent: number): string {
+    return PLACES.find((place) => place.exponent === exponent)?.name ?? `10^${exponent}`;
   }
 
   private focusAfterRender(selector: string): void {
@@ -298,11 +559,13 @@ export class DecimalsScientificNotationLesson implements Lesson {
       const mesh = object as THREE.Mesh;
       mesh.geometry?.dispose();
       const material = mesh.material as THREE.Material | THREE.Material[] | undefined;
-      if (Array.isArray(material)) material.forEach((item) => item.dispose());
-      else if (material) {
-        (material as THREE.SpriteMaterial).map?.dispose();
-        material.dispose();
-      }
+      const disposeOne = (item: THREE.Material): void => {
+        if (item === this.cellFilled || item === this.cellEmpty || item === this.cellPartial) return;
+        (item as THREE.SpriteMaterial).map?.dispose();
+        item.dispose();
+      };
+      if (Array.isArray(material)) material.forEach(disposeOne);
+      else if (material) disposeOne(material);
     });
     this.group.clear();
   }

@@ -222,7 +222,7 @@ export const NUMBER_GUIDES: readonly LessonGuide[] = [
         answer: "Percent means per hundred, so divide by 100: 150% = 1.5. A percentage larger than 100 is an amount larger than one whole.",
       },
     ],
-    tryThis: "Keep the amount at 0.35 and switch Decimals, Percentages, and Scientific notation. Then press 0.0034 and 34000 and watch which place-value house lights up.",
+    tryThis: "Choose Percentages, keep 0.35, and press Replay the motion. Watch the point hop two places and 35 of the 100 squares fill. Then open Scientific notation and Replay to see the point hop until the coefficient sits between 1 and 10.",
   },
   {
     id: "order-of-operations",

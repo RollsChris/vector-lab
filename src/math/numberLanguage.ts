@@ -117,3 +117,26 @@ export function formatDecimal(value: number, maxDigits = 8): string {
   if (Number.isInteger(value)) return String(value);
   return value.toFixed(maxDigits).replace(/0+$/, "").replace(/\.$/, "");
 }
+
+/** Digit in the 10^exponent place of a finite number, using absolute value. */
+export function digitAtPlace(value: number, exponent: number): number {
+  if (!Number.isFinite(value) || value === 0) return 0;
+  const scaled = Math.abs(value) / 10 ** exponent;
+  return Math.floor(scaled + 1e-9) % 10;
+}
+
+/**
+ * Inclusive place-value span that shows at least the ones column and every
+ * written fractional digit. Scientific notation's leading place is included
+ * when it sits left of the ones.
+ */
+export function writtenPlaceSpan(value: number): { maxExp: number; minExp: number } {
+  if (!Number.isFinite(value) || value === 0) return { maxExp: 0, minExp: 0 };
+  const { exponent } = toScientific(value);
+  const text = formatDecimal(Math.abs(value));
+  const fraction = text.includes(".") ? (text.split(".")[1]?.length ?? 0) : 0;
+  return {
+    maxExp: Math.max(exponent, 0),
+    minExp: Math.min(-fraction, exponent, 0) || 0,
+  };
+}

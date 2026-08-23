@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   commonFactors,
   decimalFromPercent,
+  digitAtPlace,
   divideWhole,
   factors,
   formatScientific,
@@ -13,6 +14,7 @@ import {
   percentFromDecimal,
   simplifyRatio,
   toScientific,
+  writtenPlaceSpan,
 } from "../src/math/numberLanguage";
 
 describe("factors and multiples", () => {
@@ -113,5 +115,19 @@ describe("decimals, percentages, and scientific notation", () => {
     expect(fromScientific(3.4, 4)).toBe(34000);
     expect(formatScientific(0.0034)).toBe("3.4 × 10^-3");
     expect(formatScientific(1000)).toBe("1 × 10^3");
+  });
+
+  it("reads a digit from a named place and spans the written columns", () => {
+    expect(digitAtPlace(0.35, 0)).toBe(0);
+    expect(digitAtPlace(0.35, -1)).toBe(3);
+    expect(digitAtPlace(0.35, -2)).toBe(5);
+    expect(digitAtPlace(34000, 4)).toBe(3);
+    expect(digitAtPlace(0.0034, -3)).toBe(3);
+    expect(digitAtPlace(0.0034, -4)).toBe(4);
+    expect(writtenPlaceSpan(0.35)).toEqual({ maxExp: 0, minExp: -2 });
+    expect(writtenPlaceSpan(0.0034)).toEqual({ maxExp: 0, minExp: -4 });
+    expect(writtenPlaceSpan(34000)).toEqual({ maxExp: 4, minExp: 0 });
+    expect(writtenPlaceSpan(1.5)).toEqual({ maxExp: 0, minExp: -1 });
+    expect(writtenPlaceSpan(3.4e-9)).toEqual({ maxExp: 0, minExp: -9 });
   });
 });
