@@ -1980,14 +1980,9 @@ test("trigonometry builds one clear construction at a time", async ({ page }) =>
   await expect(page.locator("#trig-function-breakdown")).toContainText("Cosecant: the similar triangle");
   const reciprocalNote = page.locator("[data-trig-reciprocal-note='cosec']");
   await expect(reciprocalNote).toBeVisible();
-  await expect(reciprocalNote).toContainText("1/sin does not flip the triangle");
-  await expect(reciprocalNote).toContainText("white OP = R is a side of both triangles");
-  await expect(reciprocalNote).toContainText("red HP = y belongs only to the grey triangle");
-  await expect(reciprocalNote).toContainText("The long cyan vertical is OS, not y");
-  await expect(reciprocalNote).toContainText("Stay on grey to calculate");
-  await expect(reciprocalNote).toContainText("not “the sine of the cyan triangle.”");
-  await expect(reciprocalNote).toContainText("Why compare at all");
-  await expect(reciprocalNote).toContainText("The comparison only proves the drawn length");
+  await expect(reciprocalNote).toContainText("y is not a side of the cyan triangle");
+  await expect(reciprocalNote).toContainText("There is no red y in this list");
+  await expect(reciprocalNote).toContainText("OS is a different stick");
   const angleLedger = page.locator("[aria-label='Two-triangle angle ledger']");
   await expect(angleLedger).toBeVisible();
   await expect(angleLedger).toContainText("1 · Small triangle OHP — calculate all three angles");
@@ -2170,6 +2165,13 @@ test("trigonometry builds one clear construction at a time", async ({ page }) =>
   );
   await expect(page.locator("[data-trig-history]")).toContainText(
     "Aryabhata tabulated half-chords",
+  );
+  await expect(page.locator("[data-trig-half-chord]")).toBeVisible();
+  await expect(page.locator("[data-trig-history]")).toContainText(
+    "AM is opposite the half-angle θ/2",
+  );
+  await expect(page.locator("[data-trig-history]")).toContainText(
+    "AM = R sin(θ/2)",
   );
   await expect(page.locator("[data-trig-history]")).toContainText(
     "tangent and cotangent grew together",

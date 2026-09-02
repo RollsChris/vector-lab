@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { derivationButton } from "../core/FormulaDerivations";
 import type { Lesson, LessonContext } from "../core/Lesson";
 import { marker, segment, setSpriteText, textSprite, tip } from "./helpers";
-import "./formulaDerivations/trigonometricFunctions";
+import { chordHalfChordSvg } from "./formulaDerivations/trigonometricFunctions";
 
 const DEG = Math.PI / 180;
 const SPECIAL_ANGLES = [0, 30, 45, 60, 90, 120, 135, 150, 180, 210, 225, 240, 270, 300, 315, 330, 360];
@@ -1450,12 +1450,11 @@ export class TrigonometricFunctionsLesson implements Lesson {
             <h3 style="color:#39c5cf">5 · Cosecant: the similar triangle</h3>
             ${yConstructionAvailable ? `
               <div class="trig-reciprocal-note" data-trig-reciprocal-note="cosec">
-                <strong>1/sin does not flip the triangle</strong>
+                <strong>y is not a side of the cyan triangle</strong>
                 <ul>
-                  <li><b>Stay on grey to calculate:</b> cosecant is not “the sine of the cyan triangle.” It is still <code>R/y</code> on the small triangle.</li>
-                  <li><b>Shared:</b> white <code>OP = R</code> is a side of both triangles. That is why <code>R</code> is common.</li>
-                  <li><b>Not shared:</b> red <code>HP = y</code> belongs only to the grey triangle. The long cyan vertical is <code>OS</code>, not <code>y</code>.</li>
-                  <li><b>Why compare at all:</b> similar triangles share the same <code>sin φ</code>. In cyan that sine is <code>R/OS</code>, so <code>OS = R / sin φ</code>. The comparison only proves the drawn length.</li>
+                  <li><b>Grey sides:</b> <code>OH = x</code>, red <code>HP = y = ${this.value(y)}</code>, white <code>OP = R = ${this.value(this.R)}</code>.</li>
+                  <li><b>Cyan sides:</b> white <code>OP = R</code> (reused), tangent <code>SP</code>, and new vertical <code>OS = ${this.value(this.R * cosec)}</code>. There is no red <code>y</code> in this list.</li>
+                  <li><b>The number:</b> <code>cosec φ = R/y</code> still uses grey’s red height. <code>OS</code> is a different stick whose length is <code>R / sin φ</code>.</li>
                 </ul>
               </div>
               <p>Calculate every angle in each triangle first. Compare the triangles only after both ledgers are complete.</p>
@@ -1563,7 +1562,13 @@ export class TrigonometricFunctionsLesson implements Lesson {
           <p><b>They were not discovered together.</b> Trigonometry developed over roughly two millennia because astronomers, surveyors, and navigators needed different calculations.</p>
           <ol>
             <li><b>Greek astronomy, c. 140 BCE:</b> Hipparchus tabulated <em>chords</em>; Ptolemy later refined them. A chord is the straight line joining two points on a circle. For a central angle <code>θ</code> in a circle of radius <code>R</code>, its length is <code>2R·sin(θ/2)</code> ${derivationButton("chord-length")}. A chord table was therefore a lookup list: choose an angle, read its chord length, then use it to solve an astronomical triangle without calculating a new value from scratch. It is closely related to modern sine, but neither author used sine as a named function.</li>
-            <li><b>Indian astronomy, c. 500 CE:</b> Aryabhata tabulated half-chords, effectively modern sines, calling them <em>jya</em>. The word travelled through Arabic <em>jiba/jaib</em> and Latin <em>sinus</em>, giving “sine”.</li>
+            <li><b>Indian astronomy, c. 500 CE:</b> Aryabhata tabulated half-chords, effectively modern sines, calling them <em>jya</em>.
+              <figure class="trig-history-figure" data-trig-half-chord>
+                ${chordHalfChordSvg}
+                <figcaption>AB is the full chord for central angle θ. Drop a perpendicular from the centre O onto AB; it hits the midpoint M. AM is one half of the chord.</figcaption>
+              </figure>
+              <p>Right triangle OMA has hypotenuse OA = R, and AM is opposite the half-angle θ/2. So AM = R sin(θ/2). That length is sine, written as a length rather than a ratio. Aryabhata’s table listed the half-chord AM for each angle instead of the full cut AB. The word travelled through Arabic <em>jiba/jaib</em> and Latin <em>sinus</em>, giving “sine”.</p>
+            </li>
             <li><b>Islamic scholarship, ninth–tenth centuries:</b> mathematicians worked explicitly with sine and cosine; by about 980, Abu'l-Wafa recorded a double-angle relation using both.</li>
             <li><b>Shadows before tangents:</b> tangent and cotangent grew together from paired shadow tables used to find heights and design sundials. The name <em>tangent</em> arrived much later, in 1583.</li>
             <li><b>Navigation and Renaissance tables:</b> secant and cosecant came later, becoming useful in navigation from about the fifteenth century. Renaissance writers then connected all six through reciprocal and complementary relationships.</li>

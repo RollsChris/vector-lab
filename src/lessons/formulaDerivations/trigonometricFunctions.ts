@@ -12,6 +12,36 @@ const unitCircleSvg = `
     <text x="211" y="78" fill="#ff5d5d" font-size="16">y</text><text x="169" y="67" fill="#fff" font-size="16">R</text>
   </svg>`;
 
+/** Circle, full chord AB, and half-chord AM in right triangle OMA. */
+export const chordHalfChordSvg = `
+  <svg viewBox="0 0 340 210" role="img" aria-label="Circle with chord AB and half-chord AM">
+    <circle cx="130" cy="118" r="72" fill="none" stroke="#8b949e" stroke-width="2"/>
+    <polygon points="130,118 130,62.8 176.3,62.8" fill="#ff5d5d" fill-opacity="0.14"/>
+    <line x1="130" y1="118" x2="176.3" y2="62.8" stroke="#fff" stroke-width="2.5"/>
+    <line x1="130" y1="118" x2="83.7" y2="62.8" stroke="#fff" stroke-width="2.5"/>
+    <line x1="130" y1="118" x2="130" y2="62.8" stroke="#8b949e" stroke-width="1.5" stroke-dasharray="4 3"/>
+    <line x1="83.7" y1="62.8" x2="176.3" y2="62.8" stroke="#ffa657" stroke-width="3"/>
+    <line x1="130" y1="62.8" x2="176.3" y2="62.8" stroke="#ff5d5d" stroke-width="3.5"/>
+    <path d="M130 70.8h8v-8" fill="none" stroke="#ffd166" stroke-width="2"/>
+    <path d="M114.6 99.6A24 24 0 0 1 145.4 99.6" fill="none" stroke="#fff" stroke-width="2"/>
+    <path d="M130 102A16 16 0 0 1 140.3 105.7" fill="none" stroke="#ff5d5d" stroke-width="2"/>
+    <circle cx="130" cy="118" r="3.5" fill="#fff"/>
+    <circle cx="176.3" cy="62.8" r="3.5" fill="#fff"/>
+    <circle cx="83.7" cy="62.8" r="3.5" fill="#fff"/>
+    <circle cx="130" cy="62.8" r="3.5" fill="#ff5d5d"/>
+    <text x="136" y="138" fill="#fff" font-size="16">O</text>
+    <text x="180" y="58" fill="#fff" font-size="16">A</text>
+    <text x="70" y="58" fill="#fff" font-size="16">B</text>
+    <text x="134" y="58" fill="#ff5d5d" font-size="16">M</text>
+    <text x="124" y="90" fill="#fff" font-size="15">θ</text>
+    <text x="148" y="108" fill="#ff5d5d" font-size="14">θ/2</text>
+    <text x="156" y="98" fill="#fff" font-size="15">R</text>
+    <text x="210" y="52" fill="#ffa657" font-size="14">chord AB</text>
+    <text x="210" y="72" fill="#ff5d5d" font-size="14">half-chord AM</text>
+    <text x="210" y="94" fill="#8b949e" font-size="13">AM = R sin(θ/2)</text>
+    <text x="210" y="114" fill="#8b949e" font-size="13">AB = 2R sin(θ/2)</text>
+  </svg>`;
+
 const tangentTriangleSvg = `
   <svg viewBox="0 0 320 180" role="img" aria-label="Original right triangle and a larger similar tangent triangle">
     <line x1="55" y1="140" x2="255" y2="140" stroke="#8b949e" stroke-width="2"/>
@@ -188,15 +218,15 @@ registerFormulaDerivations("trig-functions", [
     id: "chord-length",
     title: "Why a chord has length 2R sin(θ/2)",
     equation: "chord = 2R sin(θ/2)",
-    startingPoint: "Join the chord endpoints to the centre and bisect the resulting isosceles triangle.",
+    startingPoint: "Join chord AB to the centre O. The perpendicular from O hits the midpoint M of AB.",
     steps: [
-      { expression: "half central angle = θ/2; hypotenuse = R", reason: "The perpendicular median splits the isosceles triangle into congruent right triangles." },
-      { expression: "sin(θ/2) = (chord/2)/R", reason: "Use sine in either right triangle." },
-      { expression: "chord/2 = R sin(θ/2)", reason: "Multiply by R." },
-      { expression: "chord = 2R sin(θ/2)", reason: "Double the half-chord." },
+      { expression: "half central angle = θ/2; hypotenuse OA = R", reason: "OM splits isosceles triangle OAB into congruent right triangles OMA and OMB." },
+      { expression: "sin(θ/2) = AM / R", reason: "AM is the half-chord, opposite θ/2 in right triangle OMA." },
+      { expression: "AM = R sin(θ/2)", reason: "Multiply by R. That half-chord is modern sine as a length." },
+      { expression: "chord AB = 2R sin(θ/2)", reason: "Double the half-chord." },
     ],
-    result: "Historical chord tables are directly related to modern half-angle sine values.",
+    result: "Historical chord tables listed AB. Aryabhata listed the half-chord AM instead.",
     assumptions: "θ is the smaller central angle subtended by the chord.",
-    diagram: { description: "Bisecting the centre triangle exposes a half-chord opposite θ/2.", svg: unitCircleSvg },
+    diagram: { description: "Chord AB, with half-chord AM opposite θ/2 in triangle OMA.", svg: chordHalfChordSvg },
   },
 ]);
