@@ -1641,6 +1641,8 @@ test("trigonometry builds one clear construction at a time", async ({ page }) =>
   await page.locator("[data-trig-function='sin']").click();
   await page.locator("[data-trig-panel-tab='construction']").click();
   await expect(page.locator("#trig-function-breakdown")).toContainText("Sine: reveal the height");
+  await expect(page.locator("#trig-function-breakdown")).toContainText("red HP = y stands opposite φ");
+  await expect(page.locator("#trig-function-breakdown")).toContainText("white OP = R is the hypotenuse");
   await expect(page.locator("#trig-function-breakdown")).toContainText("sin φ = y/R = 1.732 ÷ 2.000 = 0.866");
   const sineFocus = await page.evaluate(() => {
     const lesson = (window as any).__lab.manager.activeLesson;
@@ -1720,6 +1722,7 @@ test("trigonometry builds one clear construction at a time", async ({ page }) =>
   await page.locator("[data-trig-panel-tab='construction']").click();
   await expect(page.locator("#trig-function-breakdown")).toContainText("Secant starts in the original triangle");
   await expect(page.locator("#trig-function-breakdown")).toContainText("cos φ = x/R = 1.000 ÷ 2.000 = 0.500");
+  await expect(page.locator("#trig-function-breakdown")).toContainText("Taking 1/cos φ does not flip or replace that triangle");
   await expect(page.locator("#trig-function-breakdown")).toContainText("sec φ = R/x = 2.000 ÷ 1.000 = 2.000 = 1/cos φ");
   const secantFirstStep = await page.evaluate(() => {
     const lesson = (window as any).__lab.manager.activeLesson;
@@ -1752,6 +1755,8 @@ test("trigonometry builds one clear construction at a time", async ({ page }) =>
 
   await page.locator("[data-trig-secant-proof]").click();
   await expect(page.locator("#trig-function-breakdown")).toContainText("Secant: the similar triangle");
+  await expect(page.locator("#trig-function-breakdown")).toContainText("1/cos does not flip the triangle");
+  await expect(page.locator("#trig-function-breakdown")).toContainText("The orange intercept OQ is R·sec φ, not x");
   await expect(page.locator("#trig-function-breakdown")).toContainText("Geometric AA proof");
   await expect(page.locator("#trig-function-breakdown")).toContainText("rays OH and OQ are the same ray from O along the x-axis");
   await expect(page.locator("#trig-function-breakdown")).toContainText("Both angles use the same radius ray OP");
@@ -1924,7 +1929,10 @@ test("trigonometry builds one clear construction at a time", async ({ page }) =>
   });
   expect(persistedCosecantComparison).toEqual({ visible: true, function: "cosec", tab: "concept" });
   await expect(page.locator("#trig-function-breakdown")).toContainText(
-    "Cosecant is the reciprocal of sine",
+    "Cosecant is hypotenuse over opposite on the original triangle",
+  );
+  await expect(page.locator("#trig-function-breakdown")).toContainText(
+    "cyan length OS is only a drawing of that number",
   );
 
   await page.locator("[data-trig-reset]").click();
@@ -1932,7 +1940,12 @@ test("trigonometry builds one clear construction at a time", async ({ page }) =>
   await page.locator("[data-trig-panel-tab='construction']").click();
   await expect(page.locator("#trig-function-breakdown")).toContainText("Cosecant starts in the original triangle");
   await expect(page.locator("#trig-function-breakdown")).toContainText("sin φ = y/R = 4.455 ÷ 5.000 = 0.891");
+  await expect(page.locator("#trig-function-breakdown")).toContainText("Taking 1/sin φ does not flip or replace that triangle");
+  await expect(page.locator("#trig-function-breakdown")).toContainText("same two lengths, with top and bottom swapped");
   await expect(page.locator("#trig-function-breakdown")).toContainText("cosec φ = R/y = 5.000 ÷ 4.455 = 1.122 = 1/sin φ");
+  await expect(page.locator("#trig-function-breakdown")).toContainText("The y in R/y is still the original red height");
+  await expect(page.locator("#trig-function-breakdown")).toContainText("Keep working in the grey triangle");
+  await expect(page.locator("#trig-function-breakdown")).toContainText("You never need the cyan triangle for that");
   await expect(page.locator("[data-trig-cosecant-proof]")).toBeVisible();
   const cosecantFirstStep = await page.evaluate(() => {
     const lesson = (window as any).__lab.manager.activeLesson;
@@ -1965,6 +1978,16 @@ test("trigonometry builds one clear construction at a time", async ({ page }) =>
 
   await page.locator("[data-trig-cosecant-proof]").click();
   await expect(page.locator("#trig-function-breakdown")).toContainText("Cosecant: the similar triangle");
+  const reciprocalNote = page.locator("[data-trig-reciprocal-note='cosec']");
+  await expect(reciprocalNote).toBeVisible();
+  await expect(reciprocalNote).toContainText("1/sin does not flip the triangle");
+  await expect(reciprocalNote).toContainText("white OP = R is a side of both triangles");
+  await expect(reciprocalNote).toContainText("red HP = y belongs only to the grey triangle");
+  await expect(reciprocalNote).toContainText("The long cyan vertical is OS, not y");
+  await expect(reciprocalNote).toContainText("Stay on grey to calculate");
+  await expect(reciprocalNote).toContainText("not “the sine of the cyan triangle.”");
+  await expect(reciprocalNote).toContainText("Why compare at all");
+  await expect(reciprocalNote).toContainText("The comparison only proves the drawn length");
   const angleLedger = page.locator("[aria-label='Two-triangle angle ledger']");
   await expect(angleLedger).toBeVisible();
   await expect(angleLedger).toContainText("1 · Small triangle OHP — calculate all three angles");
@@ -2004,6 +2027,7 @@ test("trigonometry builds one clear construction at a time", async ({ page }) =>
   await expect(page.locator("#trig-function-breakdown")).toContainText("OS = R × (R/y) = R·cosec φ = 5.000 × 1.122 = 5.612");
   await expect(page.locator("#trig-function-breakdown")).toContainText("cosec φ is the dimensionless scale factor");
   await expect(page.locator("#trig-function-breakdown")).toContainText("OS = R·cosec φ, not cosec φ by itself");
+  await expect(page.locator("#trig-function-breakdown")).toContainText("not the original red y");
   const cosecantProof = await page.evaluate(() => {
     const lesson = (window as any).__lab.manager.activeLesson;
     const length = (line: any) => {

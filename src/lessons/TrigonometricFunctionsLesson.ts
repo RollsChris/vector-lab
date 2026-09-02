@@ -332,8 +332,8 @@ export class TrigonometricFunctionsLesson implements Lesson {
     this.sinLabel = textSprite("y", 0xff5d5d, 0.3);
     this.cosLabel = textSprite("x", 0x5db4ff, 0.3);
     this.tanLabel = textSprite("R tan φ", 0x5dff8f, 0.3);
-    this.secLabel = textSprite("R sec φ", 0xffa657, 0.3);
-    this.cosecLabel = textSprite("R cosec φ", 0x39c5cf, 0.3);
+    this.secLabel = textSprite("OQ = R sec φ", 0xffa657, 0.3);
+    this.cosecLabel = textSprite("OS = R cosec φ", 0x39c5cf, 0.3);
     this.cotLabel = textSprite("R cot φ", 0xffd166, 0.3);
     this.thetaLabel = textSprite("φ", 0xffd166, 0.28);
     this.pointTangentLabel = textSprite("tangent at P", 0x7ee787, 0.27);
@@ -1151,7 +1151,7 @@ export class TrigonometricFunctionsLesson implements Lesson {
     this.similarityLabel.position.copy(bisector.multiplyScalar(Math.min(2.8, this.R * 0.65)));
 
     this.setLabel(this.tanLabel, "tan", `R tan φ = ${this.value(this.R * tanT)}`, 0x5dff8f);
-    this.setLabel(this.secLabel, "sec", `R sec φ = ${this.value(this.R / cosT)}`, 0xffa657);
+    this.setLabel(this.secLabel, "sec", `OQ = R sec φ = ${this.value(this.R / cosT)}`, 0xffa657);
   }
 
   private positionYConstructionLabels(
@@ -1174,7 +1174,7 @@ export class TrigonometricFunctionsLesson implements Lesson {
     this.interceptVertexLabel.position.copy(intercept)
       .add(new THREE.Vector3(Math.sign(cosT || 1) * 0.34, Math.sign(sinT || 1) * 0.28, 0));
 
-    this.setLabel(this.cosecLabel, "cosec", `R cosec φ = ${this.value(this.R / sinT)}`, 0x39c5cf);
+    this.setLabel(this.cosecLabel, "cosec", `OS = R cosec φ = ${this.value(this.R / sinT)}`, 0x39c5cf);
     this.setLabel(this.cotLabel, "cot", `R cot φ = ${this.value(this.R * cosT / sinT)}`, 0xffd166);
   }
 
@@ -1371,8 +1371,9 @@ export class TrigonometricFunctionsLesson implements Lesson {
       case "sin":
         body = `
           <h3 style="color:#ff5d5d">1 · Sine: reveal the height</h3>
-          <p>The red side is the <b>opposite</b> side. One fact:</p>
-          <div class="formula" data-derivation="sine"><div class="formula-body">sin φ = y/R = ${this.value(y)} ÷ ${this.value(this.R)} = ${this.value(sinT)}</div></div>`;
+          <p>The red side is the <b>opposite</b> side. Name the two lengths in the grey triangle: red <code>HP = y</code> stands opposite <code>φ</code>, and white <code>OP = R</code> is the hypotenuse.</p>
+          <div class="formula" data-derivation="sine"><div class="formula-body">sin φ = y/R = ${this.value(y)} ÷ ${this.value(this.R)} = ${this.value(sinT)}</div></div>
+          <p class="course-hint">Sine is that height as a fraction of the radius. Grow <code>R</code> and <code>y</code> grows with it, so <code>y/R</code> stays the same.</p>`;
         break;
       case "cos":
         body = `
@@ -1404,6 +1405,10 @@ export class TrigonometricFunctionsLesson implements Lesson {
           ? `
             <h3 style="color:#ffa657">4 · Secant: the similar triangle</h3>
             ${xConstructionAvailable ? `
+              <div class="trig-reciprocal-note" data-trig-reciprocal-note="sec">
+                <strong>1/cos does not flip the triangle</strong>
+                <p>The orange triangle is similar, not inverted. <code>R</code> and <code>x</code> in <code>R/x</code> are still the original sides. The orange intercept <code>OQ</code> is <code>R·sec φ</code>, not <code>x</code>.</p>
+              </div>
               <p>First derive the matching angles; the live values then confirm the geometry.</p>
               <div class="trig-aa-proof">
                 <strong>Geometric AA proof</strong>
@@ -1433,15 +1438,26 @@ export class TrigonometricFunctionsLesson implements Lesson {
             <h3 style="color:#ffa657">4 · Secant starts in the original triangle</h3>
             <p>Cosine compares the adjacent side <code>x</code> with the radius <code>R</code>:</p>
             <div class="formula" data-derivation="cosine"><div class="formula-body">cos φ = x/R = ${this.value(x)} ÷ ${this.value(this.R)} = ${this.value(cosT)}</div></div>
-            <p>Its reciprocal flips that ratio, so:</p>
+            <p>Taking <code>1/cos φ</code> does <b>not</b> flip or replace that triangle. It uses the <b>same two lengths</b>, with top and bottom swapped:</p>
             <div class="formula" data-derivation="secant"><div class="formula-body">sec φ = R/x = ${this.value(this.R)} ÷ ${this.value(x)} = ${this.value(sec)} = 1/cos φ</div></div>
-            <button type="button" class="course-btn" data-trig-secant-proof>Next: show the secant construction →</button>`;
+            <p><b>Keep working in the grey triangle.</b> If you know the blue base <code>x</code> and want the radius, <code>R = x × sec φ</code> — the same job as <code>R = x / cos φ</code>.</p>
+            <p class="course-hint">The <code>x</code> in <code>R/x</code> is still the original blue base. The orange triangle is an optional picture of that number as a length <code>OQ</code>.</p>
+            <button type="button" class="course-btn" data-trig-secant-proof>Optional: draw that number as a length →</button>`;
         break;
       case "cosec":
         body = this.cosecConstructionShown
           ? `
             <h3 style="color:#39c5cf">5 · Cosecant: the similar triangle</h3>
             ${yConstructionAvailable ? `
+              <div class="trig-reciprocal-note" data-trig-reciprocal-note="cosec">
+                <strong>1/sin does not flip the triangle</strong>
+                <ul>
+                  <li><b>Stay on grey to calculate:</b> cosecant is not “the sine of the cyan triangle.” It is still <code>R/y</code> on the small triangle.</li>
+                  <li><b>Shared:</b> white <code>OP = R</code> is a side of both triangles. That is why <code>R</code> is common.</li>
+                  <li><b>Not shared:</b> red <code>HP = y</code> belongs only to the grey triangle. The long cyan vertical is <code>OS</code>, not <code>y</code>.</li>
+                  <li><b>Why compare at all:</b> similar triangles share the same <code>sin φ</code>. In cyan that sine is <code>R/OS</code>, so <code>OS = R / sin φ</code>. The comparison only proves the drawn length.</li>
+                </ul>
+              </div>
               <p>Calculate every angle in each triangle first. Compare the triangles only after both ledgers are complete.</p>
               <div class="trig-angle-ledger" aria-label="Two-triangle angle ledger">
                 <section class="trig-ledger-triangle" aria-labelledby="trig-small-ledger">
@@ -1501,7 +1517,7 @@ export class TrigonometricFunctionsLesson implements Lesson {
                 <li>Large <code>OP</code> is the same radius <code>R</code> and corresponds to small <code>HP = y</code>, so the scale factor from small to large is <code>R/y = ${this.value(this.R)} ÷ ${this.value(y)} = ${this.value(cosec)} = cosec φ</code>.</li>
                 <li>The same scale maps small <code>OP = R</code> to large <code>OS</code>, so <code>OS = R × (R/y) = R·cosec φ = ${this.value(this.R)} × ${this.value(cosec)} = ${this.value(this.R * cosec)}</code> ${derivationButton("cosecant-length")}.</li>
               </ul>
-              <p class="course-hint"><code>cosec φ</code> is the dimensionless scale factor. The cyan displayed length is <code>OS = R·cosec φ</code>, not cosec φ by itself.</p>
+              <p class="course-hint"><code>cosec φ</code> is the dimensionless scale factor. The cyan displayed length is <code>OS = R·cosec φ</code>, not cosec φ by itself, and not the original red <code>y</code>.</p>
               ${comparisonAvailable ? `
                 <div class="trig-proof-actions">
                   <button type="button" class="course-btn" data-trig-comparison="cosec">Animate matching triangles from the circle</button>
@@ -1513,9 +1529,11 @@ export class TrigonometricFunctionsLesson implements Lesson {
             <h3 style="color:#39c5cf">5 · Cosecant starts in the original triangle</h3>
             <p>Sine compares the opposite side <code>y</code> with the radius <code>R</code>:</p>
             <div class="formula" data-derivation="sine"><div class="formula-body">sin φ = y/R = ${this.value(y)} ÷ ${this.value(this.R)} = ${this.value(sinT)}</div></div>
-            <p>Its reciprocal flips that ratio, so:</p>
+            <p>Taking <code>1/sin φ</code> does <b>not</b> flip or replace that triangle. It uses the <b>same two lengths</b>, with top and bottom swapped:</p>
             <div class="formula" data-derivation="cosecant"><div class="formula-body">cosec φ = R/y = ${this.value(this.R)} ÷ ${this.value(y)} = ${this.value(cosec)} = 1/sin φ</div></div>
-            <button type="button" class="course-btn" data-trig-cosecant-proof>Next: show the cosecant construction →</button>`;
+            <p><b>Keep working in the grey triangle.</b> Cosecant is hypotenuse over opposite. If you know the red height <code>y</code> and want the white radius, <code>R = y × cosec φ</code> — the same job as <code>R = y / sin φ</code>. You never need the cyan triangle for that.</p>
+            <p class="course-hint">The <code>y</code> in <code>R/y</code> is still the original red height. The cyan triangle is an optional picture of the same number as a length <code>OS</code>. Comparing the two triangles only proves that picture; it is not a second triangle you switch to.</p>
+            <button type="button" class="course-btn" data-trig-cosecant-proof>Optional: draw that number as a length →</button>`;
         break;
       case "cot":
         body = `
@@ -1554,16 +1572,16 @@ export class TrigonometricFunctionsLesson implements Lesson {
         </section>`
       : "";
     const concepts: Record<TrigFunction, string> = {
-      sin: `<p>The vertical component is a fraction of the radius.</p><div class="formula" data-derivation="sine"><div class="formula-body">sin φ = y/R = ${this.value(y)} ÷ ${this.value(this.R)} = ${this.value(sinT)}</div></div>`,
+      sin: `<p>The red height <code>y</code> is opposite <code>φ</code>. Divide it by the white radius <code>R</code>. That fraction is sine.</p><div class="formula" data-derivation="sine"><div class="formula-body">sin φ = y/R = ${this.value(y)} ÷ ${this.value(this.R)} = ${this.value(sinT)}</div></div>`,
       cos: `<p>The horizontal component is a fraction of the radius.</p><div class="formula" data-derivation="cosine"><div class="formula-body">cos φ = x/R = ${this.value(x)} ÷ ${this.value(this.R)} = ${this.value(cosT)}</div></div>`,
       tan: `<p>Tangent compares the two directed legs of the original triangle.</p><div class="formula" data-derivation="tangent"><div class="formula-body">tan φ = y/x = ${this.value(y)} ÷ ${this.value(x)} = ${this.value(tanT)}</div></div>`,
-      sec: `<p>Secant is the reciprocal of cosine: it compares the radius with the horizontal component.</p><div class="formula" data-derivation="secant"><div class="formula-body">sec φ = R/x = ${this.value(this.R)} ÷ ${this.value(x)} = ${this.value(sec)}</div></div>`,
-      cosec: `<p>Cosecant is the reciprocal of sine: it compares the radius with the vertical component.</p><div class="formula" data-derivation="cosecant"><div class="formula-body">cosec φ = R/y = ${this.value(this.R)} ÷ ${this.value(y)} = ${this.value(cosec)}</div></div>`,
+      sec: `<p>Secant inverts the same two lengths as cosine: original <code>R</code> over original <code>x</code>. The orange intercept later is <code>OQ = R·sec φ</code>, which is not <code>x</code>.</p><div class="formula" data-derivation="secant"><div class="formula-body">sec φ = R/x = ${this.value(this.R)} ÷ ${this.value(x)} = ${this.value(sec)}</div></div>`,
+      cosec: `<p>Cosecant is hypotenuse over opposite on the original triangle: <code>R/y = 1/sin φ</code>. Use it there. The cyan length <code>OS</code> is only a drawing of that number, not a different <code>y</code>.</p><div class="formula" data-derivation="cosecant"><div class="formula-body">cosec φ = R/y = ${this.value(this.R)} ÷ ${this.value(y)} = ${this.value(cosec)}</div></div>`,
       cot: `<p>Cotangent compares the horizontal component with the vertical component.</p><div class="formula" data-derivation="cotangent"><div class="formula-body">cot φ = x/y = ${this.value(x)} ÷ ${this.value(y)} = ${this.value(cot)}</div></div>`,
     };
     const comparisonDescriptions: Record<ComparisonFunction, string> = {
-      sec: "Compare OHP with OQP. The scale factor is sec φ = R/x.",
-      cosec: "Compare OHP with OSP. The scale factor is cosec φ = R/y.",
+      sec: "Compare OHP with OQP. The scale factor is sec φ = R/x, using the original sides. The orange intercept OQ is R·sec φ, not x.",
+      cosec: "Compare OHP with OSP only to prove the drawn length. The scale factor is cosec φ = R/y on the original sides. The cyan vertical OS is R·cosec φ, not y.",
       cot: "Compare OHP with OSP and follow OH ↔ SP to derive SP = R·cot φ.",
     };
     const comparisonFunction = this.selectedFunction === "sec"

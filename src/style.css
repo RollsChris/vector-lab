@@ -655,6 +655,22 @@ html, body {
   background: transparent;
   white-space: normal;
 }
+.trig-reciprocal-note {
+  margin: 10px 0;
+  padding: 10px 12px;
+  border-left: 3px solid #39c5cf;
+  border-radius: 0 6px 6px 0;
+  background: #102126;
+  color: #c9d1d9;
+}
+.trig-reciprocal-note strong { color: #39c5cf; display: block; margin-bottom: 6px; }
+.trig-reciprocal-note p { margin: 0; }
+.trig-reciprocal-note ul { margin: 6px 0 0 !important; }
+.trig-reciprocal-note[data-trig-reciprocal-note="sec"] {
+  border-left-color: #ffa657;
+  background: #21180f;
+}
+.trig-reciprocal-note[data-trig-reciprocal-note="sec"] strong { color: #ffa657; }
 .trig-aa-proof {
   margin: 10px 0;
   padding: 10px 12px;
