@@ -45,7 +45,8 @@ import { PendulumLesson } from "./lessons/PendulumLesson";
 import { ShaderPlaygroundLesson } from "./lessons/ShaderPlaygroundLesson";
 import { GeometryLesson } from "./lessons/GeometryLesson";
 import { UnitConversionsLesson } from "./lessons/UnitConversionsLesson";
-import { TrigonometricFunctionsLesson } from "./lessons/TrigonometricFunctionsLesson";
+import { TrigFunctionsStoryLesson } from "./lessons/TrigFunctionsStoryLesson";
+import { TrigFunctionsExplorerLesson } from "./lessons/TrigFunctionsExplorerLesson";
 import { TrigonometryLabLesson } from "./lessons/TrigonometryLabLesson";
 import { RearrangingEquationsLesson } from "./lessons/RearrangingEquationsLesson";
 import { OrderOfOperationsLesson } from "./lessons/OrderOfOperationsLesson";
@@ -161,7 +162,8 @@ const manager = new LessonManager(
     new EllipseLesson(),
     new SacredGeometryLesson(),
     new RadiansLesson(),
-    new TrigonometricFunctionsLesson(),
+    new TrigFunctionsStoryLesson(),
+    new TrigFunctionsExplorerLesson(),
     new TrigonometryLabLesson(),
     new WaveformsLesson(),
     new FourierSeriesLesson(),

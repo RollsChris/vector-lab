@@ -30,6 +30,7 @@ const LESSONS = [
   { id: "ellipses", heading: "Ellipses" },
   { id: "radians", heading: "Radians" },
   { id: "trig-functions", heading: "Trigonometric Functions" },
+  { id: "trig-functions-explorer", heading: "Trig Functions Explorer" },
   { id: "trigonometry-lab", heading: "Trigonometry Lab" },
   { id: "waveforms", heading: "Waveforms" },
   { id: "fourier-series", heading: "Fourier Series" },

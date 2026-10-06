@@ -54,7 +54,7 @@ const tangentTriangleSvg = `
     <text x="174" y="158" fill="#fff" font-size="16">H</text>
   </svg>`;
 
-registerFormulaDerivations("trig-functions", [
+const trigonometricDerivations = [
   {
     id: "sine",
     title: "Why sine is the vertical component divided by radius",
@@ -231,4 +231,7 @@ registerFormulaDerivations("trig-functions", [
     assumptions: "θ is the smaller central angle subtended by the chord.",
     diagram: { description: "Chord AB, with half-chord AM opposite θ/2 in triangle OMA.", svg: chordHalfChordSvg },
   },
-]);
+];
+
+registerFormulaDerivations("trig-functions-explorer", trigonometricDerivations);
+registerFormulaDerivations("trig-functions", trigonometricDerivations);

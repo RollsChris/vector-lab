@@ -80,7 +80,7 @@ export const STAGES: readonly CurriculumStage[] = [
     id: "stage-trigonometry",
     title: "Stage 5 · Trigonometry & waves",
     goal: "Connect angles to lengths, and describe anything that repeats.",
-    lessons: ["radians", "trig-functions", "trigonometry-lab", "waveforms"],
+    lessons: ["radians", "trig-functions", "trig-functions-explorer", "trigonometry-lab", "waveforms"],
   },
   {
     id: "stage-vectors",

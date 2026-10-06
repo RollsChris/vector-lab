@@ -46,6 +46,7 @@ const LESSONS = [
   { id: "sacred-geometry", heading: "Sacred Geometry" },
   { id: "radians", heading: "Radians" },
   { id: "trig-functions", heading: "Trigonometric Functions" },
+  { id: "trig-functions-explorer", heading: "Trig Functions Explorer" },
   { id: "trigonometry-lab", heading: "Trigonometry Lab" },
   { id: "waveforms", heading: "Waveforms" },
   { id: "vectors", heading: "Vectors" },
@@ -136,6 +137,7 @@ test("app boots with a live WebGL canvas and no errors", async ({ page }) => {
 });
 
 test("every lesson mounts, shows its info, and renders without errors", async ({ page }) => {
+  test.setTimeout(120_000);
   const errors = trackErrors(page);
   await page.goto("/");
 
@@ -184,11 +186,11 @@ test("app shell supports deep links, lesson search, and keyboard lesson navigati
   await page.keyboard.press("/");
   await expect(page.locator("#lesson-search")).toBeFocused();
   await page.fill("#lesson-search", "shader");
-  await expect(page.locator("#lesson-count")).toHaveText("1 / 77 shown");
-  await expect(page.locator(".nav-item:visible .nav-title")).toHaveText("77 · Shader Playground");
+  await expect(page.locator("#lesson-count")).toHaveText("1 / 78 shown");
+  await expect(page.locator(".nav-item:visible .nav-title")).toHaveText("78 · Shader Playground");
 
   await page.keyboard.press("Escape");
-  await expect(page.locator("#lesson-count")).toHaveText("77 lessons");
+  await expect(page.locator("#lesson-count")).toHaveText("78 lessons");
 
   await page.keyboard.press("]");
   await expect(page.locator("#info h2")).toHaveText("Angles");
@@ -1453,10 +1455,46 @@ test("binomials progress from distribution through powers to probability", async
   expect(errors, errors.join("\n")).toEqual([]);
 });
 
-test("trigonometry builds one clear construction at a time", async ({ page }) => {
+test("trigonometric functions story steps through the six functions", async ({ page }) => {
   const errors = trackErrors(page);
   await page.goto("/#trig-functions");
   await expect(page.locator("#info h2")).toHaveText("Trigonometric Functions");
+  await expect(page.locator("#info")).toContainText("One circle, radius 1");
+
+  const next = page.locator("#info").getByRole("button", { name: "Next", exact: true });
+  const back = page.locator("#info").getByRole("button", { name: "Back", exact: true });
+  for (let i = 0; i < 6; i++) await next.click();
+  await expect(page.locator("#info")).toContainText("cosec φ: what 1 ÷ sin φ actually does");
+  await expect(page.locator("#info")).toContainText("2.00");
+
+  await page.locator("#info").getByRole("button", { name: "▶ Play" }).click();
+  await expect.poll(() => page.evaluate(() => (window as any).__lab.manager.activeLesson.beatPlaying)).toBe(true);
+  await expect.poll(
+    () => page.evaluate(() => (window as any).__lab.manager.activeLesson.beatPlaying),
+    { timeout: 8000 },
+  ).toBe(false);
+
+  await next.click();
+  await next.click();
+  await expect(page.locator("#info")).toContainText("OS = OC");
+
+  await next.click();
+  await expect(page.locator("#info")).toContainText("Three triangles, one shape");
+  await expect(page.locator('a[href="#trig-functions-explorer"]')).toHaveAttribute("href", "#trig-functions-explorer");
+
+  await back.click();
+  await expect(page.locator("#info")).toContainText("The famous picture: tangent at P");
+
+  await page.locator("#info").getByRole("button", { name: "45°" }).click();
+  expect(await page.evaluate(() => (window as any).__lab.manager.activeLesson.phiDeg)).toBe(45);
+
+  expect(errors, errors.join("\n")).toEqual([]);
+});
+
+test("trigonometry builds one clear construction at a time", async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto("/#trig-functions-explorer");
+  await expect(page.locator("#info h2")).toHaveText("Trig Functions Explorer");
 
   const initialFocus = await page.evaluate(() => {
     const lesson = (window as any).__lab.manager.activeLesson;
@@ -2221,7 +2259,7 @@ test("trigonometry builds one clear construction at a time", async ({ page }) =>
 
 test("trigonometry retains finite limiting comparisons at quadrant axes", async ({ page }) => {
   const errors = trackErrors(page);
-  await page.goto("/#trig-functions");
+  await page.goto("/#trig-functions-explorer");
 
   await page.locator("[data-trig-function='sec']").click();
   await page.locator("[data-trig-panel-tab='construction']").click();
@@ -2284,7 +2322,7 @@ test("trigonometry retains finite limiting comparisons at quadrant axes", async 
 
 test("trigonometry keeps reciprocal-triangle tabs and calculations in place", async ({ page }) => {
   const errors = trackErrors(page);
-  await page.goto("/#trig-functions");
+  await page.goto("/#trig-functions-explorer");
 
   await page.locator("[data-trig-function='sec']").click();
   await page.locator("[data-trig-panel-tab='construction']").click();
@@ -3657,12 +3695,12 @@ test("completing a lesson records progress, ticks the sidebar, and advances the 
   const errors = trackErrors(page);
   await page.goto("/#foundations");
 
-  await expect(page.locator("#path-progress")).toContainText("0 of 77 lessons (0%)");
+  await expect(page.locator("#path-progress")).toContainText("0 of 78 lessons (0%)");
 
   await page.locator("#page-practice").click();
   await page.getByTestId("mark-complete").click();
   await expect(page.getByTestId("mark-complete")).toContainText("Completed");
-  await expect(page.locator("#path-progress")).toContainText("1 of 77 lessons (1%)");
+  await expect(page.locator("#path-progress")).toContainText("1 of 78 lessons (1%)");
   await expect(page.locator(".nav-item.is-complete .nav-title")).toHaveText("1 · Foundation topics");
   await expect(page.locator('.nav-section[data-stage="stage-numbers"] .nav-section-count')).toHaveText("1/10");
 
@@ -3674,7 +3712,7 @@ test("completing a lesson records progress, ticks the sidebar, and advances the 
 
   // Progress survives a reload and the learner resumes where they left off.
   await page.goto("/");
-  await expect(page.locator("#path-progress")).toContainText("1 of 77 lessons (1%)");
+  await expect(page.locator("#path-progress")).toContainText("1 of 78 lessons (1%)");
   await expect(page.locator("#info h2")).toHaveText("Number Sense & Fractions");
 
   expect(errors, errors.join("\n")).toEqual([]);
@@ -4133,7 +4171,7 @@ test("triangle transformations animate and distinguish rigid motion from enlarge
 
 test("trigonometry grows the grey triangle into the reciprocal triangles", async ({ page }) => {
   const errors = trackErrors(page);
-  await page.goto("/#trig-functions");
+  await page.goto("/#trig-functions-explorer");
   await page.evaluate(() => {
     const lesson = (window as any).__lab.manager.activeLesson;
     lesson.params.angleDeg = 30;

@@ -9,12 +9,12 @@ instead of pre-rendered video, you orbit, zoom, drag sliders, and type your own 
 
 The app has two top-level sections:
 
-- **Lessons** — the 77-lesson zero-to-elite path (interactive Three.js scenes).
+- **Lessons** — the 78-lesson zero-to-elite path (interactive Three.js scenes).
 - **Investigations** — a separate 100-item Riemann Hypothesis mastery roadmap plus a bounded
   Hardy `Z(t)` experiments bench. It is for serious personal study; it does **not** claim to
   prove RH. Deep links: `/#investigations`, `/#investigations/experiments`.
 
-The 77 lessons are a single ordered path, split into twelve stages. Nothing assumes prior
+The 78 lessons are a single ordered path, split into twelve stages. Nothing assumes prior
 knowledge: Stage 1 starts at counting and fractions, and Stage 12 ends at maths expressed as
 GPU code.
 
@@ -202,18 +202,11 @@ topic rests on.
     swept* — count the dots. A full turn is `2π ≈ 6.28` radii, which is why `2π rad = 360°` and
     `1 rad ≈ 57.3°`. Explains why radians keep the maths clean (`s = R·θ`, `v = R·ω`, and
     `d/dx sin x = cos x` only in radians), setting up every wave and rotation that follows.
-15. **Trigonometric Functions** — an animated unit circle: drag (or auto-sweep) the angle
-    `θ` and watch the classic trig lines draw themselves live — the red **sine** line
-    (height), blue **cosine** line (base), and green **tangent** line (measured up the
-    line that just touches the circle at 0°, which is where "tangent" gets its name).
-    A quarter-turn to the right, the same height carried sideways by the arc length `R·θ`
-    unrolls into the sine wave, so you can watch the circle *become* the wave in real
-    time — the geometric bridge into the Waveforms lesson (16). Includes quick-pick
-    buttons for the special angles, a live calculator for all six functions (sin, cos, tan,
-    cosec, sec and cot), a configurable circle radius, and a rotatable start ray. The readout
-    distinguishes the swept angle from its final standard angle from the x-axis, and includes the
-    a staged, live Pythagorean area proof of `sin²θ + cos²θ = 1`, including its rounded
-    numeric check and signed-coordinate explanation, plus reference notes on the sign/quadrant rules.
+15. **Trigonometric Functions** — a 10-step story on a unit circle. Dividing by sine or
+    cosine is a zoom about the origin: hypotenuse 1 gives sine and cosine, base 1 gives
+    tangent and secant, height 1 gives cotangent and cosecant. Each step has an optional
+    one-shot animation. **Trig Functions Explorer** (the previous lesson, kept beside it)
+    still has every quadrant, the proofs, the history, and a configurable radius.
 
 ### Waves & signals
 

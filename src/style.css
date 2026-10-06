@@ -4221,3 +4221,54 @@ details.course[open] > summary { margin-bottom: 10px; }
   .inv-lesson-nav { grid-template-columns: 1fr; }
   .inv-seq-detail { white-space: normal; }
 }
+
+/* Trig functions story */
+#info .ts-panel h3 { text-transform: none; letter-spacing: 0; }
+.ts-progress { margin: 0 0 8px; color: var(--muted); font-size: 12.5px; }
+.ts-dots { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+.ts-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #12171f;
+  color: var(--muted);
+  font: 600 12px/1 system-ui, sans-serif;
+  cursor: pointer;
+  padding: 0;
+}
+.ts-dot.is-done { border-color: #3d5a40; color: #7ee787; background: #102119; }
+.ts-dot.is-active {
+  border-color: #1f6feb;
+  background: #1f6feb33;
+  color: #f0f6fc;
+  box-shadow: 0 0 0 2px #1f6feb44;
+}
+.ts-algebra {
+  margin: 10px 0 12px;
+  padding: 10px 12px;
+  border-left: 3px solid #ffd166;
+  border-radius: 6px;
+  background: #161b22;
+}
+.ts-algebra span {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.ts-algebra p { margin: 0 0 6px; }
+.ts-algebra code { color: #e6edf3; font-size: 13px; }
+.ts-actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.ts-angle-label { margin: 10px 0 0; color: var(--muted); font-size: 12px; }
+.ts-explorer-link {
+  display: inline-block;
+  margin-top: 4px;
+  color: #79c0ff;
+  font-weight: 600;
+}
+.ts-values { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.ts-values th { text-align: left; color: var(--muted); font-weight: 600; font-size: 12px; padding: 3px 8px 3px 0; }
+.ts-values td { color: #e6edf3; padding: 3px 12px 3px 0; }

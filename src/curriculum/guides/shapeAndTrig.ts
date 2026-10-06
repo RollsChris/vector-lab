@@ -887,6 +887,58 @@ export const SHAPE_AND_TRIG_GUIDES: readonly LessonGuide[] = [
   {
     id: "trig-functions",
     plainEnglish:
+      "Dividing a short side into one is the same as zooming the triangle out from the corner until that side is exactly one. Two zooms, plus the original triangle, give all six trigonometric lengths.",
+    objectives: [
+      "read sine and cosine as the height and base when the hypotenuse is one",
+      "show that dividing by a number below one zooms the triangle out from the corner",
+      "calculate tangent and secant by zooming until the base is one",
+      "calculate cotangent and cosecant by zooming until the height is one",
+      "identify the long vertical intercept as the cosecant zoom rotated onto the axis",
+    ],
+    whyItMatters:
+      "Surveyors, games and engineers all turn an angle into a length. Seeing cosecant as a zoom, not a mysterious reciprocal, is what makes the six functions one picture.",
+    keyIdea:
+      "Dividing by sine or cosine is a zoom about the origin: stretch the triangle along the radius until one side is exactly 1. Hypotenuse 1 gives sine and cosine; base 1 gives tangent and secant; height 1 gives cotangent and cosecant.",
+    workedExample: {
+      prompt:
+        "On a unit circle, φ = 30°. Sin φ is 0.5 and cos φ is about 0.866. Find tan φ, sec φ, cosec φ and cot φ by zooming.",
+      steps: [
+        "The base triangle has hypotenuse 1, height 0.5 and base about 0.866.",
+        "Zoom by 1 ÷ cos φ ≈ 1.155. The base becomes 1, the height becomes tan 30° ≈ 0.577, and the hypotenuse becomes sec 30° ≈ 1.155.",
+        "Zoom by 1 ÷ sin φ = 1 ÷ 0.5 = 2. The height becomes 1 and the hypotenuse becomes cosec 30° = 2.",
+        "The base of that zoom is cot 30° = 0.866 ÷ 0.5 ≈ 1.732.",
+      ],
+      answer:
+        "tan 30° ≈ 0.577, sec 30° ≈ 1.155, cosec 30° = 2 and cot 30° ≈ 1.732.",
+    },
+    pitfalls: [
+      "Treating 1 ÷ sin φ as a new mystery length → it is the zoom that stretches the height until it is 1, and the hypotenuse becomes cosec φ.",
+      "Thinking the zoom flips the triangle → every zoom is a pure scaling about O, with no flip.",
+      "Expecting a larger radius to change sine → on a radius of 1 the height is sine; if the radius is R, multiply every length by R and the ratios stay the same.",
+    ],
+    checks: [
+      {
+        question: "At 30°, sin φ is 0.5. What zoom is 1 ÷ sin φ, and what does the hypotenuse become?",
+        answer:
+          "1 ÷ 0.5 = 2, so the triangle doubles. The height becomes 1 and the hypotenuse becomes 2, which is cosec 30°.",
+      },
+      {
+        question: "Which zoom makes the base exactly 1, and what is the new height called?",
+        answer:
+          "Divide by cos φ, or multiply by 1 ÷ cos φ. The base lands on 1 and the height becomes tan φ. The new hypotenuse is sec φ.",
+      },
+      {
+        question: "Why is the long line up the vertical axis equal to cosec φ?",
+        answer:
+          "It is the hypotenuse of the 1 ÷ sin φ zoom, swung about the origin onto the vertical axis. Rotation keeps the length, so it is still cosec φ.",
+      },
+    ],
+    tryThis:
+      "Step Next through all 10 steps. On each step press Play once and watch the one-shot animation: the radius sweep, the growing height, the times-two zoom, the zoom that makes the base 1, and the swing onto the axes. Try 30°, 45° and 60°, drag the φ slider between 15° and 75°, then open the Trig Functions Explorer for other quadrants.",
+  },
+  {
+    id: "trig-functions-explorer",
+    plainEnglish:
       "A turning line makes a horizontal length and a vertical length. Comparing those lengths gives reliable numbers that describe the direction, whatever size the picture is.",
     objectives: [
       "calculate sine, cosine and tangent from a right triangle",
@@ -939,7 +991,7 @@ export const SHAPE_AND_TRIG_GUIDES: readonly LessonGuide[] = [
       },
     ],
     tryThis:
-      "Click sin, cos and tan in order, then use Quick angles to compare 30°, 45°, 60° and 120°. Change Radius R and watch the side lengths scale while the Live values stay unchanged; then click Why sin²φ + cos²φ = 1.",
+      "In Trig Functions Explorer, click sin, cos and tan in order, then use Quick angles to compare 30°, 45°, 60° and 120°. Change Radius R and watch the side lengths scale while the Live values stay unchanged; then click Why sin²φ + cos²φ = 1.",
   },
   {
     id: "trigonometry-lab",

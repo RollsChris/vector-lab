@@ -21,10 +21,10 @@ type TrigPanelTab = "concept" | "construction" | "comparison" | "history";
  * always the anchor; external tangent constructions only appear when the learner asks
  * for them.
  */
-export class TrigonometricFunctionsLesson implements Lesson {
-  readonly id = "trig-functions";
-  readonly title = "10 · Trigonometric Functions";
-  readonly blurb = "Build sin, cos and tan from one right triangle";
+export class TrigFunctionsExplorerLesson implements Lesson {
+  readonly id = "trig-functions-explorer";
+  readonly title = "10b · Trig Functions Explorer";
+  readonly blurb = "All six functions in every quadrant, with proofs and history";
   readonly category = "Trigonometry" as const;
   readonly difficulty = "Foundation" as const;
   readonly prerequisites = ["radians", "triangle-theorems"] as const;
@@ -1907,7 +1907,7 @@ export class TrigonometricFunctionsLesson implements Lesson {
 
   private renderPanel(): void {
     this.setInfo(`
-      <h2>Trigonometric Functions</h2>
+      <h2>Trig Functions Explorer</h2>
       <p>Build every function from <b>one right triangle</b>. The circle is only a quiet guide.</p>
 
       <div class="trig-function-labels" aria-label="Build the trigonometric picture step by step">

@@ -23,7 +23,7 @@ test("investigations section switches, deep-links, and keeps lesson nav independ
   await expect(page.locator("#investigations-chrome")).toBeVisible();
   await expect(page.locator("#lessons-chrome")).toBeHidden();
   await expect(page.locator(".inv-nav-item")).toHaveCount(100);
-  await expect(page.locator(".nav-item")).toHaveCount(74);
+  await expect(page.locator(".nav-item")).toHaveCount(78);
   // Investigation controls must not use .nav-item (preserves unscoped lesson e2e).
   await expect(page.locator(".inv-nav-item.nav-item")).toHaveCount(0);
   await expect(page.locator(".inv-nav-group")).toHaveCount(8);
