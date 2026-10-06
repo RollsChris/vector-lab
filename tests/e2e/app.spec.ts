@@ -1983,7 +1983,15 @@ test("trigonometry builds one clear construction at a time", async ({ page }) =>
   await expect(reciprocalNote).toContainText("y is not a side of the cyan triangle");
   await expect(reciprocalNote).toContainText("There is no red y in this list");
   await expect(reciprocalNote).toContainText("OS is a different stick");
+  const bigRead = page.locator("[data-trig-big-read='cosec']");
+  await expect(bigRead).toBeVisible();
+  await expect(bigRead).toContainText("the radius OP = R");
+  await expect(bigRead).toContainText("OS = R ÷ sin φ = R·cosec φ");
+  await expect(bigRead).toContainText("the radius changed jobs");
+  await expect(bigRead).toContainText("OS = 1 ÷ 0.5 = 2 = cosec 30°");
   const angleLedger = page.locator("[aria-label='Two-triangle angle ledger']");
+  await expect(angleLedger).toBeHidden();
+  await page.locator("[data-trig-proof-details='cosec'] > summary").click();
   await expect(angleLedger).toBeVisible();
   await expect(angleLedger).toContainText("1 · Small triangle OHP — calculate all three angles");
   await expect(angleLedger).toContainText("OH is on the x-axis, and OP is drawn at φ from the x-axis");
@@ -4120,5 +4128,64 @@ test("triangle transformations animate and distinguish rigid motion from enlarge
   await page.locator("#xf-animate").click();
   await expect.poll(() => page.locator("#xf-animate").textContent(), { timeout: 4000 })
     .toContain("Animate this transformation");
+  expect(errors, errors.join("\n")).toEqual([]);
+});
+
+test("trigonometry grows the grey triangle into the reciprocal triangles", async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto("/#trig-functions");
+  await page.evaluate(() => {
+    const lesson = (window as any).__lab.manager.activeLesson;
+    lesson.params.angleDeg = 30;
+    lesson.params.startAngleDeg = 0;
+    lesson.params.radius = 2;
+    lesson.rebuildScene();
+  });
+
+  await page.locator("[data-trig-function='cosec']").click();
+  await page.locator("[data-trig-panel-tab='construction']").click();
+  await page.locator("[data-trig-grow='cosec']").click();
+  const explainer = page.locator("[data-trig-grow-explainer='cosec']");
+  await expect(explainer).toContainText("Where does the cyan triangle come from?");
+  await expect(explainer).toContainText("R ÷ y = 2.000 ÷ 1.000 = 2.000");
+  await expect(explainer).toContainText("y × cosec φ = 1.000 × 2.000 = 2.000 = R");
+  await expect(explainer).toContainText("R × cosec φ = 2.000 × 2.000 = 4.000 = OS");
+  await expect(explainer).toContainText("x × cosec φ = 1.732 × 2.000 = 3.464 = SP = R cot φ");
+
+  const growState = () => page.evaluate(() => {
+    const lesson = (window as any).__lab.manager.activeLesson;
+    const g = lesson.growGroup;
+    return { visible: g.visible, ...g.userData, cosecTriangle: lesson.cosecTriangle.visible };
+  });
+  const start = await growState();
+  expect(start).toMatchObject({ visible: true, kind: "cosec", animating: true, cosecTriangle: true });
+  expect(["measure", "zoom"]).toContain(start.stage);
+
+  await page.waitForFunction(() => {
+    const g = (window as any).__lab.manager.activeLesson.growGroup;
+    return g.userData.stage === "done" && !g.userData.animating;
+  }, undefined, { timeout: 15000 });
+  const landed = await page.evaluate(() => {
+    const lesson = (window as any).__lab.manager.activeLesson;
+    const length = (line: any) => {
+      const p = line.geometry.getAttribute("position").array as Float32Array;
+      return Math.hypot(p[3] - p[0], p[4] - p[1], p[5] - p[2]);
+    };
+    return {
+      k: lesson.growGroup.userData.k,
+      sides: lesson.growSides.map(length),
+      os: length(lesson.cosecSeg),
+    };
+  });
+  expect(landed.k).toBeCloseTo(2, 6);
+  expect(landed.sides[0]).toBeCloseTo(2 * Math.sqrt(3), 4);
+  expect(landed.sides[1]).toBeCloseTo(2, 4);
+  expect(landed.sides[2]).toBeCloseTo(landed.os, 4);
+
+  await page.locator("[data-trig-function='sec']").click();
+  expect(await page.evaluate(() => (window as any).__lab.manager.activeLesson.growGroup.visible)).toBe(false);
+  await page.locator("[data-trig-grow='sec']").click();
+  await expect(page.locator("[data-trig-grow-explainer='sec']")).toContainText("Where does the orange triangle come from?");
+  expect(await page.evaluate(() => (window as any).__lab.manager.activeLesson.growGroup.userData.kind)).toBe("sec");
   expect(errors, errors.join("\n")).toEqual([]);
 });

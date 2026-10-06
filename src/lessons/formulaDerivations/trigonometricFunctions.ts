@@ -175,6 +175,7 @@ registerFormulaDerivations("trig-functions", [
     equation: "OQ = R sec φ",
     startingPoint: "The original triangle OHP and tangent triangle OPQ are similar.",
     steps: [
+      { expression: "cos φ = OP/OQ = R/OQ, so OQ = R/cos φ", reason: "Short route: in the big triangle the radius OP is the adjacent side and OQ is the hypotenuse. The steps below prove the same result by scaling." },
       { expression: "scale factor = OP/OH = R/x", reason: "Corresponding sides OP and OH are radius and horizontal component." },
       { expression: "R/x = sec φ", reason: "Secant is the reciprocal cosine ratio." },
       { expression: "OQ = OP × scale factor = R(R/x)", reason: "The original hypotenuse OP corresponds to the large hypotenuse OQ." },
@@ -190,6 +191,7 @@ registerFormulaDerivations("trig-functions", [
     equation: "OS = R cosec φ",
     startingPoint: "The original triangle OHP and the cyan y-axis triangle OSP are similar. Original y is HP; it is not the cyan vertical OS.",
     steps: [
+      { expression: "sin φ = OP/OS = R/OS, so OS = R/sin φ", reason: "Short route: the angle at S is φ, so the radius OP is now the opposite side and OS is the hypotenuse. The steps below prove the same result by scaling." },
       { expression: "scale factor = OP/HP = R/y", reason: "Corresponding sides: large OP matches small HP. Shared radius R lines up with original y, not with OS." },
       { expression: "R/y = cosec φ", reason: "That scale factor is the reciprocal sine ratio already computed on the original triangle." },
       { expression: "OS = OP × scale factor = R(R/y)", reason: "Small hypotenuse OP corresponds to large OS. OS is therefore a scaled copy of R, not a copy of y." },

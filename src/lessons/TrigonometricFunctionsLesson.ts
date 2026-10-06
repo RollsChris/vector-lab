@@ -3,6 +3,7 @@ import { derivationButton } from "../core/FormulaDerivations";
 import type { Lesson, LessonContext } from "../core/Lesson";
 import { marker, segment, setSpriteText, textSprite, tip } from "./helpers";
 import { chordHalfChordSvg } from "./formulaDerivations/trigonometricFunctions";
+import { growFrame, growPlan, type GrowKind } from "../math/trigGrow";
 
 const DEG = Math.PI / 180;
 const SPECIAL_ANGLES = [0, 30, 45, 60, 90, 120, 135, 150, 180, 210, 225, 240, 270, 300, 315, 330, 360];
@@ -39,13 +40,18 @@ export class TrigonometricFunctionsLesson implements Lesson {
   private tanConstructionShown = false;
   private secConstructionShown = false;
   private cosecConstructionShown = false;
+  private proofDetailsOpen = false;
   private comparisonFunction: ComparisonFunction | null = null;
-  private comparisonFrameActive = false;
+  private cameraMode: "default" | "comparison" | "grow" = "default";
   private comparisonAnimating = false;
   private comparisonProgress = 0;
   private comparisonSourceSignature = "";
   private activePanelTab: TrigPanelTab = "concept";
   private readonly comparisonDuration = 1.1;
+  private growKind: GrowKind | null = null;
+  private growProgress = 0;
+  private growAnimating = false;
+  private readonly growDuration = 8;
 
   private readonly center = new THREE.Vector3(0, 0, 0);
   private readonly params = {
@@ -108,6 +114,13 @@ export class TrigonometricFunctionsLesson implements Lesson {
   private comparisonAaLegend!: THREE.Sprite;
   private comparisonAaConclusion!: THREE.Sprite;
   private comparisonSideLegend!: THREE.Sprite;
+  private growGroup!: THREE.Group;
+  private growFill!: THREE.Mesh;
+  private growSides!: THREE.Line[];
+  private growSideLabels!: THREE.Sprite[];
+  private growTitle!: THREE.Sprite;
+  private growMeasureSticks!: THREE.Line[];
+  private growMeasureLabel!: THREE.Sprite;
   private identityAreaGroup!: THREE.Group;
   private identityAreaSquares!: THREE.Mesh[];
   private identityAreaOutlines!: THREE.Line[];
@@ -165,27 +178,22 @@ export class TrigonometricFunctionsLesson implements Lesson {
     }
 
     if (target.closest("[data-trig-secant-proof]")) {
-      this.resetComparison();
-      this.identityProofShown = false;
-      this.selectedFunction = "sec";
-      this.activePanelTab = "construction";
-      this.tanConstructionShown = false;
-      this.secConstructionShown = true;
-      this.cosecConstructionShown = false;
-      this.prepareComparison("sec");
+      this.showReciprocalConstruction("sec");
       this.redraw();
       return;
     }
 
     if (target.closest("[data-trig-cosecant-proof]")) {
-      this.resetComparison();
-      this.identityProofShown = false;
-      this.selectedFunction = "cosec";
-      this.activePanelTab = "construction";
-      this.tanConstructionShown = false;
-      this.secConstructionShown = false;
-      this.cosecConstructionShown = true;
-      this.prepareComparison("cosec");
+      this.showReciprocalConstruction("cosec");
+      this.redraw();
+      return;
+    }
+
+    const growButton = target.closest<HTMLButtonElement>("[data-trig-grow]");
+    if (growButton) {
+      const kind = growButton.dataset.trigGrow as GrowKind;
+      this.showReciprocalConstruction(kind);
+      this.startGrow(kind);
       this.redraw();
       return;
     }
@@ -293,7 +301,7 @@ export class TrigonometricFunctionsLesson implements Lesson {
     this.stopTick?.();
     this.stopTick = undefined;
     this.viewport = undefined;
-    this.comparisonFrameActive = false;
+    this.cameraMode = "default";
     document.getElementById("info")?.removeEventListener("click", this.infoClickHandler);
     this.resetComparison();
     this.group.parent?.remove(this.group);
@@ -350,6 +358,7 @@ export class TrigonometricFunctionsLesson implements Lesson {
     this.interceptVertexLabel.userData.label = "Q";
     this.buildComparisonScene();
     this.buildIdentityAreaScene();
+    this.buildGrowScene();
 
     this.group.add(
       this.circleLine,
@@ -387,6 +396,7 @@ export class TrigonometricFunctionsLesson implements Lesson {
       this.interceptVertexLabel,
       this.comparisonGroup,
       this.identityAreaGroup,
+      this.growGroup,
     );
 
     this.setLine(this.radiusLine, c, c);
@@ -423,6 +433,170 @@ export class TrigonometricFunctionsLesson implements Lesson {
     );
     this.identityAreaGroup.visible = false;
     this.identityAreaGroup.userData.kind = "pythagorean-area-equation";
+  }
+
+  private showReciprocalConstruction(kind: GrowKind): void {
+    this.resetComparison();
+    this.identityProofShown = false;
+    this.selectedFunction = kind;
+    this.activePanelTab = "construction";
+    this.tanConstructionShown = false;
+    this.secConstructionShown = kind === "sec";
+    this.cosecConstructionShown = kind === "cosec";
+    this.prepareComparison(kind);
+  }
+
+  private buildGrowScene(): void {
+    this.growGroup = new THREE.Group();
+    this.growFill = this.createTriangle(0x39c5cf, 0.2);
+    this.growSides = [0x5db4ff, 0xff5d5d, 0xf0f6fc].map((color) => this.makeLine(color, 1));
+    this.growSideLabels = [0x5db4ff, 0xff5d5d, 0xf0f6fc].map((color) => textSprite("side", color, 0.3));
+    this.growTitle = textSprite("grow", 0xf0f6fc, 0.34);
+    this.growMeasureSticks = Array.from({ length: 9 }, (_, index) =>
+      this.makeLine(index % 2 ? 0xffb3b3 : 0xff5d5d, 1));
+    this.growMeasureLabel = textSprite("measure", 0xff5d5d, 0.3);
+    this.growGroup.add(
+      this.growFill,
+      ...this.growSides,
+      ...this.growSideLabels,
+      this.growTitle,
+      ...this.growMeasureSticks,
+      this.growMeasureLabel,
+    );
+    this.growGroup.visible = false;
+    this.growGroup.userData = { kind: null, progress: 0, animating: false, stage: null, k: 1 };
+  }
+
+  private startGrow(kind: GrowKind): void {
+    this.growKind = kind;
+    this.growProgress = 0;
+    this.growAnimating = true;
+    this.params.animate = false;
+    this.animateCtl?.updateDisplay();
+  }
+
+  private resetGrow(): void {
+    this.growKind = null;
+    this.growProgress = 0;
+    this.growAnimating = false;
+    if (this.growGroup) this.growGroup.visible = false;
+  }
+
+  private tickGrow(dt: number): void {
+    this.growProgress = Math.min(1, this.growProgress + dt / this.growDuration);
+    if (this.growProgress >= 1) this.growAnimating = false;
+    this.updateGrowScene();
+  }
+
+  /**
+   * Zoom a copy of grey OHP about O by sec φ or cosec φ, then flip it onto the tangent
+   * triangle. Each side is labelled with the old side times the live zoom factor.
+   */
+  private updateGrowScene(): void {
+    const kind = this.growKind;
+    const constructionShown = kind === "sec" ? this.secConstructionShown : this.cosecConstructionShown;
+    const angle = (this.params.startAngleDeg + this.params.angleDeg) * DEG;
+    const plan = kind && this.selectedFunction === kind && constructionShown ? growPlan(kind, this.R, angle) : null;
+    const data = this.growGroup.userData;
+    data.kind = kind;
+    data.progress = this.growProgress;
+    data.animating = this.growAnimating;
+    if (!kind || !plan) {
+      this.growGroup.visible = false;
+      data.stage = null;
+      return;
+    }
+
+    const frame = growFrame(plan, this.growProgress);
+    const isSec = kind === "sec";
+    const color = isSec ? 0xffa657 : 0x39c5cf;
+    const fn = isSec ? "sec" : "cosec";
+    const leg = isSec ? "x" : "y";
+    const legColor = isSec ? 0x5db4ff : 0xff5d5d;
+    const R = this.R;
+    const [x, y] = [plan.source[2].x, plan.source[2].y];
+    const legLength = Math.abs(isSec ? x : y);
+    this.growGroup.visible = true;
+    data.stage = frame.stage;
+    data.k = frame.k;
+    data.scale = plan.scale;
+
+    // Once the copy starts growing its side labels carry the same facts as the
+    // construction's own labels, so hide those to stop them overprinting.
+    const showSides = frame.stage !== "measure";
+    this.growSideLabels.forEach((label) => { label.visible = showSides; });
+    for (const label of [this.secLabel, this.tanLabel, this.cosecLabel, this.cotLabel, this.similarityLabel]) {
+      if (showSides) label.visible = false;
+    }
+    this.radiusLabel.visible = !showSides;
+    if (isSec && showSides) this.cosLabel.visible = false;
+
+    const lift = 0.14;
+    const [O, H, P] = frame.vertices.map((v) => new THREE.Vector3(v.x, v.y, v.z + lift));
+    this.growFill.geometry.setAttribute("position", new THREE.Float32BufferAttribute([
+      O.x, O.y, O.z, H.x, H.y, H.z, P.x, P.y, P.z,
+    ], 3));
+    this.growFill.geometry.setIndex([0, 1, 2]);
+    this.growFill.geometry.computeBoundingSphere();
+    this.setTriangleStyle(this.growFill, color, frame.stage === "measure" ? 0.12 : 0.24);
+    const ends: Array<[THREE.Vector3, THREE.Vector3]> = [[O, H], [H, P], [O, P]];
+    ends.forEach(([a, b], index) => this.setLine(this.growSides[index], a, b));
+
+    // Labels sit just outside each side, pushed away from the triangle's centroid.
+    const centroid = O.clone().add(H).add(P).multiplyScalar(1 / 3);
+    const k = frame.k;
+    const kText = k.toFixed(2);
+    const original = [Math.abs(x), Math.abs(y), R];
+    const names = ["x", "y", "R"];
+    const landed = isSec
+      ? ["= R (on the radius OP)", "= PQ = R tan φ", "= OQ = R sec φ"]
+      : ["= SP = R cot φ", "= R (on the radius OP)", "= OS = R cosec φ"];
+    ends.forEach(([a, b], index) => {
+      const mid = a.clone().add(b).multiplyScalar(0.5);
+      const out = mid.clone().sub(centroid).setZ(0);
+      if (out.lengthSq() < 1e-9) out.set(0, 1, 0);
+      this.growSideLabels[index].position.copy(mid).add(out.normalize().multiplyScalar(0.55)).setZ(mid.z + 0.2);
+      const scaled = this.value(original[index] * k);
+      const text = frame.stage === "measure"
+        ? `${names[index]} = ${this.value(original[index])}`
+        : frame.stage === "done"
+        ? `${names[index]} × ${fn} φ = ${scaled} ${landed[index]}`
+        : `${names[index]} × ${kText} = ${scaled}`;
+      this.setLabel(this.growSideLabels[index], `grow-side-${index}`, text, [0x5db4ff, 0xff5d5d, 0xf0f6fc][index]);
+    });
+
+    const titles: Record<typeof frame.stage, string> = {
+      measure: `1 · Measure: how many ${leg}'s fit along R?  R ÷ ${leg} = ${this.value(plan.scale)} = ${fn} φ`,
+      zoom: `2 · Zoom the grey triangle by ${kText} → ${fn} φ = ${plan.scale.toFixed(2)}. Angles do not change.`,
+      place: `3 · Flip it into place: the grown ${leg} is now exactly R, so it lies on the radius`,
+      done: `The ${isSec ? "orange" : "cyan"} triangle is the grey triangle × ${fn} φ`,
+    };
+    this.growTitle.position.set(0, -R - 1.1, 0.3);
+    this.setLabel(this.growTitle, "grow-title", titles[frame.stage], color);
+
+    // Measure: lay copies of the leg end to end along the radius OP.
+    const measuring = frame.stage === "measure";
+    const direction = new THREE.Vector3(x, y, 0).normalize();
+    const offset = new THREE.Vector3(-direction.y, direction.x, 0).multiplyScalar(0.2);
+    const laid = frame.measure * plan.scale;
+    this.growMeasureSticks.forEach((stick, index) => {
+      const start = index * legLength;
+      const end = Math.min(R, (index + 1) * legLength, laid * legLength);
+      stick.visible = measuring && end > start;
+      if (!stick.visible) return;
+      this.setLine(
+        stick,
+        direction.clone().multiplyScalar(start).add(offset).setZ(0.3),
+        direction.clone().multiplyScalar(end).add(offset).setZ(0.3),
+      );
+      this.setLineStyle(stick, index % 2 ? (isSec ? 0xa8d4ff : 0xffb3b3) : legColor, 1);
+    });
+    this.growMeasureLabel.visible = measuring;
+    if (measuring) {
+      this.growMeasureLabel.position.copy(direction.clone().multiplyScalar(Math.min(R, laid * legLength)))
+        .add(offset.clone().multiplyScalar(3)).setZ(0.35);
+      this.setLabel(this.growMeasureLabel, "grow-measure", `${laid.toFixed(2)} × ${leg}`, legColor);
+    }
   }
 
   private buildComparisonScene(): void {
@@ -507,6 +681,7 @@ export class TrigonometricFunctionsLesson implements Lesson {
   }
 
   private resetComparison(): void {
+    this.resetGrow();
     this.comparisonFunction = null;
     this.comparisonAnimating = false;
     this.comparisonProgress = 0;
@@ -860,6 +1035,7 @@ export class TrigonometricFunctionsLesson implements Lesson {
       this.redraw();
     }
     if (this.comparisonAnimating) this.tickComparison(dt);
+    if (this.growAnimating) this.tickGrow(dt);
   }
 
   private rebuildScene(): void {
@@ -908,6 +1084,7 @@ export class TrigonometricFunctionsLesson implements Lesson {
     this.updateIdentityAreaScene(x, y);
     this.applyOriginalTriangleFocus();
     this.updateExternalConstructions(point, foot, cosT, sinT, tanT);
+    this.updateGrowScene();
     this.updateReadout(theta, standardAngle, cosT, sinT, tanT);
     const showComparison = this.comparisonFunction !== null;
     this.updateCameraFrame(showComparison);
@@ -919,9 +1096,14 @@ export class TrigonometricFunctionsLesson implements Lesson {
   }
 
   private updateCameraFrame(showComparison: boolean): void {
-    if (this.comparisonFrameActive === showComparison) return;
-    this.comparisonFrameActive = showComparison;
-    if (showComparison) {
+    const mode = this.growGroup.visible && !this.comparisonGroup.visible
+      ? "grow"
+      : showComparison ? "comparison" : "default";
+    if (this.cameraMode === mode) return;
+    this.cameraMode = mode;
+    if (mode === "grow") {
+      this.viewport?.frameCamera(new THREE.Vector3(0, 1.5, 22), new THREE.Vector3(0, 1.5, 0));
+    } else if (mode === "comparison") {
       this.viewport?.frameCamera(new THREE.Vector3(5.5, 0, 40), new THREE.Vector3(5.5, 0, 0));
     } else {
       this.viewport?.frameCamera(new THREE.Vector3(0, 0, 20), this.center);
@@ -1405,10 +1587,14 @@ export class TrigonometricFunctionsLesson implements Lesson {
           ? `
             <h3 style="color:#ffa657">4 · Secant: the similar triangle</h3>
             ${xConstructionAvailable ? `
+              ${this.bigTriangleReading("sec", x, y, referenceAngleText)}
+              ${this.growExplainer("sec", x, y, sec)}
               <div class="trig-reciprocal-note" data-trig-reciprocal-note="sec">
                 <strong>1/cos does not flip the triangle</strong>
                 <p>The orange triangle is similar, not inverted. <code>R</code> and <code>x</code> in <code>R/x</code> are still the original sides. The orange intercept <code>OQ</code> is <code>R·sec φ</code>, not <code>x</code>.</p>
               </div>
+              <details class="trig-proof-details" data-trig-proof-details="sec">
+              <summary>Proof: why is the angle at O in the orange triangle φ, and the angle at P 90°?</summary>
               <p>First derive the matching angles; the live values then confirm the geometry.</p>
               <div class="trig-aa-proof">
                 <strong>Geometric AA proof</strong>
@@ -1418,6 +1604,7 @@ export class TrigonometricFunctionsLesson implements Lesson {
                   <li>Two corresponding angles have now been proved equal, so <code>△OHP ∼ △OPQ</code> by AA. The large triangle is also named <code>OQP</code>; <code>OPQ</code> is the order that shows the correspondence <code>O→O, H→P, P→Q</code>. The remaining angles then agree automatically: <code>∠HPO = ∠OQP = 90° − φ = ${complementaryAngle.toFixed(1)}°</code>.</li>
                 </ul>
               </div>
+              </details>
               <div class="trig-correspondence" aria-label="Secant triangle correspondences">
                 <span><b>Vertices</b> O ↔ O · H ↔ P · P ↔ Q</span>
                 <span><b>Sides</b> OH ↔ OP · HP ↔ PQ · OP ↔ OQ</span>
@@ -1442,6 +1629,7 @@ export class TrigonometricFunctionsLesson implements Lesson {
             <div class="formula" data-derivation="secant"><div class="formula-body">sec φ = R/x = ${this.value(this.R)} ÷ ${this.value(x)} = ${this.value(sec)} = 1/cos φ</div></div>
             <p><b>Keep working in the grey triangle.</b> If you know the blue base <code>x</code> and want the radius, <code>R = x × sec φ</code> — the same job as <code>R = x / cos φ</code>.</p>
             <p class="course-hint">The <code>x</code> in <code>R/x</code> is still the original blue base. The orange triangle is an optional picture of that number as a length <code>OQ</code>.</p>
+            ${xConstructionAvailable ? `<button type="button" class="course-btn" data-trig-grow="sec">▶ Grow the grey triangle by sec φ</button>` : ""}
             <button type="button" class="course-btn" data-trig-secant-proof>Optional: draw that number as a length →</button>`;
         break;
       case "cosec":
@@ -1449,6 +1637,8 @@ export class TrigonometricFunctionsLesson implements Lesson {
           ? `
             <h3 style="color:#39c5cf">5 · Cosecant: the similar triangle</h3>
             ${yConstructionAvailable ? `
+              ${this.bigTriangleReading("cosec", x, y, referenceAngleText)}
+              ${this.growExplainer("cosec", x, y, cosec)}
               <div class="trig-reciprocal-note" data-trig-reciprocal-note="cosec">
                 <strong>y is not a side of the cyan triangle</strong>
                 <ul>
@@ -1457,6 +1647,8 @@ export class TrigonometricFunctionsLesson implements Lesson {
                   <li><b>The number:</b> <code>cosec φ = R/y</code> still uses grey’s red height. <code>OS</code> is a different stick whose length is <code>R / sin φ</code>.</li>
                 </ul>
               </div>
+              <details class="trig-proof-details" data-trig-proof-details="cosec">
+              <summary>Proof: why is the angle at S in the cyan triangle φ?</summary>
               <p>Calculate every angle in each triangle first. Compare the triangles only after both ledgers are complete.</p>
               <div class="trig-angle-ledger" aria-label="Two-triangle angle ledger">
                 <section class="trig-ledger-triangle" aria-labelledby="trig-small-ledger">
@@ -1508,6 +1700,7 @@ export class TrigonometricFunctionsLesson implements Lesson {
                   <p><b>Conclusion:</b> all three calculated angle pairs match, so <code>△OHP ∼ △SPO</code> by AAA. AA would already be sufficient; calculating all three angles makes the vertex mapping explicit.</p>
                 </section>
               </div>
+              </details>
               <div class="trig-correspondence" aria-label="Cosecant triangle correspondences">
                 <span><b>Vertices</b> O ↔ S · H ↔ P · P ↔ O</span>
                 <span><b>Sides</b> OH ↔ SP · HP ↔ OP · OP ↔ OS</span>
@@ -1532,6 +1725,7 @@ export class TrigonometricFunctionsLesson implements Lesson {
             <div class="formula" data-derivation="cosecant"><div class="formula-body">cosec φ = R/y = ${this.value(this.R)} ÷ ${this.value(y)} = ${this.value(cosec)} = 1/sin φ</div></div>
             <p><b>Keep working in the grey triangle.</b> Cosecant is hypotenuse over opposite. If you know the red height <code>y</code> and want the white radius, <code>R = y × cosec φ</code> — the same job as <code>R = y / sin φ</code>. You never need the cyan triangle for that.</p>
             <p class="course-hint">The <code>y</code> in <code>R/y</code> is still the original red height. The cyan triangle is an optional picture of the same number as a length <code>OS</code>. Comparing the two triangles only proves that picture; it is not a second triangle you switch to.</p>
+            ${yConstructionAvailable ? `<button type="button" class="course-btn" data-trig-grow="cosec">▶ Grow the grey triangle by cosec φ</button>` : ""}
             <button type="button" class="course-btn" data-trig-cosecant-proof>Optional: draw that number as a length →</button>`;
         break;
       case "cot":
@@ -1580,8 +1774,8 @@ export class TrigonometricFunctionsLesson implements Lesson {
       sin: `<p>The red height <code>y</code> is opposite <code>φ</code>. Divide it by the white radius <code>R</code>. That fraction is sine.</p><div class="formula" data-derivation="sine"><div class="formula-body">sin φ = y/R = ${this.value(y)} ÷ ${this.value(this.R)} = ${this.value(sinT)}</div></div>`,
       cos: `<p>The horizontal component is a fraction of the radius.</p><div class="formula" data-derivation="cosine"><div class="formula-body">cos φ = x/R = ${this.value(x)} ÷ ${this.value(this.R)} = ${this.value(cosT)}</div></div>`,
       tan: `<p>Tangent compares the two directed legs of the original triangle.</p><div class="formula" data-derivation="tangent"><div class="formula-body">tan φ = y/x = ${this.value(y)} ÷ ${this.value(x)} = ${this.value(tanT)}</div></div>`,
-      sec: `<p>Secant inverts the same two lengths as cosine: original <code>R</code> over original <code>x</code>. The orange intercept later is <code>OQ = R·sec φ</code>, which is not <code>x</code>.</p><div class="formula" data-derivation="secant"><div class="formula-body">sec φ = R/x = ${this.value(this.R)} ÷ ${this.value(x)} = ${this.value(sec)}</div></div>`,
-      cosec: `<p>Cosecant is hypotenuse over opposite on the original triangle: <code>R/y = 1/sin φ</code>. Use it there. The cyan length <code>OS</code> is only a drawing of that number, not a different <code>y</code>.</p><div class="formula" data-derivation="cosecant"><div class="formula-body">cosec φ = R/y = ${this.value(this.R)} ÷ ${this.value(y)} = ${this.value(cosec)}</div></div>`,
+      sec: `<p>Secant inverts the same two lengths as cosine: original <code>R</code> over original <code>x</code>. The orange intercept later is <code>OQ = R·sec φ</code>, which is not <code>x</code>.</p><p class="course-hint">Picture it as a <b>zoom factor</b>: zoom the grey triangle by <code>sec φ</code> and its blue base becomes exactly <code>R</code>. That zoomed copy is the orange triangle. Construction → ▶ Play shows it.</p><div class="formula" data-derivation="secant"><div class="formula-body">sec φ = R/x = ${this.value(this.R)} ÷ ${this.value(x)} = ${this.value(sec)}</div></div>`,
+      cosec: `<p>Cosecant is hypotenuse over opposite on the original triangle: <code>R/y = 1/sin φ</code>. Use it there. The cyan length <code>OS</code> is only a drawing of that number, not a different <code>y</code>.</p><p class="course-hint">Picture it as a <b>zoom factor</b>: zoom the grey triangle by <code>cosec φ</code> and its red height becomes exactly <code>R</code>. That zoomed copy is the cyan triangle. Construction → ▶ Play shows it.</p><div class="formula" data-derivation="cosecant"><div class="formula-body">cosec φ = R/y = ${this.value(this.R)} ÷ ${this.value(y)} = ${this.value(cosec)}</div></div>`,
       cot: `<p>Cotangent compares the horizontal component with the vertical component.</p><div class="formula" data-derivation="cotangent"><div class="formula-body">cot φ = x/y = ${this.value(x)} ÷ ${this.value(y)} = ${this.value(cot)}</div></div>`,
     };
     const comparisonDescriptions: Record<ComparisonFunction, string> = {
@@ -1615,6 +1809,10 @@ export class TrigonometricFunctionsLesson implements Lesson {
       ? comparisonBody
       : historyDetails || `<section class="course trig-tab-empty"><h3>History &amp; uses</h3><p>Select a function to follow its development.</p></section>`;
     panel.innerHTML = activeBody;
+    panel.querySelectorAll<HTMLDetailsElement>("details[data-trig-proof-details]").forEach((details) => {
+      details.open = this.proofDetailsOpen;
+      details.addEventListener("toggle", () => { this.proofDetailsOpen = details.open; });
+    });
     panel.querySelectorAll<HTMLElement>(".formula[data-derivation]").forEach((card) => {
       if (card.querySelector(".formula-derive")) return;
       card.insertAdjacentHTML("beforeend", derivationButton(card.dataset.derivation ?? ""));
@@ -1635,6 +1833,76 @@ export class TrigonometricFunctionsLesson implements Lesson {
       button.classList.toggle("active", active);
       button.setAttribute("aria-selected", String(active));
     });
+  }
+
+  /**
+   * The short route: read SOH/CAH in the big triangle, where the radius has changed jobs.
+   */
+  private bigTriangleReading(kind: GrowKind, x: number, y: number, angleText: string): string {
+    const isSec = kind === "sec";
+    const colour = isSec ? "orange" : "cyan";
+    const fn = isSec ? "sec" : "cosec";
+    const ratio = isSec ? "cos" : "sin";
+    const rule = isSec ? "CAH" : "SOH";
+    const corner = isSec ? "O" : "S";
+    const radiusRole = isSec ? "adjacent" : "opposite";
+    const hyp = isSec ? "OQ" : "OS";
+    const hypWhere = isSec ? "the long line along the x-axis" : "the long line up the y-axis";
+    const greyRatio = isSec ? "x/R" : "y/R";
+    const exampleAngle = isSec ? "60°" : "30°";
+    const ratioSize = Math.abs(isSec ? x : y) / this.R;
+    return `
+      <div class="trig-big-read" data-trig-big-read="${kind}">
+        <strong>Read it straight off the big ${colour} triangle</strong>
+        <p>Stand at corner <code>${corner}</code>. The angle there is <code>φ</code> again (proof below).</p>
+        <ul>
+          <li><b>${radiusRole[0].toUpperCase()}${radiusRole.slice(1)}:</b> the radius <code>OP = R</code>.</li>
+          <li><b>Hypotenuse:</b> <code>${hyp}</code>, ${hypWhere}.</li>
+        </ul>
+        <p>${rule} in this triangle: <code>${ratio} φ = R ÷ ${hyp}</code>.</p>
+        <p>Multiply both sides by <code>${hyp}</code>: <code>${hyp} × ${ratio} φ = R</code>. Divide both sides by <code>${ratio} φ</code>: <code>${hyp} = R ÷ ${ratio} φ = R·${fn} φ</code>.</p>
+        <p><b>That is the whole “flip”.</b> In the grey triangle the radius is the <b>hypotenuse</b>, so <code>${ratio} φ = ${greyRatio}</code> with R on the bottom. In the ${colour} triangle the same radius is the <b>${radiusRole}</b> side, so R goes on top. Nothing is turned over: the radius changed jobs.</p>
+        <p class="course-hint">Try φ = ${exampleAngle} with R = 1. Grey: ${radiusRole} 0.5, hypotenuse 1. The ${colour} triangle is the same shape blown up until its ${radiusRole} side is 1, so everything doubles: <code>${hyp} = 1 ÷ 0.5 = 2 = ${fn} ${exampleAngle}</code>.</p>
+        <p data-trig-big-read-live>Now, at φ = ${angleText}: <code>${hyp} = ${this.value(this.R)} ÷ ${this.value(ratioSize)} = ${this.value(this.R / ratioSize)}</code>.</p>
+      </div>`;
+  }
+
+  private growExplainer(kind: GrowKind, x: number, y: number, factor: number): string {
+    const isSec = kind === "sec";
+    const fn = isSec ? "sec" : "cosec";
+    const colour = isSec ? "orange" : "cyan";
+    const leg = isSec ? "x" : "y";
+    const legName = isSec ? "blue base" : "red height";
+    const otherLeg = isSec ? "y" : "x";
+    const otherName = isSec ? "red" : "blue";
+    const k = Math.abs(factor);
+    const legLength = Math.abs(isSec ? x : y);
+    const otherLength = Math.abs(isSec ? y : x);
+    const hyp = isSec ? "OQ" : "OS";
+    const otherTarget = isSec ? "PQ = R tan φ" : "SP = R cot φ";
+    const signHint = factor < 0
+      ? `<p class="course-hint">Here ${fn} φ is negative. The zoom uses its size, ${this.value(k)}; the minus sign only says the intercept is on the negative side of O.</p>`
+      : "";
+    return `
+      <div class="trig-grow" data-trig-grow-explainer="${kind}">
+        <strong>Where does the ${colour} triangle come from?</strong>
+        <p>Taking <code>1/${isSec ? "cos" : "sin"} φ</code> only gives you a <b>number</b>. The new triangle comes from using that number as a <b>zoom factor</b> on the grey one.</p>
+        <ol>
+          <li data-trig-grow-step="measure"><b>Measure.</b> How many copies of the ${legName} <code>${leg}</code> fit along the radius? <code>R ÷ ${leg} = ${this.value(this.R)} ÷ ${this.value(legLength)} = ${this.value(k)}</code>. That count <i>is</i> <code>${fn} φ</code>.</li>
+          <li data-trig-grow-step="zoom"><b>Zoom.</b> Multiply <b>every</b> side of the grey triangle by ${this.value(k)}. The angles do not change, so it is the same shape, just bigger.</li>
+          <li data-trig-grow-step="read"><b>Read off the new sides</b> — each one is an old side × ${fn} φ:
+            <ul>
+              <li><code>${leg} × ${fn} φ = ${this.value(legLength)} × ${this.value(k)} = ${this.value(legLength * k)} = R</code>. Exactly the radius, so this side can lie along <code>OP</code>.</li>
+              <li><code>R × ${fn} φ = ${this.value(this.R)} × ${this.value(k)} = ${this.value(this.R * k)} = ${hyp}</code>. The old hypotenuse becomes the long ${colour} side.</li>
+              <li><code>${otherLeg} × ${fn} φ = ${this.value(otherLength)} × ${this.value(k)} = ${this.value(otherLength * k)} = ${otherTarget}</code>. The old ${otherName} side becomes the tangent piece.</li>
+            </ul>
+          </li>
+          <li data-trig-grow-step="place"><b>Place.</b> Flip the zoomed copy so its old ${leg} side lies on the radius <code>OP</code>. It fits the tangent exactly — that <i>is</i> the ${colour} triangle.</li>
+        </ol>
+        <p class="course-hint">So the ${colour} sides are not new lengths from nowhere. They are the grey sides, each × ${fn} φ. The angle proof below just confirms the fit.</p>
+        ${signHint}
+        <button type="button" class="course-btn" data-trig-grow="${kind}">▶ Play: grow grey into ${colour}</button>
+      </div>`;
   }
 
   private renderPanel(): void {
