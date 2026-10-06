@@ -4259,8 +4259,7 @@ details.course[open] > summary { margin-bottom: 10px; }
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
-.ts-algebra p { margin: 0 0 6px; }
-.ts-algebra code { color: #e6edf3; font-size: 13px; }
+#info .ts-algebra .ts-eq { margin: 0 0 4px; color: #e6edf3; font-size: 15px; line-height: 1.5; font-variant-numeric: tabular-nums; }
 .ts-actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
 .ts-angle-label { margin: 10px 0 0; color: var(--muted); font-size: 12px; }
 .ts-explorer-link {

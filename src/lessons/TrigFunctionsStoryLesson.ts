@@ -192,6 +192,12 @@ export class TrigFunctionsStoryLesson implements Lesson {
    * Step 10 sweeps φ, so it frames both ends of the sweep.
    */
   private fitCamera(): void {
+    // Label gaps depend on the fit, so measure twice and let the scale settle.
+    this.measureFit();
+    this.measureFit();
+  }
+
+  private measureFit(): void {
     const viewport = this.viewport;
     if (!viewport) return;
     const savedT = this.beatT;
@@ -235,6 +241,11 @@ export class TrigFunctionsStoryLesson implements Lesson {
     if (viewport.camera.position.distanceTo(goal.position) < 0.01) this.cameraGoal = undefined;
   }
 
+  /** Label offset in maths units, shrunk to match how close the camera has fitted. */
+  private gap(n: number): number {
+    return n * this.dotScale;
+  }
+
   private renderScene(): void {
     this.disposeChildren(this.dynamic);
     this.addAxes();
@@ -252,7 +263,7 @@ export class TrigFunctionsStoryLesson implements Lesson {
 
     const phi = stored;
     const ease = smoothstep(this.beatT);
-    if (step >= 0) this.drawCircleStep(phi, step === 0 ? ease : 1, step === 0 ? 1 : DIM);
+    if (step >= 0) this.drawCircleStep(phi, step === 0 ? ease : 1, step === 0 ? 1 : DIM, step <= 2);
     if (step >= 1) this.drawSinStep(phi, step === 1 ? ease : 1, step === 1 ? 1 : DIM, step === 1);
     if (step >= 2) this.drawCosStep(phi, step === 2 ? ease : 1, step === 2 ? 1 : DIM, step === 2);
     if (step === 4) this.drawCosZoom(phi, this.beatT, 1, false);
@@ -276,12 +287,12 @@ export class TrigFunctionsStoryLesson implements Lesson {
     this.addSeg(copy.H, copy.P, COL.sin, 1);
     this.addSeg(copy.O, copy.P, COL.radius, 1);
     this.addDot(copy.P, COL.radius);
-    this.addText(`height ${fmt(copy.P.y)}`, { x: copy.P.x + 0.32, y: copy.P.y / 2 }, COL.sin);
-    this.addText(`base ${fmt(copy.H.x)}`, { x: copy.H.x / 2, y: -0.28 }, COL.cos);
-    this.addText(`hyp ${fmt(Math.hypot(copy.P.x, copy.P.y))}`, offsetMid(copy.O, copy.P, -0.2, 0.16), COL.radius);
+    this.addText(`height ${fmt(copy.P.y)}`, { x: copy.P.x + this.gap(0.32), y: copy.P.y / 2 }, COL.sin);
+    this.addText(`base ${fmt(copy.H.x)}`, { x: copy.H.x / 2, y: this.gap(-0.28) }, COL.cos);
+    this.addText(`hyp ${fmt(Math.hypot(copy.P.x, copy.P.y))}`, offsetMid(copy.O, copy.P, this.gap(-0.2), this.gap(0.16)), COL.radius);
   }
 
-  private drawCircleStep(phi: number, grow: number, opacity: number): void {
+  private drawCircleStep(phi: number, grow: number, opacity: number, labels: boolean): void {
     const ang = phi * grow;
     const r = (ang * Math.PI) / 180;
     const p = { x: Math.cos(r), y: Math.sin(r) };
@@ -290,10 +301,11 @@ export class TrigFunctionsStoryLesson implements Lesson {
     this.addSeg({ x: 0, y: 0 }, p, COL.radius, opacity);
     this.addArc(0.32, 0, Math.max(ang, 0.01), COL.arc, opacity);
     this.addDot(p, COL.radius, opacity);
-    if (opacity > 0.7) {
-      this.addText("P", { x: p.x + 0.14, y: p.y + 0.16 }, COL.radius, 1, 0.4);
-      this.addText("φ", { x: 0.42, y: 0.06 }, COL.arc, 1, 0.38);
-      this.addText("OP = 1", offsetMid({ x: 0, y: 0 }, p, -0.16, 0.16), COL.radius, 1, 0.42);
+    // Steps 1–3 talk about P and φ, so keep their labels even once the circle dims.
+    if (labels) {
+      this.addText("P", { x: p.x + this.gap(0.14), y: p.y + this.gap(0.16) }, COL.radius, 1, 0.4);
+      this.addText("φ", { x: this.gap(0.42), y: this.gap(0.06) }, COL.arc, 1, 0.38);
+      this.addText("OP = 1", offsetMid({ x: 0, y: 0 }, p, this.gap(-0.16), this.gap(0.16)), COL.radius, 1, 0.42);
     }
   }
 
@@ -305,7 +317,7 @@ export class TrigFunctionsStoryLesson implements Lesson {
     if (label) {
       this.addText(
         `sin φ = ${fmt(tri.P.y * grow)}`,
-        { x: tri.P.x + 0.34, y: (tri.P.y + end.y) / 2 },
+        { x: tri.P.x + this.gap(0.34), y: (tri.P.y + end.y) / 2 },
         COL.sin,
       );
     }
@@ -316,7 +328,7 @@ export class TrigFunctionsStoryLesson implements Lesson {
     const end = { x: tri.H.x * grow, y: 0 };
     this.addSeg({ x: 0, y: 0 }, end, COL.cos, opacity);
     if (label) {
-      this.addText(`cos φ = ${fmt(tri.H.x * grow)}`, { x: Math.max(end.x, 0.2) / 2, y: -0.28 }, COL.cos);
+      this.addText(`cos φ = ${fmt(tri.H.x * grow)}`, { x: Math.max(end.x, this.gap(0.2)) / 2, y: this.gap(-0.28) }, COL.cos);
     }
   }
 
@@ -331,13 +343,13 @@ export class TrigFunctionsStoryLesson implements Lesson {
     this.addDot({ x: 1, y: 0 }, COL.tangent, opacity);
     this.addDot(tri.P, highlightHyp ? COL.sec : COL.tan, opacity);
     if (opacity > 0.7) {
-      this.addText("A", { x: 1.14, y: -0.22 }, COL.tangent, 1, 0.4);
-      this.addText("T", { x: tri.P.x + 0.16, y: tri.P.y + 0.14 }, COL.tan, 1, 0.4);
+      this.addText("A", { x: 1 + this.gap(0.14), y: this.gap(-0.22) }, COL.tangent, 1, 0.4);
+      this.addText("T", { x: tri.P.x + this.gap(0.16), y: tri.P.y + this.gap(0.14) }, COL.tan, 1, 0.4);
       if (highlightHyp) {
-        this.addText(`sec φ = ${fmt(secNow)}`, offsetMid(tri.O, tri.P, -0.22, 0.16), COL.sec);
+        this.addText(`sec φ = ${fmt(secNow)}`, offsetMid(tri.O, tri.P, this.gap(-0.22), this.gap(0.16)), COL.sec);
       } else {
-        this.addText(`tan φ = ${fmt(tri.P.y)}`, { x: tri.H.x + 0.42, y: Math.max(tri.P.y / 2, 0.16) }, COL.tan);
-        this.addText(`base ${fmt(tri.H.x)}${t >= 1 ? " ✓" : ""}`, { x: tri.H.x / 2, y: -0.28 }, COL.cos);
+        this.addText(`tan φ = ${fmt(tri.P.y)}`, { x: tri.H.x + this.gap(0.42), y: Math.max(tri.P.y / 2, this.gap(0.16)) }, COL.tan);
+        this.addText(`base ${fmt(tri.H.x)}${t >= 1 ? " ✓" : ""}`, { x: tri.H.x / 2, y: this.gap(-0.28) }, COL.cos);
       }
     }
   }
@@ -353,10 +365,10 @@ export class TrigFunctionsStoryLesson implements Lesson {
     this.addDot({ x: 0, y: 1 }, COL.tangent, opacity);
     this.addDot(tri.P, COL.cosec, opacity);
     if (opacity > 0.7) {
-      this.addText("B", { x: -0.24, y: 1.16 }, COL.tangent, 1, 0.4);
-      this.addText("C", { x: tri.P.x + 0.16, y: tri.P.y + 0.14 }, COL.cosec, 1, 0.4);
-      this.addText(`cosec φ = ${fmt(hyp)}`, offsetMid(tri.O, tri.P, -0.36, 0.1), COL.cosec);
-      this.addText(`height ${fmt(tri.P.y)}${t >= 1 ? " ✓" : ""}`, { x: tri.P.x + 0.5, y: tri.P.y / 2 }, COL.sin);
+      this.addText("B", { x: this.gap(-0.24), y: 1 + this.gap(0.16) }, COL.tangent, 1, 0.4);
+      this.addText("C", { x: tri.P.x + this.gap(0.16), y: tri.P.y + this.gap(0.14) }, COL.cosec, 1, 0.4);
+      this.addText(`cosec φ = ${fmt(hyp)}`, offsetMid(tri.O, tri.P, this.gap(-0.36), this.gap(0.1)), COL.cosec);
+      this.addText(`height ${fmt(tri.P.y)}${t >= 1 ? " ✓" : ""}`, { x: tri.P.x + this.gap(0.5), y: tri.P.y / 2 }, COL.sin);
     }
   }
 
@@ -368,10 +380,10 @@ export class TrigFunctionsStoryLesson implements Lesson {
     this.addDot(z.B, COL.tangent, opacity);
     this.addDot(z.C, COL.cot, opacity);
     if (opacity > 0.7) {
-      this.addText(`cot φ = ${fmt(z.H.x)}`, { x: z.H.x / 2, y: -0.28 }, COL.cot);
-      this.addText(`B→C = ${fmt(z.H.x)}`, { x: z.H.x / 2, y: y + 0.24 }, COL.cot);
-      this.addText("B", { x: -0.24, y: 1.18 }, COL.tangent, 1, 0.4);
-      this.addText("C", { x: z.C.x + 0.16, y: 1.16 }, COL.cot, 1, 0.4);
+      this.addText(`cot φ = ${fmt(z.H.x)}`, { x: z.H.x / 2, y: this.gap(-0.28) }, COL.cot);
+      this.addText(`B→C = ${fmt(z.H.x)}`, { x: z.H.x / 2, y: y + this.gap(0.24) }, COL.cot);
+      this.addText("B", { x: this.gap(-0.24), y: 1 + this.gap(0.18) }, COL.tangent, 1, 0.4);
+      this.addText("C", { x: z.C.x + this.gap(0.16), y: 1 + this.gap(0.16) }, COL.cot, 1, 0.4);
     }
   }
 
@@ -388,18 +400,18 @@ export class TrigFunctionsStoryLesson implements Lesson {
     this.addDot(tang.Q, COL.sec, 0.85);
     this.addSeg({ x: 0, y: 0 }, swungC, COL.cosec, 1);
     this.addSeg({ x: 0, y: 0 }, swungT, COL.sec, 1);
-    this.addText("P", { x: tang.P.x + 0.12, y: tang.P.y + 0.16 }, COL.radius, 1, 0.4);
+    this.addText("P", { x: tang.P.x + this.gap(0.12), y: tang.P.y + this.gap(0.16) }, COL.radius, 1, 0.4);
     if (first > 0.98) {
-      this.addText("S", { x: -0.24, y: tang.S.y + 0.1 }, COL.cosec, 1, 0.4);
+      this.addText("S", { x: this.gap(-0.24), y: tang.S.y + this.gap(0.1) }, COL.cosec, 1, 0.4);
       this.addText(`OS = ${fmt(v.cosec)}`, { x: -0.62, y: tang.S.y * 0.6 }, COL.cosec, 1, 0.4);
     }
     if (second > 0.98) {
-      this.addText("Q", { x: tang.Q.x + 0.08, y: -0.24 }, COL.sec, 1, 0.4);
+      this.addText("Q", { x: tang.Q.x + this.gap(0.08), y: this.gap(-0.24) }, COL.sec, 1, 0.4);
       this.addText(`OQ = ${fmt(v.sec)}`, { x: tang.Q.x * 0.5, y: -0.3 }, COL.sec, 1, 0.4);
       this.addSeg(tang.P, tang.Q, COL.tan, 1);
       this.addSeg(tang.S, tang.P, COL.cot, 1);
-      this.addText(`PQ = tan φ = ${fmt(v.tan)}`, offsetMid(tang.P, tang.Q, 0.34, 0.14), COL.tan, 1, 0.38);
-      this.addText(`SP = cot φ = ${fmt(v.cot)}`, offsetMid(tang.S, tang.P, 0.5, 0.22), COL.cot, 1, 0.38);
+      this.addText(`PQ = tan φ = ${fmt(v.tan)}`, offsetMid(tang.P, tang.Q, this.gap(0.34), this.gap(0.14)), COL.tan, 1, 0.38);
+      this.addText(`SP = cot φ = ${fmt(v.cot)}`, offsetMid(tang.S, tang.P, this.gap(0.5), this.gap(0.22)), COL.cot, 1, 0.38);
     }
   }
 
@@ -446,7 +458,7 @@ export class TrigFunctionsStoryLesson implements Lesson {
       this.addSeg({ x: 0, y: -0.6 }, { x: 0, y: 4.6 }, COL.axis, 0.55);
     });
     this.addDot({ x: 0, y: 0 }, COL.radius);
-    this.addText("O", { x: -0.22, y: -0.2 }, 0xc9d1d9, 0.95, 0.38);
+    this.addText("O", { x: this.gap(-0.22), y: this.gap(-0.2) }, 0xc9d1d9, 0.95, 0.38);
   }
 
   private addVerticalTangent(opacity: number): void {
@@ -618,6 +630,10 @@ function offsetMid(a: Point, b: Point, ox: number, oy: number): Point {
   return { x: (a.x + b.x) / 2 + ox, y: (a.y + b.y) / 2 + oy };
 }
 
+function eq(...lines: string[]): string {
+  return lines.map((line) => `<p class="ts-eq">${line}</p>`).join("");
+}
+
 function stepCopy(step: number, v: StoryValues): { sentences: string[]; box: string } {
   const sin = fmt(v.sin);
   const cos = fmt(v.cos);
@@ -637,7 +653,7 @@ function stepCopy(step: number, v: StoryValues): { sentences: string[]; box: str
         "The radius is 1, so a length is just a number of radiuses.",
         "φ is how far the radius has turned up from the flat axis.",
       ],
-      box: "<p><code>OP = 1</code></p>",
+      box: eq("OP = 1 (the radius)"),
     },
     {
       sentences: [
@@ -645,7 +661,7 @@ function stepCopy(step: number, v: StoryValues): { sentences: string[]; box: str
         "The hypotenuse is 1, so sin φ is just the height.",
         "The red line drops from P down to the flat axis.",
       ],
-      box: `<p><code>sin φ = opposite ÷ hypotenuse = ${sin} ÷ 1 = ${sin}</code></p>`,
+      box: eq("sin φ = opposite ÷ hypotenuse", `sin φ = ${sin} ÷ 1`, `sin φ = ${sin}`),
     },
     {
       sentences: [
@@ -653,7 +669,7 @@ function stepCopy(step: number, v: StoryValues): { sentences: string[]; box: str
         "The hypotenuse is still 1, so cos φ is just the base.",
         "The blue line runs from O out to the foot of the height.",
       ],
-      box: `<p><code>cos φ = adjacent ÷ hypotenuse = ${cos} ÷ 1 = ${cos}</code></p>`,
+      box: eq("cos φ = adjacent ÷ hypotenuse", `cos φ = ${cos} ÷ 1`, `cos φ = ${cos}`),
     },
     {
       sentences: [
@@ -661,7 +677,7 @@ function stepCopy(step: number, v: StoryValues): { sentences: string[]; box: str
         "Dividing by 0.5 is the same as multiplying by 2, because 1 ÷ 0.5 = 2.",
         "So dividing by a number less than 1 makes the triangle bigger.",
       ],
-      box: `<p><code>× 2 = ÷ 0.5</code></p><p><code>height ${sin} → ${doubled.height}; base ${cos} → ${doubled.base}; hypotenuse 1 → ${doubled.hyp}</code></p>`,
+      box: eq("× 2 is the same as ÷ 0.5", `height: ${sin} → ${doubled.height}`, `base: ${cos} → ${doubled.base}`, `hypotenuse: 1 → ${doubled.hyp}`),
     },
     {
       sentences: [
@@ -669,7 +685,7 @@ function stepCopy(step: number, v: StoryValues): { sentences: string[]; box: str
         "The height grows too: sin φ ÷ cos φ is tan φ.",
         "That vertical line just touches the circle. It is a tangent, which is where the name comes from.",
       ],
-      box: `<p><code>zoom = 1 ÷ cos φ = 1 ÷ ${cos} = ${sec}</code></p><p><code>height = sin φ ÷ cos φ = ${sin} ÷ ${cos} = ${tan} = tan φ</code></p>`,
+      box: eq(`zoom = 1 ÷ cos φ = 1 ÷ ${cos} = ${sec}`, `base: ${cos} → 1`, `height: ${sin} ÷ ${cos} = ${tan}`, `so tan φ = ${tan}`),
     },
     {
       sentences: [
@@ -677,7 +693,7 @@ function stepCopy(step: number, v: StoryValues): { sentences: string[]; box: str
         "The line from O to T cuts through the circle.",
         "Secant means cutting.",
       ],
-      box: `<p><code>sec φ = 1 × (1 ÷ cos φ) = 1 ÷ ${cos} = ${sec}</code></p>`,
+      box: eq(`hypotenuse: 1 → 1 ÷ cos φ`, `1 ÷ ${cos} = ${sec}`, `so sec φ = ${sec}`),
     },
     {
       sentences: [
@@ -685,7 +701,7 @@ function stepCopy(step: number, v: StoryValues): { sentences: string[]; box: str
         "It stretches out from O, along the radius line, until the red height is exactly 1.",
         "The hypotenuse was 1, so it becomes cosec φ. A small sin means a huge zoom.",
       ],
-      box: `<p><code>zoom = 1 ÷ sin φ = 1 ÷ ${sin} = ${cosec} → height ${sin} × ${cosec} = 1, hypotenuse 1 × ${cosec} = ${cosec} = cosec φ</code></p>`,
+      box: eq(`zoom = 1 ÷ sin φ = 1 ÷ ${sin} = ${cosec}`, `height: ${sin} × ${cosec} = 1`, `hypotenuse: 1 × ${cosec} = ${cosec}`, `so cosec φ = ${cosec}`),
     },
     {
       sentences: [
@@ -693,7 +709,7 @@ function stepCopy(step: number, v: StoryValues): { sentences: string[]; box: str
         "It sits on the top tangent line, just as tan sat on the side one.",
         "Sliding the base up shows the two lengths are equal.",
       ],
-      box: `<p><code>cot φ = cos φ ÷ sin φ = ${cos} ÷ ${sin} = ${cot}</code></p><p><code>B → C = ${cot}</code></p>`,
+      box: eq(`base: ${cos} ÷ ${sin} = ${cot}`, `so cot φ = ${cot}`, `B → C = ${cot}`),
     },
     {
       sentences: [
@@ -701,7 +717,7 @@ function stepCopy(step: number, v: StoryValues): { sentences: string[]; box: str
         "The long line up the vertical axis is the cosec zoom swung round. Same length, just rotated.",
         "In triangle O, S, P the radius is the opposite side of the angle at S, so sin φ = 1 ÷ OS, which gives OS = 1 ÷ sin φ.",
       ],
-      box: `<p><code>OS = OC = 1 ÷ sin φ = ${cosec}; OQ = OT = 1 ÷ cos φ = ${sec}</code></p>`,
+      box: eq(`OS = OC = 1 ÷ sin φ = ${cosec}`, `OQ = OT = 1 ÷ cos φ = ${sec}`),
     },
     {
       sentences: [
