@@ -3,10 +3,12 @@ import {
   STORY_STEPS,
   baseTriangle,
   clampPhi,
+  reflectAcross,
   cosZoom,
   sinZoom,
   smoothstep,
   swing,
+  tangentAtP,
   tangentLengths,
   values,
   zoomAt,
@@ -75,8 +77,8 @@ describe("trigStory", () => {
     expect(values(90).phi).toBe(75);
   });
 
-  it("lists ten story steps with id, title and hasBeat", () => {
-    expect(STORY_STEPS).toHaveLength(10);
+  it("lists eleven story steps with id, title and hasBeat", () => {
+    expect(STORY_STEPS).toHaveLength(11);
     for (const step of STORY_STEPS) {
       expect(step.id.length).toBeGreaterThan(0);
       expect(step.title.length).toBeGreaterThan(0);
@@ -91,9 +93,26 @@ describe("trigStory", () => {
       "sec",
       "cosec",
       "cot",
-      "famous",
+      "tangent-base",
+      "tangent-height",
       "all",
     ]);
+  });
+
+  it("folds the zoomed triangles exactly onto the tangent triangles", () => {
+    for (const phi of [20, 30, 45, 60, 70]) {
+      const cz = cosZoom(phi);
+      const sz = sinZoom(phi);
+      const tang = tangentAtP(phi);
+      const near = (a: { x: number; y: number }, b: { x: number; y: number }) => {
+        expect(a.x).toBeCloseTo(b.x, 10);
+        expect(a.y).toBeCloseTo(b.y, 10);
+      };
+      near(reflectAcross(cz.A, phi / 2), tang.P);
+      near(reflectAcross(cz.T, phi / 2), tang.Q);
+      near(reflectAcross(sz.B, (phi + 90) / 2), tang.P);
+      near(reflectAcross(sz.C, (phi + 90) / 2), tang.S);
+    }
   });
 
   it("eases with smoothstep", () => {

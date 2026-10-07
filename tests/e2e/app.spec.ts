@@ -1464,7 +1464,7 @@ test("trigonometric functions story steps through the six functions", async ({ p
   const next = page.locator("#info").getByRole("button", { name: "Next", exact: true });
   const back = page.locator("#info").getByRole("button", { name: "Back", exact: true });
   for (let i = 0; i < 6; i++) await next.click();
-  await expect(page.locator("#info")).toContainText("cosec φ: what 1 ÷ sin φ actually does");
+  await expect(page.locator("#info")).toContainText("Zoom until the height is 1 → cosec φ");
   await expect(page.locator("#info")).toContainText("2.00");
 
   await page.locator("#info").getByRole("button", { name: "▶ Play" }).click();
@@ -1476,6 +1476,8 @@ test("trigonometric functions story steps through the six functions", async ({ p
 
   await next.click();
   await next.click();
+  await expect(page.locator("#info")).toContainText("PQ = AT");
+  await next.click();
   await expect(page.locator("#info")).toContainText("OS = OC");
 
   await next.click();
@@ -1483,7 +1485,7 @@ test("trigonometric functions story steps through the six functions", async ({ p
   await expect(page.locator('a[href="#trig-functions-explorer"]')).toHaveAttribute("href", "#trig-functions-explorer");
 
   await back.click();
-  await expect(page.locator("#info")).toContainText("The famous picture: tangent at P");
+  await expect(page.locator("#info")).toContainText("Same tangent → the height-1 triangle");
 
   await page.locator("#info").getByRole("button", { name: "45°" }).click();
   expect(await page.evaluate(() => (window as any).__lab.manager.activeLesson.phiDeg)).toBe(45);

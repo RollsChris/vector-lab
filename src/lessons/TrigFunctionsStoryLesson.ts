@@ -12,7 +12,6 @@ import {
   sinZoom,
   smoothstep,
   sweepPhi,
-  swing,
   tangentAtP,
   values,
   zoomAt,
@@ -24,6 +23,12 @@ import {
 const U = 2.4;
 const BEAT_SECONDS = 2.2;
 const DIM = 0.35;
+const STEP_ZOOM = 3;
+const STEP_TANGENT_BASE = 8;
+const STEP_TANGENT_HEIGHT = 9;
+const STEP_ALL = 10;
+/** Step 4 demo zoom. Not 2: at 30° that lands the height on exactly 1 and looks like a hint. */
+const DEMO_ZOOM = 1.5;
 /** textSprite scale → screen-fixed sprite scale (fov 50: 0.44 ≈ 30px tall on a 900px viewport). */
 const SCREEN_TEXT = 0.072;
 
@@ -189,7 +194,7 @@ export class TrigFunctionsStoryLesson implements Lesson {
 
   /**
    * Frame the finished picture for this step and angle, then glide the camera there.
-   * Step 10 sweeps φ, so it frames both ends of the sweep.
+   * The last step sweeps φ, so it frames both ends of the sweep; the tangent steps frame both ends of the fold.
    */
   private fitCamera(): void {
     // Label gaps depend on the fit, so measure twice and let the scale settle.
@@ -203,14 +208,17 @@ export class TrigFunctionsStoryLesson implements Lesson {
     const savedT = this.beatT;
     const savedPhi = this.phiDeg;
     const box = new THREE.Box3();
-    const angles = this.step === 9 ? [PHI_MIN, PHI_MAX, savedPhi] : [savedPhi];
-    this.beatT = 1;
-    for (const angle of angles) {
-      this.phiDeg = angle;
-      this.renderScene();
-      this.dynamic.updateMatrixWorld(true);
-      for (const child of this.dynamic.children) {
-        if (!child.userData.noFit) box.expandByObject(child);
+    const angles = this.step === STEP_ALL ? [PHI_MIN, PHI_MAX, savedPhi] : [savedPhi];
+    const folds = this.step === STEP_TANGENT_BASE || this.step === STEP_TANGENT_HEIGHT;
+    for (const t of folds ? [0, 1] : [1]) {
+      this.beatT = t;
+      for (const angle of angles) {
+        this.phiDeg = angle;
+        this.renderScene();
+        this.dynamic.updateMatrixWorld(true);
+        for (const child of this.dynamic.children) {
+          if (!child.userData.noFit) box.expandByObject(child);
+        }
       }
     }
     this.phiDeg = savedPhi;
@@ -252,11 +260,15 @@ export class TrigFunctionsStoryLesson implements Lesson {
     const stored = clampPhi(this.phiDeg);
     const step = this.step;
 
-    if (step === 3) {
+    if (step === STEP_ZOOM) {
       this.drawZoomLesson(stored, this.beatT);
       return;
     }
-    if (step === 9) {
+    if (step === STEP_TANGENT_BASE || step === STEP_TANGENT_HEIGHT) {
+      this.drawTangentFold(stored, this.beatT, step === STEP_TANGENT_BASE ? "base" : "height");
+      return;
+    }
+    if (step === STEP_ALL) {
       this.drawAll(sweepPhi(stored, this.beatT));
       return;
     }
@@ -272,12 +284,11 @@ export class TrigFunctionsStoryLesson implements Lesson {
     if (step === 6) this.drawSinZoom(phi, this.beatT, 1);
     else if (step > 6) this.drawSinZoom(phi, 1, DIM);
     if (step >= 7) this.drawCotSlide(phi, step === 7 ? this.beatT : 1, step === 7 ? 1 : DIM);
-    if (step === 8) this.drawFamous(phi, this.beatT);
   }
 
   private drawZoomLesson(phi: number, t: number): void {
     const base = baseTriangle(phi);
-    const copy = zoomAt(phi, 2, t);
+    const copy = zoomAt(phi, DEMO_ZOOM, t);
     this.addFill(base.O, base.H, base.P, COL.greyFill, 0.22);
     this.addSeg(base.O, base.H, COL.cos, 1);
     this.addSeg(base.H, base.P, COL.sin, 1);
@@ -316,10 +327,11 @@ export class TrigFunctionsStoryLesson implements Lesson {
     this.addSeg(tri.P, end, COL.sin, opacity);
     if (label) {
       this.addText(
-        `sin φ = ${fmt(tri.P.y * grow)}`,
+        `HP = ${fmt(tri.P.y * grow)}`,
         { x: tri.P.x + this.gap(0.34), y: (tri.P.y + end.y) / 2 },
         COL.sin,
       );
+      this.addText("H", { x: tri.H.x + this.gap(0.14), y: this.gap(-0.2) }, COL.sin, 1, 0.4);
     }
   }
 
@@ -328,7 +340,8 @@ export class TrigFunctionsStoryLesson implements Lesson {
     const end = { x: tri.H.x * grow, y: 0 };
     this.addSeg({ x: 0, y: 0 }, end, COL.cos, opacity);
     if (label) {
-      this.addText(`cos φ = ${fmt(tri.H.x * grow)}`, { x: Math.max(end.x, this.gap(0.2)) / 2, y: this.gap(-0.28) }, COL.cos);
+      this.addText(`OH = ${fmt(tri.H.x * grow)}`, { x: Math.max(end.x, this.gap(0.2)) / 2, y: this.gap(-0.28) }, COL.cos);
+      this.addText("H", { x: tri.H.x + this.gap(0.14), y: this.gap(-0.2) }, COL.sin, 1, 0.4);
     }
   }
 
@@ -346,10 +359,10 @@ export class TrigFunctionsStoryLesson implements Lesson {
       this.addText("A", { x: 1 + this.gap(0.14), y: this.gap(-0.22) }, COL.tangent, 1, 0.4);
       this.addText("T", { x: tri.P.x + this.gap(0.16), y: tri.P.y + this.gap(0.14) }, COL.tan, 1, 0.4);
       if (highlightHyp) {
-        this.addText(`sec φ = ${fmt(secNow)}`, offsetMid(tri.O, tri.P, this.gap(-0.22), this.gap(0.16)), COL.sec);
+        this.addText(`OT = ${fmt(secNow)}`, offsetMid(tri.O, tri.P, this.gap(-0.22), this.gap(0.16)), COL.sec);
       } else {
-        this.addText(`tan φ = ${fmt(tri.P.y)}`, { x: tri.H.x + this.gap(0.42), y: Math.max(tri.P.y / 2, this.gap(0.16)) }, COL.tan);
-        this.addText(`base ${fmt(tri.H.x)}${t >= 1 ? " ✓" : ""}`, { x: tri.H.x / 2, y: this.gap(-0.28) }, COL.cos);
+        this.addText(`${t >= 1 ? "AT" : "height"} = ${fmt(tri.P.y)}`, { x: tri.H.x + this.gap(0.42), y: Math.max(tri.P.y / 2, this.gap(0.16)) }, COL.tan);
+        this.addText(`${t >= 1 ? "OA" : "base"} = ${fmt(tri.H.x)}${t >= 1 ? " ✓" : ""}`, { x: tri.H.x / 2, y: this.gap(-0.28) }, COL.cos);
       }
     }
   }
@@ -367,8 +380,9 @@ export class TrigFunctionsStoryLesson implements Lesson {
     if (opacity > 0.7) {
       this.addText("B", { x: this.gap(-0.24), y: 1 + this.gap(0.16) }, COL.tangent, 1, 0.4);
       this.addText("C", { x: tri.P.x + this.gap(0.16), y: tri.P.y + this.gap(0.14) }, COL.cosec, 1, 0.4);
-      this.addText(`cosec φ = ${fmt(hyp)}`, offsetMid(tri.O, tri.P, this.gap(-0.36), this.gap(0.1)), COL.cosec);
-      this.addText(`height ${fmt(tri.P.y)}${t >= 1 ? " ✓" : ""}`, { x: tri.P.x + this.gap(0.5), y: tri.P.y / 2 }, COL.sin);
+      this.addText(`${t >= 1 ? "OC" : "hyp"} = ${fmt(hyp)}`, offsetMid(tri.O, tri.P, this.gap(-0.36), this.gap(0.1)), COL.cosec);
+      this.addText(`${t >= 1 ? "DC" : "height"} = ${fmt(tri.P.y)}${t >= 1 ? " ✓" : ""}`, { x: tri.P.x + this.gap(0.5), y: tri.P.y / 2 }, COL.sin);
+      if (t >= 1) this.addText("D", { x: tri.P.x + this.gap(0.14), y: this.gap(-0.22) }, COL.sin, 1, 0.4);
     }
   }
 
@@ -380,39 +394,115 @@ export class TrigFunctionsStoryLesson implements Lesson {
     this.addDot(z.B, COL.tangent, opacity);
     this.addDot(z.C, COL.cot, opacity);
     if (opacity > 0.7) {
-      this.addText(`cot φ = ${fmt(z.H.x)}`, { x: z.H.x / 2, y: this.gap(-0.28) }, COL.cot);
-      this.addText(`B→C = ${fmt(z.H.x)}`, { x: z.H.x / 2, y: y + this.gap(0.24) }, COL.cot);
+      this.addText(`OD = ${fmt(z.H.x)}`, { x: z.H.x / 2, y: this.gap(-0.28) }, COL.cot);
+      this.addText(`BC = ${fmt(z.H.x)}`, { x: z.H.x / 2, y: y + this.gap(0.24) }, COL.cot);
       this.addText("B", { x: this.gap(-0.24), y: 1 + this.gap(0.18) }, COL.tangent, 1, 0.4);
       this.addText("C", { x: z.C.x + this.gap(0.16), y: 1 + this.gap(0.16) }, COL.cot, 1, 0.4);
     }
   }
 
-  private drawFamous(phi: number, rawT: number): void {
+  /**
+   * The tangent at P makes two right triangles with the axes. Each is a zoomed triangle
+   * flipped over: OAT folds across the line at φ/2 onto OPQ, OBC across (φ + 90)/2 onto OSP.
+   * They are mirror images, so the move is a fold (a 3D half-turn), not a slide.
+   */
+  private drawTangentFold(phi: number, rawT: number, which: "base" | "height"): void {
     const v = values(phi);
     const tang = tangentAtP(phi);
-    const first = rawT >= 0.5 ? 1 : smoothstep(rawT / 0.5);
-    const second = rawT <= 0.5 ? 0 : smoothstep((rawT - 0.5) / 0.5);
-    const swungC = swing(sinZoom(phi).C, (90 - phi) * first);
-    const swungT = swing(cosZoom(phi).T, -phi * second);
-    this.addSeg(tang.S, tang.Q, COL.tangent, 0.75);
-    this.addDot(tang.P, COL.radius);
-    this.addDot(tang.S, COL.cosec, 0.85);
-    this.addDot(tang.Q, COL.sec, 0.85);
-    this.addSeg({ x: 0, y: 0 }, swungC, COL.cosec, 1);
-    this.addSeg({ x: 0, y: 0 }, swungT, COL.sec, 1);
-    this.addText("P", { x: tang.P.x + this.gap(0.12), y: tang.P.y + this.gap(0.16) }, COL.radius, 1, 0.4);
-    if (first > 0.98) {
-      this.addText("S", { x: this.gap(-0.24), y: tang.S.y + this.gap(0.1) }, COL.cosec, 1, 0.4);
-      this.addText(`OS = ${fmt(v.cosec)}`, { x: -0.62, y: tang.S.y * 0.6 }, COL.cosec, 1, 0.4);
+    const base = baseTriangle(phi);
+    const O = { x: 0, y: 0 };
+    const P = tang.P;
+    const e = smoothstep(rawT);
+    const landed = rawT >= 1;
+    const isBase = which === "base";
+
+    this.addCircle(0.45);
+    this.addArc(0.28, 0, phi, COL.arc, 1);
+    this.addFill(base.O, base.H, base.P, COL.greyFill, 0.1);
+    this.addSeg(base.O, base.H, COL.cos, DIM);
+    this.addSeg(base.H, base.P, COL.sin, DIM);
+
+    // The tangent at P, and the target triangle it makes.
+    this.addSeg(tang.S, tang.Q, COL.tangent, 0.35);
+    if (isBase) {
+      this.addFill(O, P, tang.Q, COL.orangeFill, landed ? 0.18 : 0.06);
+      this.addSeg(P, tang.Q, COL.tan, landed ? 1 : 0.45);
+      this.addSeg(O, tang.Q, COL.sec, landed ? 1 : 0.45);
+    } else {
+      this.addFill(O, P, tang.Q, COL.orangeFill, 0.05);
+      this.addFill(O, tang.S, P, COL.cyanFill, landed ? 0.16 : 0.05);
+      this.addSeg(tang.S, P, COL.cot, landed ? 1 : 0.45);
+      this.addSeg(O, tang.S, COL.cosec, landed ? 1 : 0.45);
+      this.addArcAt(tang.S, 0.24, -90, -90 + phi, COL.arc, 1);
+      const mid = ((-90 + phi / 2) * Math.PI) / 180;
+      this.addText("φ", { x: tang.S.x + Math.cos(mid) * 0.4, y: tang.S.y + Math.sin(mid) * 0.4 }, COL.arc, 1, 0.38);
     }
-    if (second > 0.98) {
-      this.addText("Q", { x: tang.Q.x + this.gap(0.08), y: this.gap(-0.24) }, COL.sec, 1, 0.4);
-      this.addText(`OQ = ${fmt(v.sec)}`, { x: tang.Q.x * 0.5, y: -0.3 }, COL.sec, 1, 0.4);
-      this.addSeg(tang.P, tang.Q, COL.tan, 1);
-      this.addSeg(tang.S, tang.P, COL.cot, 1);
-      this.addText(`PQ = tan φ = ${fmt(v.tan)}`, offsetMid(tang.P, tang.Q, this.gap(0.34), this.gap(0.14)), COL.tan, 1, 0.38);
-      this.addText(`SP = cot φ = ${fmt(v.cot)}`, offsetMid(tang.S, tang.P, this.gap(0.5), this.gap(0.22)), COL.cot, 1, 0.38);
+    this.addSeg(O, P, COL.radius, 1);
+    this.addRightAngle(P, isBase ? { x: v.sin, y: -v.cos } : { x: -v.sin, y: v.cos });
+
+    // The zoomed triangle, ghosted where it started, then folded over.
+    const src = isBase
+      ? { a: cosZoom(phi).A, b: cosZoom(phi).T, fill: COL.orangeFill, side: COL.tan, hyp: COL.sec, flat: COL.cos }
+      : { a: sinZoom(phi).B, b: sinZoom(phi).C, fill: COL.cyanFill, side: COL.cot, hyp: COL.cosec, flat: COL.sin };
+    if (!landed) {
+      this.addSeg(src.a, src.b, src.side, 0.2);
+      this.addSeg(O, src.b, src.hyp, 0.2);
     }
+    if (!landed) {
+      const flip = new THREE.Group();
+      const saved = this.dynamic;
+      this.dynamic = flip;
+      this.addFill(O, src.a, src.b, src.fill, 0.22);
+      this.addSeg(O, src.a, src.flat, 1);
+      this.addSeg(src.a, src.b, src.side, 1);
+      this.addSeg(O, src.b, src.hyp, 1);
+      this.dynamic = saved;
+      const lineDeg = isBase ? phi / 2 : (phi + 90) / 2;
+      const r = (lineDeg * Math.PI) / 180;
+      flip.quaternion.setFromAxisAngle(new THREE.Vector3(Math.cos(r), Math.sin(r), 0), Math.PI * e);
+      this.dynamic.add(flip);
+    }
+
+    this.addDot(P, COL.radius);
+    this.addText("P", { x: P.x + this.gap(0.16), y: P.y + this.gap(0.16) }, COL.radius, 1, 0.4);
+    this.addText("OP = 1", offsetMid(O, P, isBase ? this.gap(-0.2) : this.gap(0.24), isBase ? this.gap(0.18) : this.gap(-0.14)), COL.radius, 1, 0.4);
+    const out = { x: v.cos * this.gap(0.3), y: v.sin * this.gap(0.3) };
+    if (isBase) {
+      this.addDot(tang.Q, COL.sec);
+      this.addText("Q", { x: tang.Q.x + this.gap(0.1), y: this.gap(-0.24) }, COL.sec, 1, 0.4);
+      if (!landed) {
+        this.addText("A", { x: 1 + this.gap(0.14), y: this.gap(-0.22) }, COL.tangent, 0.7, 0.36);
+        this.addText("T", { x: src.b.x + this.gap(0.16), y: src.b.y + this.gap(0.14) }, COL.tan, 0.7, 0.36);
+      } else {
+        const m = offsetMid(P, tang.Q, 0, 0);
+        this.addText(`PQ = ${fmt(v.tan)}`, { x: m.x + out.x, y: m.y + out.y }, COL.tan, 1, 0.4);
+        this.addText(`OQ = ${fmt(v.sec)}`, { x: tang.Q.x / 2, y: this.gap(-0.3) }, COL.sec, 1, 0.4);
+      }
+    } else {
+      this.addDot(tang.S, COL.cosec);
+      this.addText("S", { x: this.gap(-0.24), y: tang.S.y + this.gap(0.06) }, COL.cosec, 1, 0.4);
+      if (!landed) {
+        this.addText("B", { x: this.gap(-0.24), y: 1 + this.gap(0.16) }, COL.tangent, 0.7, 0.36);
+        this.addText("C", { x: src.b.x + this.gap(0.16), y: src.b.y + this.gap(0.14) }, COL.cot, 0.7, 0.36);
+      } else {
+        const m = offsetMid(tang.S, P, 0, 0);
+        this.addText(`SP = ${fmt(v.cot)}`, { x: m.x + out.x, y: m.y + out.y }, COL.cot, 1, 0.4);
+        this.addText(`OS = ${fmt(v.cosec)}`, { x: this.gap(-0.6), y: tang.S.y / 2 }, COL.cosec, 1, 0.4);
+      }
+    }
+  }
+
+  private addRightAngle(corner: Point, along: Point): void {
+    const size = this.gap(0.1);
+    const len = Math.hypot(corner.x, corner.y);
+    const toO = { x: (-corner.x / len) * size, y: (-corner.y / len) * size };
+    const w = { x: along.x * size, y: along.y * size };
+    const pts = [
+      { x: corner.x + toO.x, y: corner.y + toO.y },
+      { x: corner.x + toO.x + w.x, y: corner.y + toO.y + w.y },
+      { x: corner.x + w.x, y: corner.y + w.y },
+    ].map((pt) => world(pt));
+    this.addLine(pts, 0xe6edf3, 0.8);
   }
 
   private drawAll(phi: number): void {
@@ -424,6 +514,8 @@ export class TrigFunctionsStoryLesson implements Lesson {
     this.addVerticalTangent(0.45);
     this.addHorizontalTangent(0.45);
     this.addArc(0.28, 0, phi, COL.arc, 1);
+    const tang = tangentAtP(phi);
+    this.addSeg(tang.S, tang.Q, COL.tangent, 0.3);
     this.addFill(sz.O, sz.H, sz.C, COL.cyanFill, 0.12);
     this.addFill(cz.O, cz.A, cz.T, COL.orangeFill, 0.16);
     this.addFill(base.O, base.H, base.P, COL.greyFill, 0.28);
@@ -480,13 +572,17 @@ export class TrigFunctionsStoryLesson implements Lesson {
   }
 
   private addArc(radius: number, a0: number, a1: number, color: number, opacity: number): void {
+    this.addArcAt({ x: 0, y: 0 }, radius, a0, a1, color, opacity);
+  }
+
+  private addArcAt(centre: Point, radius: number, a0: number, a1: number, color: number, opacity: number): void {
     if (a1 - a0 < 0.15) return;
     const n = Math.max(8, Math.ceil((a1 - a0) / 4));
     const pts: THREE.Vector3[] = [];
     for (let i = 0; i <= n; i++) {
       const deg = a0 + ((a1 - a0) * i) / n;
       const r = (deg * Math.PI) / 180;
-      pts.push(world({ x: Math.cos(r) * radius, y: Math.sin(r) * radius }));
+      pts.push(world({ x: centre.x + Math.cos(r) * radius, y: centre.y + Math.sin(r) * radius }));
     }
     this.addLine(pts, color, opacity);
   }
@@ -574,7 +670,7 @@ export class TrigFunctionsStoryLesson implements Lesson {
     this.setInfo(`
       <div class="ts-panel" data-ts-step="${meta.id}">
         <h2>Trigonometric Functions</h2>
-        <p class="ts-progress">Step <b>${this.step + 1}</b> of <b>10</b> — nothing auto-advances. φ = ${Math.round(this.phiDeg)}°</p>
+        <p class="ts-progress">Step <b>${this.step + 1}</b> of <b>${STORY_STEPS.length}</b> — nothing auto-advances. φ = ${Math.round(this.phiDeg)}°</p>
         <div class="ts-dots" role="navigation" aria-label="Story steps">${dots}</div>
         <h3>${meta.title}</h3>
         ${copy.sentences.map((sentence) => `<p>${sentence}</p>`).join("")}
@@ -582,7 +678,7 @@ export class TrigFunctionsStoryLesson implements Lesson {
           <span>Algebra ↔ picture</span>
           ${copy.box}
         </div>
-        ${this.step === 9 ? `<p><a class="ts-explorer-link" href="#trig-functions-explorer">Open the Trig Functions Explorer →</a></p>` : ""}
+        ${this.step === STEP_ALL ? `<p><a class="ts-explorer-link" href="#trig-functions-explorer">Open the Trig Functions Explorer →</a></p>` : ""}
         <div class="ts-actions">
           ${play}
           <button type="button" class="course-btn ghost" data-ts="prev" ${atStart ? "disabled" : ""}>Back</button>
@@ -641,89 +737,122 @@ function stepCopy(step: number, v: StoryValues): { sentences: string[]; box: str
   const sec = fmt(v.sec);
   const cosec = fmt(v.cosec);
   const cot = fmt(v.cot);
-  const doubled = {
-    height: fmt(v.sin * 2),
-    base: fmt(v.cos * 2),
-    hyp: fmt(2),
+  const zoomed = {
+    height: fmt(v.sin * DEMO_ZOOM),
+    base: fmt(v.cos * DEMO_ZOOM),
+    hyp: fmt(DEMO_ZOOM),
   };
   const copies: { sentences: string[]; box: string }[] = [
     {
       sentences: [
-        "Everything today is measured in radiuses.",
-        "The radius is 1, so a length is just a number of radiuses.",
+        "Every length today is measured in radiuses, and the radius is 1.",
+        "That matters later: sin, cos and the rest are ratios, plain numbers. A ratio only equals a length when the side we divide by is 1.",
         "φ is how far the radius has turned up from the flat axis.",
       ],
       box: eq("OP = 1 (the radius)"),
     },
     {
       sentences: [
-        "Sin is opposite divided by the hypotenuse.",
-        "The hypotenuse is 1, so sin φ is just the height.",
-        "The red line drops from P down to the flat axis.",
+        "Sin is a ratio: opposite ÷ hypotenuse.",
+        "Here the opposite side is the red line HP, and the hypotenuse is OP = 1.",
+        "Dividing by 1 changes nothing, so the ratio sin φ and the length HP are the same number.",
       ],
-      box: eq("sin φ = opposite ÷ hypotenuse", `sin φ = ${sin} ÷ 1`, `sin φ = ${sin}`),
+      box: eq("sin φ = HP ÷ OP", `sin φ = ${sin} ÷ 1 = ${sin}`, `so HP = ${sin}`),
     },
     {
       sentences: [
-        "Cos is adjacent divided by the hypotenuse.",
-        "The hypotenuse is still 1, so cos φ is just the base.",
-        "The blue line runs from O out to the foot of the height.",
+        "Cos is a ratio: adjacent ÷ hypotenuse.",
+        "The adjacent side is the blue line OH, and the hypotenuse is still OP = 1.",
+        "So the ratio cos φ and the length OH are the same number.",
       ],
-      box: eq("cos φ = adjacent ÷ hypotenuse", `cos φ = ${cos} ÷ 1`, `cos φ = ${cos}`),
+      box: eq("cos φ = OH ÷ OP", `cos φ = ${cos} ÷ 1 = ${cos}`, `so OH = ${cos}`),
     },
     {
       sentences: [
-        "Zooming by 2 doubles every side but keeps the angle.",
-        "Dividing by 0.5 is the same as multiplying by 2, because 1 ÷ 0.5 = 2.",
-        "So dividing by a number less than 1 makes the triangle bigger.",
+        `Zooming by ${DEMO_ZOOM} makes every side ${DEMO_ZOOM} times longer. The angle does not change, so the ratios do not change.`,
+        "Dividing by a number less than 1 also zooms bigger: ÷ 0.5 is the same as × 2.",
+        "No side is aiming for 1 yet. That starts on the next step.",
       ],
-      box: eq("× 2 is the same as ÷ 0.5", `height: ${sin} → ${doubled.height}`, `base: ${cos} → ${doubled.base}`, `hypotenuse: 1 → ${doubled.hyp}`),
+      box: eq(
+        `× ${DEMO_ZOOM}: every side ${DEMO_ZOOM} times longer`,
+        `height: ${sin} → ${zoomed.height}`,
+        `base: ${cos} → ${zoomed.base}`,
+        `hypotenuse: 1 → ${zoomed.hyp}`,
+      ),
     },
     {
       sentences: [
-        "Which zoom makes the base 1? Divide by cos φ. That is the same as multiplying by 1 ÷ cos φ.",
-        "The height grows too: sin φ ÷ cos φ is tan φ.",
-        "That vertical line just touches the circle. It is a tangent, which is where the name comes from.",
+        "Now pick the zoom that makes the base exactly 1: divide every side by cos φ.",
+        "The base OA becomes 1, so the side we divide by is 1 again. That makes the ratio tan φ = AT ÷ OA equal to the length AT.",
+        "The vertical line through A just touches the circle. It is a tangent, which is where the name comes from.",
       ],
-      box: eq(`zoom = 1 ÷ cos φ = 1 ÷ ${cos} = ${sec}`, `base: ${cos} → 1`, `height: ${sin} ÷ ${cos} = ${tan}`, `so tan φ = ${tan}`),
+      box: eq(
+        `zoom = 1 ÷ cos φ = 1 ÷ ${cos} = ${sec}`,
+        `OA: ${cos} → 1`,
+        `AT: ${sin} → ${tan}`,
+        `tan φ = AT ÷ OA = ${tan} ÷ 1 = ${tan}`,
+      ),
     },
     {
       sentences: [
-        "The hypotenuse was 1. Zoomed by 1 ÷ cos φ it becomes 1 ÷ cos φ, which is sec φ.",
-        "The line from O to T cuts through the circle.",
-        "Secant means cutting.",
+        "Same zoom, now look at the hypotenuse. It was 1, so it grows to 1 ÷ cos φ.",
+        "sec φ is the ratio hypotenuse ÷ adjacent = OT ÷ OA. OA is 1, so sec φ equals the length OT.",
+        "The line OT cuts through the circle. Secant means cutting.",
       ],
-      box: eq(`hypotenuse: 1 → 1 ÷ cos φ`, `1 ÷ ${cos} = ${sec}`, `so sec φ = ${sec}`),
+      box: eq(`OT: 1 → ${sec}`, `sec φ = OT ÷ OA = ${sec} ÷ 1 = ${sec}`),
     },
     {
       sentences: [
-        "1 ÷ sin φ is the zoom that turns the height sin φ into 1.",
-        "It stretches out from O, along the radius line, until the red height is exactly 1.",
-        "The hypotenuse was 1, so it becomes cosec φ. A small sin means a huge zoom.",
+        "Now pick the zoom that makes the height exactly 1: divide every side by sin φ.",
+        "The height DC becomes 1. cosec φ is the ratio hypotenuse ÷ opposite = OC ÷ DC, and DC is 1, so cosec φ equals the length OC.",
+        "A small sin means a big zoom, and a long OC.",
       ],
-      box: eq(`zoom = 1 ÷ sin φ = 1 ÷ ${sin} = ${cosec}`, `height: ${sin} × ${cosec} = 1`, `hypotenuse: 1 × ${cosec} = ${cosec}`, `so cosec φ = ${cosec}`),
+      box: eq(
+        `zoom = 1 ÷ sin φ = 1 ÷ ${sin} = ${cosec}`,
+        `DC: ${sin} → 1`,
+        `OC: 1 → ${cosec}`,
+        `cosec φ = OC ÷ DC = ${cosec} ÷ 1 = ${cosec}`,
+      ),
     },
     {
       sentences: [
-        "The base grows by the same zoom: cos φ ÷ sin φ is cot φ.",
-        "It sits on the top tangent line, just as tan sat on the side one.",
-        "Sliding the base up shows the two lengths are equal.",
+        "Same zoom, now look at the base OD. It grows from cos φ to cos φ ÷ sin φ.",
+        "cot φ is the ratio adjacent ÷ opposite = OD ÷ DC. DC is 1, so cot φ equals the length OD.",
+        "Slide OD up to the top line and it fits exactly from B to C, along the tangent at B.",
       ],
-      box: eq(`base: ${cos} ÷ ${sin} = ${cot}`, `so cot φ = ${cot}`, `B → C = ${cot}`),
+      box: eq(`OD: ${cos} → ${cot}`, `cot φ = OD ÷ DC = ${cot} ÷ 1 = ${cot}`, `BC = OD = ${cot}`),
     },
     {
       sentences: [
-        "This is the usual diagram with all six.",
-        "The long line up the vertical axis is the cosec zoom swung round. Same length, just rotated.",
-        "In triangle O, S, P the radius is the opposite side of the angle at S, so sin φ = 1 ÷ OS, which gives OS = 1 ÷ sin φ.",
+        "Draw the line that just touches the circle at P. A tangent is always square to the radius, so the corner at P is a right angle. The line meets the flat axis at Q.",
+        "Triangle OPQ has that right angle and the angle φ at O, so it is the same shape as every triangle so far. Its base is OP = 1, so it is the base-1 triangle from step 5.",
+        "Press Play: OAT flips over and lands exactly on OPQ. It has to flip, not slide, because the two are mirror images.",
       ],
-      box: eq(`OS = OC = 1 ÷ sin φ = ${cosec}`, `OQ = OT = 1 ÷ cos φ = ${sec}`),
+      box: eq(
+        "corner at P = 90°, angle at O = φ",
+        "OP = 1 is the base",
+        `PQ = AT = tan φ = ${tan}`,
+        `OQ = OT = sec φ = ${sec}`,
+      ),
+    },
+    {
+      sentences: [
+        "Carry the same tangent on until it meets the upright axis at S. Triangle OSP also has its right angle at P.",
+        "The angle at O is 90° − φ. The three angles add to 180°, so the angle at S is φ. Seen from S, OP = 1 is the height, so this is the height-1 triangle from step 7.",
+        "Press Play: OBC flips over onto OSP. That is why the long line up the y-axis, OS, is cosec φ.",
+      ],
+      box: eq(
+        "angle at S = 180° − 90° − (90° − φ) = φ",
+        "OP = 1 is the height",
+        `SP = BC = cot φ = ${cot}`,
+        `OS = OC = cosec φ = ${cosec}`,
+      ),
     },
     {
       sentences: [
         "Three triangles, one shape: hypotenuse 1 gives sin and cos; base 1 gives tan and sec; height 1 gives cot and cosec.",
         "A small sin means a huge zoom, and a huge cosec.",
-        "If the radius is R instead of 1, multiply every length by R.",
+        "Each label names a length, and the length equals the ratio because the side we divided by is 1. If the radius is R, every length is R times bigger, but the ratios stay the same.",
       ],
       box: `<table class="ts-values">
         <tr><th>sin φ</th><td>${sin}</td><th>cos φ</th><td>${cos}</td></tr>

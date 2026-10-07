@@ -934,7 +934,7 @@ export const SHAPE_AND_TRIG_GUIDES: readonly LessonGuide[] = [
       },
     ],
     tryThis:
-      "Step Next through all 10 steps. On each step press Play once and watch the one-shot animation: the radius sweep, the growing height, the times-two zoom, the zoom that makes the base 1, and the swing onto the axes. Try 30°, 45° and 60°, drag the φ slider between 15° and 75°, then open the Trig Functions Explorer for other quadrants.",
+      "Step Next through all 11 steps. On each step press Play once and watch the one-shot animation: the radius sweep, the growing height, the warm-up zoom, the zoom that makes the base 1, the zoom that makes the height 1, and the two flips onto the tangent at P. Try 30°, 45° and 60°, drag the φ slider between 15° and 75°, then open the Trig Functions Explorer for other quadrants.",
   },
   {
     id: "trig-functions-explorer",

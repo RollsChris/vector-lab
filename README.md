@@ -202,9 +202,10 @@ topic rests on.
     swept* — count the dots. A full turn is `2π ≈ 6.28` radii, which is why `2π rad = 360°` and
     `1 rad ≈ 57.3°`. Explains why radians keep the maths clean (`s = R·θ`, `v = R·ω`, and
     `d/dx sin x = cos x` only in radians), setting up every wave and rotation that follows.
-15. **Trigonometric Functions** — a 10-step story on a unit circle. Dividing by sine or
+15. **Trigonometric Functions** — an 11-step story on a unit circle. Dividing by sine or
     cosine is a zoom about the origin: hypotenuse 1 gives sine and cosine, base 1 gives
-    tangent and secant, height 1 gives cotangent and cosecant. Each step has an optional
+    tangent and secant, height 1 gives cotangent and cosecant. The tangent at P then flips
+    both zoomed triangles onto the classic picture. Each step has an optional
     one-shot animation. **Trig Functions Explorer** (the previous lesson, kept beside it)
     still has every quadrant, the proofs, the history, and a configurable radius.
 

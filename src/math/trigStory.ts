@@ -35,12 +35,13 @@ export const STORY_STEPS: readonly StoryStepMeta[] = [
   { id: "circle", title: "One circle, radius 1", hasBeat: true },
   { id: "sin", title: "sin φ is the height", hasBeat: true },
   { id: "cos", title: "cos φ is the base", hasBeat: true },
-  { id: "zoom", title: "Dividing is zooming", hasBeat: true },
-  { id: "tan", title: "tan φ: zoom until the base is 1", hasBeat: true },
-  { id: "sec", title: "sec φ: the long side of the same zoom", hasBeat: true },
-  { id: "cosec", title: "cosec φ: what 1 ÷ sin φ actually does", hasBeat: true },
-  { id: "cot", title: "cot φ: the base of that zoom", hasBeat: true },
-  { id: "famous", title: "The famous picture: tangent at P", hasBeat: true },
+  { id: "zoom", title: "Zooming: every side times the same number", hasBeat: true },
+  { id: "tan", title: "Zoom until the base is 1 → tan φ", hasBeat: true },
+  { id: "sec", title: "Same zoom, the hypotenuse → sec φ", hasBeat: true },
+  { id: "cosec", title: "Zoom until the height is 1 → cosec φ", hasBeat: true },
+  { id: "cot", title: "Same zoom, the base → cot φ", hasBeat: true },
+  { id: "tangent-base", title: "Tangent at P → the base-1 triangle again", hasBeat: true },
+  { id: "tangent-height", title: "Same tangent → the height-1 triangle", hasBeat: true },
   { id: "all", title: "All six, live", hasBeat: true },
 ];
 
@@ -158,6 +159,17 @@ export function swing(point: Point, angleDeg: number): Point {
   };
 }
 
+/**
+ * Mirror a point across the line through O at lineDeg. Folding OAT across φ/2 lands it on OPQ;
+ * folding OBC across (φ + 90)/2 lands it on OSP.
+ */
+export function reflectAcross(point: Point, lineDeg: number): Point {
+  const r = (2 * lineDeg * Math.PI) / 180;
+  const c = Math.cos(r);
+  const s = Math.sin(r);
+  return { x: point.x * c + point.y * s, y: point.x * s - point.y * c };
+}
+
 export interface TangentAtP {
   P: Point;
   S: Point;
@@ -190,7 +202,7 @@ export function tangentLengths(phiDeg: number): { PQ: number; SP: number } {
 }
 
 /**
- * Step-10 beat only. Sweeps a visual angle from 15° up to 75° and back to the stored φ.
+ * Final-step beat only. Sweeps a visual angle from 15° up to 75° and back to the stored φ.
  * Does not replace the stored angle.
  */
 export function sweepPhi(storedPhi: number, t: number): number {
