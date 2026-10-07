@@ -2766,15 +2766,33 @@ details.course[open] > summary { margin-bottom: 10px; }
 @media (max-width: 900px) {
   #app {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
     grid-template-areas:
       "topbar"
       "stage"
+      "sheet"
       "tabbar";
   }
   .topbar { display: flex; grid-area: topbar; }
   .sheet-backdrop:not([hidden]) { display: block; }
-  .panel-handle { display: block; }
+  .panel-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 28px;
+    margin: 0;
+    background: transparent;
+    touch-action: none;
+    flex-shrink: 0;
+  }
+  .panel-handle::before {
+    content: "";
+    width: 42px;
+    height: 4px;
+    border-radius: 999px;
+    background: #30363d;
+  }
   #topic-tabs-desktop { display: none; }
   #topic-tabbar {
     display: none;
@@ -2787,28 +2805,48 @@ details.course[open] > summary { margin-bottom: 10px; }
   }
   body.has-topic-tabbar #topic-tabbar { display: flex; }
   #topic-tabbar .topic-tab { min-height: 44px; }
+
+  /* Sheet slot is in flow so the stage (and canvas) shrinks instead of being covered. */
+  #panel,
   #control-dock {
-    position: fixed;
-    right: 10px;
-    bottom: calc(10px + env(safe-area-inset-bottom, 0px));
-    left: 10px;
-    z-index: 55;
-    display: flex;
-    max-height: min(40dvh, 360px);
-    flex-direction: column;
-    overflow: hidden;
-    border: 1px solid var(--border);
-    border-radius: 14px;
+    grid-area: sheet;
+    position: static;
+    display: none;
+    width: 100%;
+    min-height: 0;
+    margin: 0;
+    border: 0;
+    border-top: 1px solid var(--border);
+    border-radius: 16px 16px 0 0;
     background: var(--panel);
-    box-shadow: 0 -10px 32px rgb(0 0 0 / 38%);
-    transform: translateY(calc(100% + 16px));
-    transition: transform 0.2s ease;
+    box-shadow: 0 -8px 24px rgb(0 0 0 / 28%);
+    transform: none;
+    overflow: hidden;
   }
-  body.has-topic-tabbar #control-dock {
-    bottom: calc(66px + env(safe-area-inset-bottom, 0px));
-    transform: translateY(calc(100% + 80px));
+  #panel {
+    flex-direction: column;
+    transition: height 0.22s ease, max-height 0.22s ease;
   }
-  body.controls-open #control-dock { transform: translateY(0); }
+  body.panel-half #panel,
+  body.panel-open #panel,
+  body.controls-open #control-dock {
+    display: flex;
+    flex-direction: column;
+  }
+  body.panel-half #panel {
+    height: 40dvh;
+    max-height: 40dvh;
+  }
+  body.panel-open #panel {
+    /* Topbar + tabbar are their own rows; 58dvh leaves the stage roughly 28% of a phone screen. */
+    height: 58dvh;
+    max-height: 58dvh;
+  }
+  body.controls-open #panel { display: none; }
+  body.controls-open #control-dock {
+    height: auto;
+    max-height: 40dvh;
+  }
   .control-dock-content {
     min-height: 0;
     overflow-y: auto;
@@ -2838,34 +2876,6 @@ details.course[open] > summary { margin-bottom: 10px; }
     box-shadow: 12px 0 40px rgb(0 0 0 / 35%);
   }
   body.nav-open #sidebar { transform: translateX(0); }
-
-  #panel {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 50;
-    width: 100%;
-    height: min(62dvh, 640px);
-    max-height: min(62dvh, 640px);
-    border-left: 0;
-    border-top: 1px solid var(--border);
-    border-radius: 16px 16px 0 0;
-    transform: translateY(108%);
-    transition: transform 0.22s ease, height 0.22s ease, max-height 0.22s ease;
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-    box-shadow: 0 -12px 40px rgb(0 0 0 / 35%);
-  }
-  body.has-topic-tabbar #panel {
-    bottom: calc(56px + env(safe-area-inset-bottom, 0px));
-    padding-bottom: 0;
-  }
-  body.panel-open #panel,
-  body.panel-peek #panel { transform: translateY(0); }
-  body.panel-peek #panel {
-    height: 156px;
-    max-height: 156px;
-  }
 
   /* Hide the duplicate brand block inside the drawer — topbar already brands the app. */
   #sidebar .brand { display: none; }
@@ -2905,6 +2915,36 @@ details.course[open] > summary { margin-bottom: 10px; }
   .binomial-sequences { grid-template-columns: 1fr; }
 
   body.sheet-open { overscroll-behavior: none; }
+}
+
+/* Short landscape: sheet is a right column so the stage keeps a horizontal strip. */
+@media (max-width: 900px) and (orientation: landscape) and (max-height: 500px) {
+  #app {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "topbar topbar"
+      "stage sheet"
+      "tabbar tabbar";
+  }
+  body.panel-half #panel,
+  body.panel-open #panel,
+  body.controls-open #control-dock {
+    height: 100%;
+    max-height: none;
+    align-self: stretch;
+    border-top: 0;
+    border-left: 1px solid var(--border);
+    border-radius: 0;
+    box-shadow: none;
+  }
+  body.panel-half #panel,
+  body.controls-open #control-dock {
+    width: min(45vw, 420px);
+  }
+  body.panel-open #panel {
+    width: min(60vw, 560px);
+  }
 }
 
 @media (max-width: 420px) {

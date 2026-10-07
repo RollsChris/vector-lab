@@ -1,15 +1,21 @@
 import type { TopicChange, TopicWorkspace } from "./TopicWorkspace";
 
 /**
- * Phone/tablet chrome: library drawer, paged lesson sheet, animate dock, and
- * touch-aware hints. Desktop layout ignores overlays via CSS; this class still
+ * Phone/tablet chrome: library drawer, lesson sheet, animate dock, and
+ * touch-aware hints. Desktop layout ignores sheet classes; this class still
  * keeps state consistent and relocates the gui host.
  */
 export class MobileShell {
   private navOpen = false;
-  private sheet: "closed" | "peek" | "full" = "closed";
+  private sheet: "closed" | "half" | "full" = "closed";
   private controlsOpen = false;
   private readonly mq = window.matchMedia("(max-width: 900px)");
+  private readonly landscapeMq = window.matchMedia(
+    "(max-width: 900px) and (orientation: landscape) and (max-height: 500px)",
+  );
+  private readonly stage: HTMLElement;
+  private handleDrag: { pointerId: number; x: number; y: number; height: number } | null = null;
+  private stageTap: { pointerId: number; x: number; y: number; t: number } | null = null;
 
   constructor(
     private readonly els: {
@@ -36,6 +42,7 @@ export class MobileShell {
     },
     private readonly workspace: TopicWorkspace,
   ) {
+    this.stage = this.els.hint.closest("#stage") ?? this.els.hint;
     this.relocateControls();
     this.bind();
     this.syncHint();
@@ -82,6 +89,7 @@ export class MobileShell {
     });
     this.els.controlsClose.addEventListener("click", () => {
       this.controlsOpen = false;
+      this.sheet = "closed";
       if (this.workspace.currentTab === "animate") {
         this.workspace.setTab("lesson", "system");
       }
@@ -90,27 +98,15 @@ export class MobileShell {
     this.els.prevLesson.addEventListener("click", () => this.actions.previous());
     this.els.nextLesson.addEventListener("click", () => this.actions.next());
     this.els.backdrop.addEventListener("click", () => {
-      if (this.navOpen) {
-        this.closeNav();
-        return;
-      }
-      if (this.sheet === "full") {
-        this.sheet = "peek";
-        this.syncChrome();
-      }
+      if (this.navOpen) this.closeNav();
     });
-    this.els.panelHandle.addEventListener("click", () => {
-      if (!this.mq.matches) return;
-      if (this.sheet === "full") this.sheet = "peek";
-      else if (this.sheet === "peek") this.sheet = "closed";
-      else this.sheet = "full";
-      this.syncChrome();
-    });
+    this.bindHandleDrag();
+    this.bindStageTap();
     this.els.info.addEventListener("click", (event) => {
-      if (!this.mq.matches || this.sheet !== "full") return;
+      if (!this.mq.matches || this.sheet !== "full" || this.controlsOpen) return;
       const button = (event.target as HTMLElement).closest("button");
       if (!button || !this.els.info.contains(button)) return;
-      this.sheet = "peek";
+      this.sheet = "half";
       this.syncChrome();
     });
 
@@ -143,14 +139,121 @@ export class MobileShell {
     }
     this.navOpen = false;
     if (change.tab === "animate") {
-      this.controlsOpen = true;
-      if (this.sheet !== "peek") this.sheet = "peek";
+      if (this.controlsOpen && !change.tabChanged) {
+        this.controlsOpen = false;
+        this.sheet = "closed";
+        this.workspace.setTab("lesson", "system");
+      } else {
+        this.controlsOpen = true;
+      }
     } else {
       this.controlsOpen = false;
-      if (!change.tabChanged && !change.pageChanged && this.sheet === "full") this.sheet = "peek";
-      else this.sheet = "full";
+      if (change.tabChanged || change.pageChanged || this.sheet === "closed") this.sheet = "full";
+      else this.sheet = "closed";
     }
     this.syncChrome();
+  }
+
+  /** Portrait: drag the handle to resize; a short press keeps the full → half → closed cycle. */
+  private bindHandleDrag(): void {
+    const handle = this.els.panelHandle;
+    handle.addEventListener("pointerdown", (event) => {
+      if (!this.mq.matches || event.button !== 0) return;
+      if (this.controlsOpen || this.sheet === "closed") return;
+      this.handleDrag = {
+        pointerId: event.pointerId,
+        x: event.clientX,
+        y: event.clientY,
+        height: this.els.panel.getBoundingClientRect().height,
+      };
+      if (this.landscapeMq.matches) return;
+      this.els.panel.style.transition = "none";
+      handle.setPointerCapture(event.pointerId);
+    });
+    handle.addEventListener("pointermove", (event) => {
+      const drag = this.handleDrag;
+      if (!drag || event.pointerId !== drag.pointerId || this.landscapeMq.matches) return;
+      const moved = Math.hypot(event.clientX - drag.x, event.clientY - drag.y);
+      if (moved < 8) return;
+      const next = Math.max(0, Math.min(this.maxSheetHeight(), drag.height - (event.clientY - drag.y)));
+      this.els.panel.style.height = `${next}px`;
+      this.els.panel.style.maxHeight = `${next}px`;
+    });
+    handle.addEventListener("pointerup", (event) => this.endHandleDrag(event, false));
+    handle.addEventListener("pointercancel", (event) => this.endHandleDrag(event, true));
+  }
+
+  private endHandleDrag(event: PointerEvent, cancelled: boolean): void {
+    const drag = this.handleDrag;
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    const moved = Math.hypot(event.clientX - drag.x, event.clientY - drag.y);
+    const released = this.els.panel.getBoundingClientRect().height;
+    this.handleDrag = null;
+    this.clearPanelDragStyle();
+    if (cancelled) {
+      this.syncChrome();
+      return;
+    }
+    if (moved < 8) {
+      this.cycleSheet();
+      return;
+    }
+    if (this.landscapeMq.matches) return;
+    this.sheet = this.snapSheet(released);
+    this.syncChrome();
+  }
+
+  private clearPanelDragStyle(): void {
+    this.els.panel.style.height = "";
+    this.els.panel.style.maxHeight = "";
+    this.els.panel.style.transition = "";
+  }
+
+  private maxSheetHeight(): number {
+    const top = document.getElementById("topbar")?.getBoundingClientRect().bottom ?? 0;
+    const bottom = document.getElementById("topic-tabbar")?.getBoundingClientRect().top ?? window.innerHeight;
+    return Math.max(0, bottom - top);
+  }
+
+  private snapSheet(height: number): "closed" | "half" | "full" {
+    const half = window.innerHeight * 0.4;
+    const full = window.innerHeight * 0.58;
+    if (height < half / 2) return "closed";
+    if (height < (half + full) / 2) return "half";
+    return "full";
+  }
+
+  private cycleSheet(): void {
+    if (this.sheet === "full") this.sheet = "half";
+    else if (this.sheet === "half") this.sheet = "closed";
+    else this.sheet = "full";
+    this.syncChrome();
+  }
+
+  /** A tap (not an orbit drag) on the visible strip drops a full sheet to half. */
+  private bindStageTap(): void {
+    this.stage.addEventListener("pointerdown", (event) => {
+      if (!this.mq.matches || this.sheet !== "full" || this.controlsOpen) return;
+      this.stageTap = {
+        pointerId: event.pointerId,
+        x: event.clientX,
+        y: event.clientY,
+        t: performance.now(),
+      };
+    });
+    this.stage.addEventListener("pointerup", (event) => {
+      const tap = this.stageTap;
+      if (!tap || event.pointerId !== tap.pointerId) return;
+      this.stageTap = null;
+      const moved = Math.hypot(event.clientX - tap.x, event.clientY - tap.y);
+      if (moved >= 8 || performance.now() - tap.t >= 300) return;
+      if (!this.mq.matches || this.sheet !== "full" || this.controlsOpen) return;
+      this.sheet = "half";
+      this.syncChrome();
+    });
+    this.stage.addEventListener("pointercancel", (event) => {
+      if (this.stageTap?.pointerId === event.pointerId) this.stageTap = null;
+    });
   }
 
   private openNav(): void {
@@ -192,25 +295,24 @@ export class MobileShell {
   private syncChrome(): void {
     const mobile = this.mq.matches;
     const enabled = this.workspace.isEnabled;
-    const full = mobile && this.sheet === "full";
-    const peek = mobile && this.sheet === "peek";
     const controls = mobile && enabled && this.controlsOpen;
+    const showPanel = mobile && !controls;
 
     document.body.classList.toggle("nav-open", mobile && this.navOpen);
-    document.body.classList.toggle("panel-open", full);
-    document.body.classList.toggle("panel-peek", peek);
+    document.body.classList.toggle("panel-open", showPanel && this.sheet === "full");
+    document.body.classList.toggle("panel-half", showPanel && this.sheet === "half");
     document.body.classList.toggle("controls-open", controls);
     document.body.classList.toggle("has-topic-tabbar", mobile);
 
     this.els.navToggle.setAttribute("aria-expanded", String(mobile && this.navOpen));
     this.els.navToggle.textContent = mobile && this.navOpen ? "Close" : "Lessons";
 
-    const dim = mobile && (this.navOpen || full);
+    const dim = mobile && this.navOpen;
     this.els.backdrop.hidden = !dim;
-    document.body.classList.toggle("sheet-open", dim);
+    document.body.classList.toggle("sheet-open", dim || (mobile && (this.sheet !== "closed" || controls)));
 
     this.setHidden(this.els.sidebar, mobile && !this.navOpen);
-    this.setHidden(this.els.panel, mobile && this.sheet === "closed");
+    this.setHidden(this.els.panel, mobile && (controls || this.sheet === "closed"));
     this.setHidden(this.els.controlDock, !controls);
   }
 

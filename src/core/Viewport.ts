@@ -20,6 +20,7 @@ export class Viewport {
   private readonly axes: THREE.Group;
   private raf = 0;
   private running = false;
+  private readonly resizeObserver: ResizeObserver;
 
   constructor(private readonly container: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -52,6 +53,9 @@ export class Viewport {
     window.addEventListener("resize", this.resize);
     // iOS URL-bar show/hide changes layout without always firing window.resize.
     window.visualViewport?.addEventListener("resize", this.resize);
+    // The stage also resizes when the lesson sheet opens, with no window resize.
+    this.resizeObserver = new ResizeObserver(() => this.resize());
+    this.resizeObserver.observe(this.container);
     this.resume();
   }
 
@@ -121,6 +125,7 @@ export class Viewport {
 
   dispose(): void {
     this.pause();
+    this.resizeObserver.disconnect();
     window.removeEventListener("resize", this.resize);
     window.visualViewport?.removeEventListener("resize", this.resize);
     this.renderer.dispose();
